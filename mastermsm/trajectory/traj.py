@@ -91,7 +91,6 @@ class TimeSeries(object):
             phi = md.compute_phi(self.mdt)
             psi = md.compute_psi(self.mdt)
             res = [x for x in self.mdt.topology.residues]
-            print phi, psi
             self.distrajs = traj_lib.discrete_rama(phi, psi)
 
 #    def discrete_rama(self, A=[-100, -40, -60, 0], \

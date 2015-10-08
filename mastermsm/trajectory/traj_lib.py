@@ -2,6 +2,7 @@
 This file is part of the MasterMSM package.
 
 """
+import sys
 import math
 
 def discrete_rama(phi, psi, seq=None, bounds=None, states=['A', 'E', 'L']):
@@ -40,24 +41,39 @@ def discrete_rama(phi, psi, seq=None, bounds=None, states=['A', 'E', 'L']):
 
     if bounds is None:
         TBA_bounds = {}
-        TBA_bounds['A'] = [ -100., -40., -60., 0. ]
-        TBA_bounds['E'] = [ -180., -40., 120.,180. ]
-        TBA_bounds['L'] = [ 50., 100., -40.,70.0 ]
+        if 'A' in states:
+            TBA_bounds['A'] = [ -100., -40., -60., 0. ]
+        if 'E' in states:
+            TBA_bounds['E'] = [ -180., -40., 120.,180. ]
+        if 'L' in states:
+            TBA_bounds['L'] = [ 50., 100., -40.,70.0 ]
     
-    s_string = [] 
-    prev_s_string = ""
     res_idx = 0
+    if len(phi[0]) != len(psi[0]):
+        print " Different number of phi and psi dihedrals"
+        print " STOPPING HERE"
+        sys.exit()
+
+    cstates = []
+    prev_s_string = ""
+    ndih = len(phi[0])
     for f,y in zip(phi[1],psi[1]):
-        s, phipsi = _state(f*180/math.pi, y*180/math.pi, TBA_bounds)
+        s_string = [] 
+        for n in range(ndih):
+            s, phipsi = _state(f[n]*180/math.pi, y[n]*180/math.pi, TBA_bounds)
         #if s == "O" and len(prev_s_string) > 0:
-        if s == "O":
-            #s_string += prev_s_string[res_idx]
-            s_string += prev_s_string
-        else:
-            s_string += s
-            prev_s_string = s
-    res_idx += 1
-    return s_string
+            if s == "O":
+                try:
+                    s_string += prev_s_string[n]
+                except IndexError:
+                    s_string += "O"
+            else:
+                s_string += s
+        cstates.append(''.join(s_string))
+        prev_s_string = s_string
+        res_idx += 1
+    print cstates
+    return cstates 
 
 #stats_out = open(stats_file,"w")
 #cum = 0
