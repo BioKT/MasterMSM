@@ -25,7 +25,7 @@ class TimeSeries(object):
 
     Note
     ----
-    Further documentation can be found in [1]_.
+    Further documentation on mdtraj can be found in [1]_.
 
     References
     ----------
@@ -36,10 +36,8 @@ class TimeSeries(object):
 }
     
     """
-
     def __init__(self, top=None, traj=None, method=None):
         """
-
         Parameters
         ---------
         top : string
@@ -92,6 +90,17 @@ class TimeSeries(object):
             psi = md.compute_psi(self.mdt)
             res = [x for x in self.mdt.topology.residues]
             self.distrajs = traj_lib.discrete_rama(phi, psi)
+
+    def find_keys(self):
+        """ Finds out the discrete states in the trajectory
+
+        """
+        keys = []
+        try:
+            for s in self.discrete:
+                if s not in keys:
+                    keys.append(s)
+        self.keys = keys
 
 #    def discrete_rama(self, A=[-100, -40, -60, 0], \
 #            L=[-180, -40, 120., 180.], \

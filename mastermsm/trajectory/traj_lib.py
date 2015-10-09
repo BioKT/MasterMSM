@@ -72,7 +72,6 @@ def discrete_rama(phi, psi, seq=None, bounds=None, states=['A', 'E', 'L']):
         cstates.append(''.join(s_string))
         prev_s_string = s_string
         res_idx += 1
-    print cstates
     return cstates 
 
 #stats_out = open(stats_file,"w")
