@@ -6,7 +6,7 @@ import numpy as np
 #import networkx as nx
 #import os, math, copy #,numarray,linalg
 #import itertools,operator
-#from scipy import linalg as scipyla
+#from scipy import linalg as spla
 #import multiprocessing as mp
 #import cPickle
 
@@ -20,18 +20,36 @@ import numpy as np
 #        if k1[i] != k2[i]:
 #            diff+=1
 #    return diff
-#
-#def esort(ei, ej):
-#    _, eval_i = ei
-#    _, eval_j = ej
-#
-#    if eval_j.real > eval_i.real:
-#        return 1
-#    elif eval_j.real < eval_i.real:
-#        return -1
-#    else:
-#        return 0
-#
+
+def esort(ei, ej):
+    """ Sorts eigenvalues.
+
+    Parameters
+    ----------
+    ei : float
+
+    ej : float
+
+    Returns
+    -------
+    bool :
+        Whether the first value is larger than the second.
+
+    Note
+    ----
+    Contributed by R. B. Best
+
+    """
+    _, eval_i = ei
+    _, eval_j = ej
+
+    if eval_j.real > eval_i.real:
+        return 1
+    elif eval_j.real < eval_i.real:
+        return -1
+    else:
+        return 0
+
 #def find_keys(state_keys, trans, manually_remove):
 #    """ eliminate dead ends """
 #    keep_states = []
@@ -129,7 +147,7 @@ import numpy as np
 #
 #def propagate(rate, t, pini):
 #    # propagate dynamics using rate matrix exponential
-#    expkt = scipyla.expm2(rate*t)
+#    expkt = spla.expm2(rate*t)
 #    return mat_mul_v(expkt,pini)
 #
 #def propagate_eig(elist, rvecs, lvecs, t, pini):
@@ -334,7 +352,7 @@ def calc_count_worker(x):
 #            count[keep_states[x]][keep_states[i]], range(nkeep)))
 #        for j in range(nkeep):
 #            trans[j][i] = float(count[keep_states[j]][keep_states[i]])/float(ni)
-#    evalsT, rvecsT = scipyla.eig(trans, left=False)
+#    evalsT, rvecsT = spla.eig(trans, left=False)
 #    elistT = []
 #    for i in range(nkeep):
 #        elistT.append([i,np.real(evalsT[i])])
@@ -496,7 +514,7 @@ def calc_rate(nkeep, trans, lagt):
 #def propagate_worker(x):
 #    """ propagate dynamics using rate matrix exponential"""
 #    rate, t, pini = x
-#    expkt = scipyla.expm2(rate*t)
+#    expkt = spla.expm2(rate*t)
 #    popul = mat_mul_v(expkt, pini)
 #    return popul 
 #

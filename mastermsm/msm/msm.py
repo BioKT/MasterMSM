@@ -12,7 +12,7 @@ This file is part of the MasterMSM package.
 #import itertools
 import numpy as np
 import networkx as nx
-#import scipy.linalg as scipyla
+import scipy.linalg as spla
 #import matplotlib.pyplot as plt
 import multiprocessing as mp
 import msm_lib
@@ -499,69 +499,72 @@ class MSM(object):
         keep_keys = map(lambda x: self.keys[x], keep_states)
         return keep_states, keep_keys
 
-#    def calc_eigsK(self, evecs=False):
-#        """ Calculate eigenvalues and eigenvectors of rate matrix K
-#        
-#        Parameters:
-#        -----------
-#        evecs : bool
-#            Whether we want eigenvectors or not.
-#
-#        Returns:
-#        -------
-#        tauK : numpy array
-#            Relaxation times from K.
-#        peqK : numpy array
-#            Equilibrium probabilities from K.
-#        rvecsK : numpy array, optional
-#            Right eigenvectors of K, sorted.
-#        lvecsK : numpy array, optional
-#            Left eigenvectors of K, sorted.
-#
-#        """
-#        #print "\n       Calculating eigenvalues and eigenvectors of K"
-#        evalsK, lvecsK, rvecsK = \
-#                   scipyla.eig(self.rate, left=True)
-#        # sort modes
-#        nkeep = len(self.keep_states)
-#        elistK = []
-#        for i in range(nkeep):
-#            elistK.append([i,np.real(evalsK[i])])
-#        elistK.sort(msm_lib.esort)
-#
-#        # calculate relaxation times from K and T
-#        tauK = []
-#        for i in range(1, nkeep):
-#            iiK, lamK = elistK[i]
-#            tauK.append(-1./lamK)
-#
-#        # equilibrium probabilities
-#        ieqK, eK = elistK[0]
-#        peqK_sum = reduce(lambda x, y: x + y, map(lambda x: rvecsK[x,ieqK],
-#            range(nkeep)))
-#        peqK = rvecsK[:,ieqK]/peqK_sum
-#        if not evecs:
-#            return tauK, peqK
-#        else:
-#            # sort eigenvectors
-#            rvecsK_sorted = np.zeros((nkeep, nkeep), float)
-#            lvecsK_sorted = np.zeros((nkeep, nkeep), float)
-#            for i in range(nkeep):
-#                iiK, lamK = elistK[i]
-#                rvecsK_sorted[:,i] = rvecsK[:,iiK]
-#                lvecsK_sorted[:,i] = lvecsK[:,iiK]
-#            return tauK, peqK, rvecsK_sorted, lvecsK_sorted
-
-    def calc_eigsT(self, evecs=False):
-        """ 
-        Calculate eigenvalues and eigenvectors of transition matrix T
+    def calc_eigsK(self, evecs=False):
+        """ Calculate eigenvalues and eigenvectors of rate matrix K
         
         Parameters:
         -----------
         evecs : bool
-            Whether we want the left eigenvectors of the transition matrix.
+            Whether we want the eigenvectors of the rate matrix.
 
         Returns:
+        -------
+        tauK : numpy array
+            Relaxation times from K.
+
+        peqK : numpy array
+            Equilibrium probabilities from K.
+
+        rvecsK : numpy array, optional
+            Right eigenvectors of K, sorted.
+
+        lvecsK : numpy array, optional
+            Left eigenvectors of K, sorted.
+
+        """
+        evalsK, lvecsK, rvecsK = \
+                   spla.eig(self.rate, left=True)
+        # sort modes
+        nkeep = len(self.keep_states)
+        elistK = []
+        for i in range(nkeep):
+            elistK.append([i,np.real(evalsK[i])])
+        elistK.sort(msm_lib.esort)
+
+        # calculate relaxation times from K and T
+        tauK = []
+        for i in range(1, nkeep):
+            iiK, lamK = elistK[i]
+            tauK.append(-1./lamK)
+
+        # equilibrium probabilities
+        ieqK, eK = elistK[0]
+        peqK_sum = reduce(lambda x, y: x + y, map(lambda x: rvecsK[x,ieqK],
+            range(nkeep)))
+        peqK = rvecsK[:,ieqK]/peqK_sum
+
+        if not evecs:
+            return tauK, peqK
+        else:
+            # sort eigenvectors
+            rvecsK_sorted = np.zeros((nkeep, nkeep), float)
+            lvecsK_sorted = np.zeros((nkeep, nkeep), float)
+            for i in range(nkeep):
+                iiK, lamK = elistK[i]
+                rvecsK_sorted[:,i] = rvecsK[:,iiK]
+                lvecsK_sorted[:,i] = lvecsK[:,iiK]
+            return tauK, peqK, rvecsK_sorted, lvecsK_sorted
+
+    def calc_eigsT(self, evecs=False):
+        """ 
+        Calculate eigenvalues and eigenvectors of transition matrix T.
+        
+        Parameters
+        -----------
+        evecs : bool
+            Whether we want the eigenvectors of the transition matrix.
+
+        Returns
         -------
         tauT : numpy array
             Relaxation times from T.
@@ -578,7 +581,7 @@ class MSM(object):
         """
         #print "\n Calculating eigenvalues and eigenvectors of T"
         evalsT, lvecsT, rvecsT = \
-                scipyla.eig(self.trans, left=True)
+                spla.eig(self.trans, left=True)
 
         # sort modes
         nkeep = len(self.keep_states)
@@ -611,133 +614,135 @@ class MSM(object):
                 lvecsT_sorted[:,i] = lvecsT[:,iiT]
             return tauT, peqT, rvecsT_sorted, lvecsT_sorted
 
-#    def boots(self, nboots=50, nproc=None, plot=False, slider=False):
-#        """ Bootstrap the simulation data to calculate errors
-#
-#        Parameters:
-#        -----------
-#        nboots : int
-#            Number of bootstrap samples
-#        nproc : int
-#            Number of processors to use
-#        plot : bool
-#            Whether we want to plot the distribution of tau / peq
-#        
-#        Returns:
-#        --------
-#        tau_err : array
-#            Errors for the relaxation times
-#        peq_err : array
-#            Errors for the equilibrium probabilities
-#
-#        """
-#        print "\n Doing bootstrap tests:"
-#        # how much data is here?
-#        # generate trajectory list for easy handling 
-#        trajs = [[x.states, x.dt] for x in self.data]
-#        ltraj = [len(x[0])*x[1] for x in trajs]
-#        timetot = np.sum(ltraj) # total simulation time
-#        ncount = np.sum(self.count)
-#        print "     Total time: %g"%timetot
-#        print "     Number of trajectories: %g"%len(trajs)
-#        print "     Total number of transitions: %g"%ncount
-#
-#        # how many resamples?
-#        print "     Number of resamples: %g"%nboots
-#
-#        # how many trajectory fragments?
-#        ltraj_median = np.median(ltraj)
-#        #if ltraj_median > timetot/10.:
-#        #    #print "     ...splitting trajectories"
-#        while ltraj_median > timetot/10.:
-#            trajs_new = []
-#            #cut trajectories in chunks
-#            for x in trajs:
-#                lx = len(x[0])
-#                trajs_new.append([x[0][:lx/2], x[1]])
-#                trajs_new.append([x[0][lx/2:], x[1]])
-#            trajs = trajs_new
-#            ltraj = [len(x[0])*x[1] for x in trajs]
-#            ltraj_median = np.median(ltraj)
-#
-#        # save trajs
-#        fd, filetmp = tempfile.mkstemp()
-#        file = os.fdopen(fd, 'wb')   
-#        cPickle.dump(trajs, file, protocol=cPickle.HIGHEST_PROTOCOL)
-#        file.close()
-#
-#       # print "     Number of trajectories: %g"%len(trajs)
-#        print "     Median of trajectory length: %g"%ltraj_median
-#
-#        # now do it
-#        print "     ...doing bootstrap analysis"
-#        # multiprocessing options
-#        if not nproc:           
-#            nproc = mp.cpu_count()
-#        print "     ...running on %g processors"%nproc
-#        pool = mp.Pool(processes=nproc)
-#
-#        multi_boots_input = map(lambda x: [filetmp, self.keys, self.lagt, ncount, 
-#            slider], range(nboots))
-#        # TODO: find more elegant way to pass arguments
-#        result = pool.map(msm_lib.do_boots_worker, multi_boots_input)
-#        pool.close()
-#        pool.join()
-#        tauT_boots = [x[0] for x in result]
-#        peqT_boots = [x[1] for x in result]
-#        keep_keys_boots = [x[2] for x in result]
-#        # TODO. rewrite so that auxiliary functions are in msm_lib
-#        tau_ave = []
-#        tau_std = []
-#        tau_keep = []
-#        for n in range(len(self.keys)-1):
-#            try:
-#                data = [x[n] for x in tauT_boots if not np.isnan(x[n])]
-#                tau_ave.append(np.mean(data))
-#                tau_std.append(np.std(data))
-#                tau_keep.append(data)
-#            except IndexError:
-#                continue
-#        peq_ave = []
-#        peq_std = []
-#        peq_indexes = []
-#        peq_keep = []
-#        for k in self.keys:
-#            peq_indexes.append([x.index(k) if k in x else None for x in keep_keys_boots])
-#
-#        for k in self.keys:
-#            l = self.keys.index(k)
-#            data = []
-#            for n in range(nboots):
-#                if peq_indexes[l][n] is not None:
-#                    data.append(peqT_boots[n][peq_indexes[l][n]])
-#            try:
-#                peq_ave.append(np.mean(data))
-#                peq_std.append(np.std(data))
-#                peq_keep.append(data)
-#            except RuntimeWarning:
-#                peq_ave.append(0.)
-#                peq_std.append(0.)
-#
-#        if plot:
-#            data = np.array(data)
-#            fig = plt.figure()
-#            fig.set_facecolor('white')
-#            ax = fig.add_subplot(2,1,1)
-#            binning = np.arange(0, 1, 0.01)
-#            for n in range(10):
-#                ax.hist(peq_keep[n], bins=binning)
-#            ax.set_xlabel(r'$P_{eq}$')
-#
-#       #     ax = fig.add_subplot(2,1,2)
-#       #     binning = np.arange(np.log10(np.min(tau_ave)) - 1,np.log10(np.max(tau_ave)) + 1 , 0.05)
-#       #     for n in range(10):
-#       #         ax.hist(np.log10(tau_keep[n]), bins=binning)
-#       #     ax.set_xlabel(r'$\tau$')
-#       #     plt.show()
-#
-#        return tau_ave, tau_std, peq_ave, peq_std
-#
+    def boots(self, nboots=50, nproc=None, plot=False, slider=False):
+        """ Bootstrap the simulation data to calculate errors
+
+        Parameters
+        ----------
+        nboots : int
+            Number of bootstrap samples
+
+        nproc : int
+            Number of processors to use
+
+        plot : bool
+            Whether we want to plot the distribution of tau / peq
+        
+        Returns:
+        --------
+        tau_err : array
+            Errors for the relaxation times
+        peq_err : array
+            Errors for the equilibrium probabilities
+
+        """
+        print "\n Doing bootstrap tests:"
+        # how much data is here?
+        # generate trajectory list for easy handling 
+        trajs = [[x.states, x.dt] for x in self.data]
+        ltraj = [len(x[0])*x[1] for x in trajs]
+        timetot = np.sum(ltraj) # total simulation time
+        ncount = np.sum(self.count)
+        print "     Total time: %g"%timetot
+        print "     Number of trajectories: %g"%len(trajs)
+        print "     Total number of transitions: %g"%ncount
+
+        # how many resamples?
+        print "     Number of resamples: %g"%nboots
+
+        # how many trajectory fragments?
+        ltraj_median = np.median(ltraj)
+        #if ltraj_median > timetot/10.:
+        #    #print "     ...splitting trajectories"
+        while ltraj_median > timetot/10.:
+            trajs_new = []
+            #cut trajectories in chunks
+            for x in trajs:
+                lx = len(x[0])
+                trajs_new.append([x[0][:lx/2], x[1]])
+                trajs_new.append([x[0][lx/2:], x[1]])
+            trajs = trajs_new
+            ltraj = [len(x[0])*x[1] for x in trajs]
+            ltraj_median = np.median(ltraj)
+
+        # save trajs
+        fd, filetmp = tempfile.mkstemp()
+        file = os.fdopen(fd, 'wb')   
+        cPickle.dump(trajs, file, protocol=cPickle.HIGHEST_PROTOCOL)
+        file.close()
+
+       # print "     Number of trajectories: %g"%len(trajs)
+        print "     Median of trajectory length: %g"%ltraj_median
+
+        # now do it
+        print "     ...doing bootstrap analysis"
+        # multiprocessing options
+        if not nproc:           
+            nproc = mp.cpu_count()
+        print "     ...running on %g processors"%nproc
+        pool = mp.Pool(processes=nproc)
+
+        multi_boots_input = map(lambda x: [filetmp, self.keys, self.lagt, ncount, 
+            slider], range(nboots))
+        # TODO: find more elegant way to pass arguments
+        result = pool.map(msm_lib.do_boots_worker, multi_boots_input)
+        pool.close()
+        pool.join()
+        tauT_boots = [x[0] for x in result]
+        peqT_boots = [x[1] for x in result]
+        keep_keys_boots = [x[2] for x in result]
+        # TODO. rewrite so that auxiliary functions are in msm_lib
+        tau_ave = []
+        tau_std = []
+        tau_keep = []
+        for n in range(len(self.keys)-1):
+            try:
+                data = [x[n] for x in tauT_boots if not np.isnan(x[n])]
+                tau_ave.append(np.mean(data))
+                tau_std.append(np.std(data))
+                tau_keep.append(data)
+            except IndexError:
+                continue
+        peq_ave = []
+        peq_std = []
+        peq_indexes = []
+        peq_keep = []
+        for k in self.keys:
+            peq_indexes.append([x.index(k) if k in x else None for x in keep_keys_boots])
+
+        for k in self.keys:
+            l = self.keys.index(k)
+            data = []
+            for n in range(nboots):
+                if peq_indexes[l][n] is not None:
+                    data.append(peqT_boots[n][peq_indexes[l][n]])
+            try:
+                peq_ave.append(np.mean(data))
+                peq_std.append(np.std(data))
+                peq_keep.append(data)
+            except RuntimeWarning:
+                peq_ave.append(0.)
+                peq_std.append(0.)
+
+        if plot:
+            data = np.array(data)
+            fig = plt.figure()
+            fig.set_facecolor('white')
+            ax = fig.add_subplot(2,1,1)
+            binning = np.arange(0, 1, 0.01)
+            for n in range(10):
+                ax.hist(peq_keep[n], bins=binning)
+            ax.set_xlabel(r'$P_{eq}$')
+
+       #     ax = fig.add_subplot(2,1,2)
+       #     binning = np.arange(np.log10(np.min(tau_ave)) - 1,np.log10(np.max(tau_ave)) + 1 , 0.05)
+       #     for n in range(10):
+       #         ax.hist(np.log10(tau_keep[n]), bins=binning)
+       #     ax.set_xlabel(r'$\tau$')
+       #     plt.show()
+
+        return tau_ave, tau_std, peq_ave, peq_std
+
 ##    def pcca(self, lagt=None, N=2, optim=False):
 ##        """ Wrapper for carrying out PCCA clustering
 ##
