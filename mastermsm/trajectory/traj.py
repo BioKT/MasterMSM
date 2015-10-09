@@ -15,12 +15,11 @@ class TimeSeries(object):
     mdt : 
         An mdtraj Trajectory object.
 
+    file_name : str
+        The name of the trajectory file.
+
     distraj : list
         The assigned trajectory.
-
-
-    Methods
-    -------
 
 
     Note
@@ -43,13 +42,14 @@ class TimeSeries(object):
         top : string
             The topology file, may be a PDB or GRO file.
 
-        filename : string
+         traj : string
             The trajectory filenames to be read.
 
         method : string
             The method for discretizing the data.
 
         """
+        self.file_name = traj
         self.mdt = self._load_mdtraj(top=top, traj=traj)
 
     def _load_mdtraj(self, top=None, traj=None):
@@ -70,13 +70,15 @@ class TimeSeries(object):
         """
         return md.load(traj, top=top)
 
-    def discretize(self, method="rama"):
+    def discretize(self, method="rama", states=None):
         """ Discretize the simulation data.
 
         Parameters
         ----------
         method : str
             A method for doing the clustering.
+        states : list
+            A list of states to be considered in the discretization.
 
         Returns
         -------
@@ -89,17 +91,21 @@ class TimeSeries(object):
             phi = md.compute_phi(self.mdt)
             psi = md.compute_psi(self.mdt)
             res = [x for x in self.mdt.topology.residues]
-            self.distrajs = traj_lib.discrete_rama(phi, psi)
+            self.distraj = traj_lib.discrete_rama(phi, psi, states=states)
 
-    def find_keys(self):
+    def find_keys(self, exclude=['O']):
         """ Finds out the discrete states in the trajectory
+
+        Parameters
+        ----------
+        exclude : list
+            A list of strings with states to exclude.
 
         """
         keys = []
-        try:
-            for s in self.discrete:
-                if s not in keys:
-                    keys.append(s)
+        for s in self.distraj:
+            if s not in keys and s not in exclude:
+                keys.append(s)
         self.keys = keys
 
 #    def discrete_rama(self, A=[-100, -40, -60, 0], \
