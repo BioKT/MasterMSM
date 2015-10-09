@@ -356,8 +356,7 @@ class MSM(object):
         Parameters
         ----------
         evecs : bool
-            Whether we want the eigenvalues and eigenvectors 
-            of the transition matrix.
+            Whether we want the left eigenvectors of the transition matrix.
         
         """
         #print "\n    Calculating transition matrix ..."
@@ -365,27 +364,39 @@ class MSM(object):
         keep_states = self.keep_states
         count = self.count
         self.trans = msm_lib.calc_trans(nkeep, keep_states, count)
-#        if not evecs:
-#            self.tauT, self.peqT = self.calc_eigsT()
-#        else:
-#            self.tauT, self.peqT, self.rvecsT, self.lvecsT = \
-#                    self.calc_eigsT(evecs=True)
+        if not evecs:
+            self.tauT, self.peqT = self.calc_eigsT()
+        else:
+            self.tauT, self.peqT, self.rvecsT, self.lvecsT = \
+                    self.calc_eigsT(evecs=True)
 
-#    def do_rate(self, evecs=False):
-#        """ Wrapper for rate calculation using the msm_lib.calc_rate 
-#        function.
-#
-#        """
-#        #print "\n    Calculating rate matrix ..."
-#        nkeep = len(self.keep_states)
-#        self.rate = msm_lib.calc_rate(nkeep, self.trans, self.lagt)
-#        #print self.rate
-#        if not evecs:
-#            self.tauK, self.peqK = self.calc_eigsK()
-#        else:
-#            self.tauK, self.peqK, self.rvecsK, self.lvecsK = \
-#                    self.calc_eigsK(evecs=True)
-#
+    def do_rate(self, evecs=False):
+        """ Calculates the rate matrix from the transition matrix. 
+        
+        We use a method based on a Taylor expansion.[1]_
+
+        Parameters
+        ----------
+        evecs : bool
+            Whether we want the left eigenvectors of the rate matrix.
+
+        Notes
+        -----
+        ..[1] D. De Sancho, J. Mittal and R. B. Best, "Folding kinetics
+        and unfolded state dynamics of the GB1 hairpin from molecular
+        simulation", J. Chem. Theory Comput. (2013).
+
+        """
+        #print "\n    Calculating rate matrix ..."
+        nkeep = len(self.keep_states)
+        self.rate = msm_lib.calc_rate(nkeep, self.trans, self.lagt)
+        #print self.rate
+        if not evecs:
+            self.tauK, self.peqK = self.calc_eigsK()
+        else:
+            self.tauK, self.peqK, self.rvecsK, self.lvecsK = \
+                    self.calc_eigsK(evecs=True)
+
     def calc_count_multi(self, sliding=True, nproc=None):
         """ Calculate transition count matrix in parallel
 
@@ -540,61 +551,66 @@ class MSM(object):
 #                rvecsK_sorted[:,i] = rvecsK[:,iiK]
 #                lvecsK_sorted[:,i] = lvecsK[:,iiK]
 #            return tauK, peqK, rvecsK_sorted, lvecsK_sorted
-#
-#    def calc_eigsT(self, evecs=False):
-#        """ Calculate eigenvalues and eigenvectors of transition matrix T
-#        
-#        Parameters:
-#        -----------
-#        evecs : bool
-#            Whether we want eigenvectors or not.
-#
-#        Returns:
-#        -------
-#        tauT : numpy array
-#            Relaxation times from T.
-#        peqT : numpy array
-#            Equilibrium probabilities from T.
-#        rvecsT : numpy array, optional
-#            Right eigenvectors of T, sorted.
-#        lvecsT : numpy array, optional
-#            Left eigenvectors of T, sorted.
-#
-#        """
-#        #print "\n Calculating eigenvalues and eigenvectors of T"
-#        evalsT, lvecsT, rvecsT = \
-#                scipyla.eig(self.trans, left=True)
-#        # sort modes
-#        nkeep = len(self.keep_states)
-#        elistT = []
-#        for i in range(nkeep):
-#            elistT.append([i,np.real(evalsT[i])])
-#        elistT.sort(msm_lib.esort)
-#
-#        # calculate relaxation times 
-#        tauT = []
-#        for i in range(1, nkeep):
-#            iiT, lamT = elistT[i]
-#            tauT.append(-self.lagt/np.log(lamT))
-#
-#        # equilibrium probabilities
-#        ieqT, eT = elistT[0]
-#        peqT_sum = reduce(lambda x,y: x + y, map(lambda x: rvecsT[x,ieqT],
-#             range(nkeep)))
-#        peqT = rvecsT[:,ieqT]/peqT_sum
-#
-#        if not evecs:
-#            return tauT, peqT
-#        else:
-#            # sort eigenvectors
-#            rvecsT_sorted = np.zeros((nkeep, nkeep), float)
-#            lvecsT_sorted = np.zeros((nkeep, nkeep), float)
-#            for i in range(nkeep):
-#                iiT, lamT = elistT[i]
-#                rvecsT_sorted[:,i] = rvecsT[:,iiT]
-#                lvecsT_sorted[:,i] = lvecsT[:,iiT]
-#            return tauT, peqT, rvecsT_sorted, lvecsT_sorted
-#
+
+    def calc_eigsT(self, evecs=False):
+        """ 
+        Calculate eigenvalues and eigenvectors of transition matrix T
+        
+        Parameters:
+        -----------
+        evecs : bool
+            Whether we want the left eigenvectors of the transition matrix.
+
+        Returns:
+        -------
+        tauT : numpy array
+            Relaxation times from T.
+
+        peqT : numpy array
+            Equilibrium probabilities from T.
+
+        rvecsT : numpy array, optional
+            Right eigenvectors of T, sorted.
+
+        lvecsT : numpy array, optional
+            Left eigenvectors of T, sorted.
+
+        """
+        #print "\n Calculating eigenvalues and eigenvectors of T"
+        evalsT, lvecsT, rvecsT = \
+                scipyla.eig(self.trans, left=True)
+
+        # sort modes
+        nkeep = len(self.keep_states)
+        elistT = []
+        for i in range(nkeep):
+            elistT.append([i,np.real(evalsT[i])])
+        elistT.sort(msm_lib.esort)
+
+        # calculate relaxation times 
+        tauT = []
+        for i in range(1, nkeep):
+            iiT, lamT = elistT[i]
+            tauT.append(-self.lagt/np.log(lamT))
+
+        # equilibrium probabilities
+        ieqT, eT = elistT[0]
+        peqT_sum = reduce(lambda x,y: x + y, map(lambda x: rvecsT[x,ieqT],
+             range(nkeep)))
+        peqT = rvecsT[:,ieqT]/peqT_sum
+
+        if not evecs:
+            return tauT, peqT
+        else:
+            # sort eigenvectors
+            rvecsT_sorted = np.zeros((nkeep, nkeep), float)
+            lvecsT_sorted = np.zeros((nkeep, nkeep), float)
+            for i in range(nkeep):
+                iiT, lamT = elistT[i]
+                rvecsT_sorted[:,i] = rvecsT[:,iiT]
+                lvecsT_sorted[:,i] = lvecsT[:,iiT]
+            return tauT, peqT, rvecsT_sorted, lvecsT_sorted
+
 #    def boots(self, nboots=50, nproc=None, plot=False, slider=False):
 #        """ Bootstrap the simulation data to calculate errors
 #

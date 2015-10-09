@@ -256,7 +256,6 @@ def calc_count_worker(x):
         keys : the keys used in the assignment
         lagt : the lag time for construction
 
-
     Returns
     -------
     count : array
@@ -353,6 +352,8 @@ def calc_count_worker(x):
 def calc_trans(nkeep=None, keep_states=None, count=None):
     """ Calculates transition matrix.
 
+    Uses the maximum likelihood expression by Prinz et al.[1]_
+
     Parameters
     ----------
     lagt : float
@@ -365,12 +366,9 @@ def calc_trans(nkeep=None, keep_states=None, count=None):
 
     Notes
     -----
-    Uses the maximum likelihood expression by Prinz et al.[1]_
-
     ..[1] J. H. Prinz, H. Wu, M. Sarich, B. Keller, M. Senne, M. Held,
-    J. D. Chodera, C. Schütte and F. Noe, "Markov state models: 
+    J. D. Chodera, C. Schutte and F. Noe, "Markov state models:
     Generation and validation", J. Chem. Phys. (2011).
-
     """
     trans = np.zeros([nkeep, nkeep], float)
     for i in range(nkeep):
@@ -380,32 +378,41 @@ def calc_trans(nkeep=None, keep_states=None, count=None):
             trans[j][i] = float(count[keep_states[j]][keep_states[i]])/float(ni)
     return trans
 
-#def calc_rate(nkeep, trans, lagt):
-#    """ Calculate rate matrix from transition matrix.
-#    We use the Taylor expansion as described in De Sancho,
-#    Mittal and Best, J. Chem. Theory Comput. (2013).
-#
-#    Parameters
-#    ----------
-#    nkeep : int
-#        Number of states in transition matrix.
-#    trans: np.array
-#        Transition matrix.
-#    lagt : float
-#        The lag time.      
-#
-#    Returns
-#    -------
-#    rate : np.array
-#        The rate matrix.
-#
-#    """
-#    rate = trans/lagt
-#    
-#    for i in range(nkeep):
-#        rate[i][i] = -(np.sum(rate[:i,i]) + np.sum(rate[i+1:,i]))
-#    return rate
-#
+def calc_rate(nkeep, trans, lagt):
+    """ Calculate rate matrix from transition matrix.
+
+    We use a method based on a Taylor expansion.[1]_
+
+    Parameters
+    ----------
+    nkeep : int
+        Number of states in transition matrix.
+
+    trans: np.array
+        Transition matrix.
+
+    lagt : float
+        The lag time.      
+
+    Returns
+    -------
+    rate : np.array
+        The rate matrix.
+
+    Notes
+    -----
+    ..[1] D. De Sancho, J. Mittal and R. B. Best, "Folding kinetics
+    and unfolded state dynamics of the GB1 hairpin from molecular
+    simulation", J. Chem. Theory Comput. (2013).
+
+    """
+    rate = trans/lagt
+
+    # enforce mass conservation
+    for i in range(nkeep):
+        rate[i][i] = -(np.sum(rate[:i,i]) + np.sum(rate[i+1:,i]))
+    return rate
+
 #def partial_rate(K, elem):
 #    """ calculate derivative of rate matrix """
 #    nstates = len(K[0])
