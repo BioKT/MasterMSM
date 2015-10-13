@@ -21,6 +21,8 @@ class TimeSeries(object):
     distraj : list
         The assigned trajectory.
 
+    dt : float
+        The time step
 
     Note
     ----
@@ -51,6 +53,7 @@ class TimeSeries(object):
         """
         self.file_name = traj
         self.mdt = self._load_mdtraj(top=top, traj=traj)
+        self.dt = self.mdt.timestep
 
     def _load_mdtraj(self, top=None, traj=None):
         """ Loads trajectories using mdtraj.

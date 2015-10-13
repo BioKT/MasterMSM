@@ -3,12 +3,12 @@ This file is part of the MasterMSM package.
 
 """
 import numpy as np
-#import networkx as nx
-#import os, math, copy #,numarray,linalg
+import networkx as nx
+import os #, math, copy #,numarray,linalg
 #import itertools,operator
-#from scipy import linalg as spla
+from scipy import linalg as spla
 #import multiprocessing as mp
-#import cPickle
+import cPickle
 
 ## thermal energy (kJ/mol)
 #beta = 1./(8.314e-3*300)
@@ -309,63 +309,63 @@ def calc_count_worker(x):
             pass
     return count
 
-#def do_boots_worker(x):
-#    """ Worker function for parallel bootstrapping.
-#
-#    Parameters:
-#    ----------
-#    x : list
-#        A list containing the trajectory filename, the states, the lag time
-#        and the total number of transitions.
-# 
-#    """
-#
-#    #print "# Process %s running on input %s"%(mp.current_process(), x[0])
-#    filetmp, keys, lagt, ncount, slider = x
-#    nkeys = len(keys)
-#    finp = open(filetmp, 'rb')
-#    trans = cPickle.load(finp)
-#    finp.close()
-#    ltrans = len(trans)
-#    # For multiple processes to be independent we seed with pid
-#    #print 'process id:', os.getpid()
-#    pid = os.getpid()
-#    np.random.seed(pid)
-#    ncount_boots = 0
-#    count = np.zeros([nkeys, nkeys], np.int32)
-#    while ncount_boots < ncount:
-#        itrans = np.random.randint(ltrans)
-#        count_inp = [trans[itrans][0], trans[itrans][1], keys, lagt, slider]
-#        c = calc_count_worker(count_inp)
-#        count += np.matrix(c)
-#        ncount_boots += np.sum(c)
-#        #print ncount_boots, "< %g"%ncount
-#    D = nx.DiGraph(count)
-#    #keep_states = sorted(nx.strongly_connected_components(D)[0])
-#    keep_states = sorted(list(nx.strongly_connected_components(D)), 
-#                key = len, reverse=True)[0]
-#    keep_keys = map(lambda x: keys[x], keep_states)
-#    nkeep = len(keep_keys)
-#    trans = np.zeros([nkeep, nkeep], float)
-#    for i in range(nkeep):
-#        ni = reduce(lambda x, y: x + y, map(lambda x: 
-#            count[keep_states[x]][keep_states[i]], range(nkeep)))
-#        for j in range(nkeep):
-#            trans[j][i] = float(count[keep_states[j]][keep_states[i]])/float(ni)
-#    evalsT, rvecsT = spla.eig(trans, left=False)
-#    elistT = []
-#    for i in range(nkeep):
-#        elistT.append([i,np.real(evalsT[i])])
-#    elistT.sort(esort)
-#    tauT = []
-#    for i in range(1,nkeep):
-#        _, lamT = elistT[i]
-#        tauT.append(-lagt/np.log(lamT))
-#    ieqT, _ = elistT[0]
-#    peqT_sum = reduce(lambda x,y: x + y, map(lambda x: rvecsT[x,ieqT],
-#             range(nkeep)))
-#    peqT = rvecsT[:,ieqT]/peqT_sum
-#    return tauT, peqT, keep_keys 
+def do_boots_worker(x):
+    """ Worker function for parallel bootstrapping.
+
+    Parameters:
+    ----------
+    x : list
+        A list containing the trajectory filename, the states, the lag time
+        and the total number of transitions.
+ 
+    """
+
+    #print "# Process %s running on input %s"%(mp.current_process(), x[0])
+    filetmp, keys, lagt, ncount, slider = x
+    nkeys = len(keys)
+    finp = open(filetmp, 'rb')
+    trans = cPickle.load(finp)
+    finp.close()
+    ltrans = len(trans)
+    # For multiple processes to be independent we seed with pid
+    #print 'process id:', os.getpid()
+    pid = os.getpid()
+    np.random.seed(pid)
+    ncount_boots = 0
+    count = np.zeros([nkeys, nkeys], np.int32)
+    while ncount_boots < ncount:
+        itrans = np.random.randint(ltrans)
+        count_inp = [trans[itrans][0], trans[itrans][1], keys, lagt, slider]
+        c = calc_count_worker(count_inp)
+        count += np.matrix(c)
+        ncount_boots += np.sum(c)
+        #print ncount_boots, "< %g"%ncount
+    D = nx.DiGraph(count)
+    #keep_states = sorted(nx.strongly_connected_components(D)[0])
+    keep_states = sorted(list(nx.strongly_connected_components(D)), 
+                key = len, reverse=True)[0]
+    keep_keys = map(lambda x: keys[x], keep_states)
+    nkeep = len(keep_keys)
+    trans = np.zeros([nkeep, nkeep], float)
+    for i in range(nkeep):
+        ni = reduce(lambda x, y: x + y, map(lambda x: 
+            count[keep_states[x]][keep_states[i]], range(nkeep)))
+        for j in range(nkeep):
+            trans[j][i] = float(count[keep_states[j]][keep_states[i]])/float(ni)
+    evalsT, rvecsT = spla.eig(trans, left=False)
+    elistT = []
+    for i in range(nkeep):
+        elistT.append([i,np.real(evalsT[i])])
+    elistT.sort(esort)
+    tauT = []
+    for i in range(1,nkeep):
+        _, lamT = elistT[i]
+        tauT.append(-lagt/np.log(lamT))
+    ieqT, _ = elistT[0]
+    peqT_sum = reduce(lambda x,y: x + y, map(lambda x: rvecsT[x,ieqT],
+             range(nkeep)))
+    peqT = rvecsT[:,ieqT]/peqT_sum
+    return tauT, peqT, keep_keys 
 
 def calc_trans(nkeep=None, keep_states=None, count=None):
     """ Calculates transition matrix.

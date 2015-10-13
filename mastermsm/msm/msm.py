@@ -3,12 +3,12 @@ This file is part of the MasterMSM package.
 
 """
 
-#import os
+import os
 #import sys
 #import copy
 #import operator
-#import tempfile
-#import cPickle
+import tempfile
+import cPickle
 #import itertools
 import numpy as np
 import networkx as nx
@@ -110,60 +110,54 @@ class SuperMSM(object):
         """
         self.msms[lagt] = MSM(self.data, keys=self.keys, lagt=lagt)
         self.msms[lagt].do_count(sliding=sliding)
-        self.msms[lagt].do_trans()
+        
+    def convergence_test(self, plot=True, save=None, N=1, sliding=True, \
+            error=True, time=None, out=None):
+        """ Carry out convergence test for relaxation times.
 
-#    def convergence_test(self, plot=True, save=None, N=1, sliding=True, error=True, time=None, out=None):
-#        """ Carry out convergence test for relaxation times.
-#
-#        Parameters:
-#        -----------
-#        plot : bool
-#            Whether the lag time dependence of the relaxation times should be plotted.
-#        N : int
-#            The number of modes for which we are building the MSM.
-#        sliding : bool
-#            Whether a sliding window should be used or not.
-#        error : bool
-#            Whether to include errors or not.
-#        time : array
-#            The range of times that must be used.
-#        save : bool, str
-#            Whether we want to save to file.
-#
-#        """
+        Parameters:
+        -----------
+        plot : bool
+            Whether the lag time dependence of the relaxation times should be plotted.
+
+        N : int
+            The number of modes for which we are building the MSM.
+
+        sliding : bool
+            Whether a sliding window should be used or not.
+
+        error : bool
+            Whether to include errors or not.
+
+        time : array
+            The range of times that must be used.
+
+        save : bool, str
+            Whether we want to save to file.
+
+        """
 #        print "\n Convergence test for the MSM: looking at implied timescales"
-#
-#        # defining lag times to produce the MSM
-#        try:
-#            assert(time is None)
-#            lagtimes = self.dt*np.array([1] + range(10,100,10))
-#        except:
-#            lagtimes = np.array(time)
-#
-#        # create MSMs at multiple lag times
-#        self.msms = {}
-#        for lagt in lagtimes:
-#            if lagt not in self.msms.keys():
-#                print "\n    Generating MSM at lag time: %g"%lagt
-#                self.msms[lagt] = MSM(self.data, self.keys, lagt)
-#                self.msms[lagt].do_count(sliding=sliding)
-#                self.msms[lagt].do_trans()
-#                #print "\n    Count matrix:\n", self.msms[lagt].count
-#                #print "\n    Transition matrix:\n", self.msms[lagt].trans
-#                if error:               
-#                    tau_ave, tau_std, peq_ave, peq_std = self.msms[lagt].boots(nboots=50)
-#                    self.msms[lagt].tau_std = tau_std
-#                    self.msms[lagt].tau_ave = tau_ave
-#                    self.msms[lagt].peq_std = peq_std
-#                    self.msms[lagt].peq_ave = peq_std
-#            else: 
-#                if not hasattr(self.msms[lagt].tau_ave) and error:
-#                    tau_ave, tau_std, peq_ave, peq_std = self.msms[lagt].boots(nboots=50)
-#                    self.msms[lagt].tau_std = tau_std
-#                    self.msms[lagt].tau_ave = tau_ave
-#                    self.msms[lagt].peq_std = peq_std
-#                    self.msms[lagt].peq_ave = peq_std
-#
+
+        # defining lag times to produce the MSM
+        try:
+            assert(time is None)
+            lagtimes = self.dt*np.array([1] + range(10,100,10))
+        except:
+            lagtimes = np.array(time)
+
+        # create MSMs at multiple lag times
+        self.msms = {}
+        for lagt in lagtimes:
+            if lagt not in self.msms.keys():
+                self.msms[lagt] = MSM(self.data, self.keys, lagt)
+                self.msms[lagt].do_count(sliding=sliding)
+                self.msms[lagt].do_trans()
+                if error:               
+                    self.msms[lagt].boots(nboots=50)
+            else: 
+                if not hasattr(self.msms[lagt].tau_ave) and error:
+                    self.msms[lagt].boots(nboots=50)
+
 #        if plot:
 #            fig, ax = plt.subplots(facecolor='white', dpi=300)
 #            for n in range(N):
@@ -428,7 +422,7 @@ class MSM(object):
         pool = mp.Pool(processes=nproc)
 
         # generate multiprocessing input
-        mpinput = [[x.distraj, x.mdt.timestep, self.keys, self.lagt, sliding] \
+        mpinput = [[x.distraj, x.dt, self.keys, self.lagt, sliding] \
                 for x in self.data]
 
         # run counting using multiprocessing
@@ -636,19 +630,19 @@ class MSM(object):
             Errors for the equilibrium probabilities
 
         """
-        print "\n Doing bootstrap tests:"
+        #print "\n Doing bootstrap tests:"
         # how much data is here?
         # generate trajectory list for easy handling 
-        trajs = [[x.states, x.dt] for x in self.data]
+        trajs = [[x.distraj, x.dt] for x in self.data]
         ltraj = [len(x[0])*x[1] for x in trajs]
         timetot = np.sum(ltraj) # total simulation time
         ncount = np.sum(self.count)
-        print "     Total time: %g"%timetot
-        print "     Number of trajectories: %g"%len(trajs)
-        print "     Total number of transitions: %g"%ncount
+        #print "     Total time: %g"%timetot
+        #print "     Number of trajectories: %g"%len(trajs)
+        #print "     Total number of transitions: %g"%ncount
 
         # how many resamples?
-        print "     Number of resamples: %g"%nboots
+        #print "     Number of resamples: %g"%nboots
 
         # how many trajectory fragments?
         ltraj_median = np.median(ltraj)
@@ -672,14 +666,14 @@ class MSM(object):
         file.close()
 
        # print "     Number of trajectories: %g"%len(trajs)
-        print "     Median of trajectory length: %g"%ltraj_median
+        #print "     Median of trajectory length: %g"%ltraj_median
 
         # now do it
-        print "     ...doing bootstrap analysis"
+        #print "     ...doing bootstrap analysis"
         # multiprocessing options
         if not nproc:           
             nproc = mp.cpu_count()
-        print "     ...running on %g processors"%nproc
+        #print "     ...running on %g processors"%nproc
         pool = mp.Pool(processes=nproc)
 
         multi_boots_input = map(lambda x: [filetmp, self.keys, self.lagt, ncount, 
@@ -741,7 +735,10 @@ class MSM(object):
        #     ax.set_xlabel(r'$\tau$')
        #     plt.show()
 
-        return tau_ave, tau_std, peq_ave, peq_std
+        self.tau_ave = tau_ave
+        self.tau_std = tau_std
+        self.peq_ave = peq_ave
+        self.peq_std = peq_std
 
 ##    def pcca(self, lagt=None, N=2, optim=False):
 ##        """ Wrapper for carrying out PCCA clustering
