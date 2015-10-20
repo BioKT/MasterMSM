@@ -5,7 +5,8 @@ This file is part of the MasterMSM package.
 import numpy as np
 import networkx as nx
 import os #, math, copy #,numarray,linalg
-#import itertools,operator
+import itertools
+#import operator
 from scipy import linalg as spla
 #import multiprocessing as mp
 import cPickle
@@ -105,19 +106,35 @@ def esort(ei, ej):
 #        else:
 #            s+="0"
 #    return s
-#
-#def mat_mul_v(m, v):
-#    rows = len(m)
-#    w = [0]*rows
-#    irange = range(len(v))
-#    summ = 0
-#    for j in range(rows):
-#        r = m[j]
-#        for i in irange:
-#            summ += r[i]*v[i]
-#        w[j], summ = summ,0
-#    return w
-#
+
+def mat_mul_v(m, v):
+    """ Multiplies matrix and vector
+
+    Parameters
+    ----------
+    m : np.array
+        The matrix.
+
+    v : np.array
+        The vector.
+
+    Returns
+    -------
+    w : np.array
+        The result
+
+    """
+    rows = len(m)
+    w = [0]*rows
+    irange = range(len(v))
+    summ = 0
+    for j in range(rows):
+        r = m[j]
+        for i in irange:
+            summ += r[i]*v[i]
+        w[j], summ = summ,0
+    return w
+
 #def dotproduct(v1, v2, sum=sum, imap=itertools.imap, mul=operator.mul):
 #    return sum(imap(mul,v1,v2))
 #
@@ -511,13 +528,13 @@ def calc_rate(nkeep, trans, lagt):
 #                sum_d_flux += d_J[j][i]
 #    return sum_d_flux
 #
-#def propagate_worker(x):
-#    """ propagate dynamics using rate matrix exponential"""
-#    rate, t, pini = x
-#    expkt = spla.expm2(rate*t)
-#    popul = mat_mul_v(expkt, pini)
-#    return popul 
-#
+def propagate_worker(x):
+    """ propagate dynamics using rate matrix exponential"""
+    rate, t, pini = x
+    expkt = spla.expm(rate*t)
+    popul = mat_mul_v(expkt, pini)
+    return popul 
+
 #def gen_path_lengths(keys, J, pfold, flux, FF, UU):
 #    """ use BHS prescription for defining path lenghts """
 #    nkeys = len(keys)
