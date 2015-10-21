@@ -1,0 +1,12 @@
+site_name : MasterMSM
+theme : readthedocs
+repo_url : https://github.com/daviddesancho/MasterMSM
+site_author: David De Sancho
+pages :
+        - ['about.md', 'About']
+        - ['index.md', 'Introduction']
+        - ['installation.md', 'Installation']
+        - ['discretize.md', 'User guide', 'Discretizing the data']
+        - ['trajectory.md', 'User guide', 'Parsing trajectories']
+        - ['msm.md', 'User guide', 'Constructing the MSM']
+        - ['pcca.md', 'User guide', 'Clustering the MSM']
