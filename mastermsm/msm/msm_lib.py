@@ -8,6 +8,7 @@ import os #, math, copy #,numarray,linalg
 import itertools
 #import operator
 from scipy import linalg as spla
+
 #import multiprocessing as mp
 import cPickle
 
@@ -344,10 +345,7 @@ def do_boots_worker(x):
     trans = cPickle.load(finp)
     finp.close()
     ltrans = len(trans)
-    # For multiple processes to be independent we seed with pid
-    #print 'process id:', os.getpid()
-    pid = os.getpid()
-    np.random.seed(pid)
+    np.random.seed()
     ncount_boots = 0
     count = np.zeros([nkeys, nkeys], np.int32)
     while ncount_boots < ncount:
@@ -382,7 +380,7 @@ def do_boots_worker(x):
     peqT_sum = reduce(lambda x,y: x + y, map(lambda x: rvecsT[x,ieqT],
              range(nkeep)))
     peqT = rvecsT[:,ieqT]/peqT_sum
-    return tauT, peqT, keep_keys 
+    return tauT, peqT, keep_keys
 
 def calc_trans(nkeep=None, keep_states=None, count=None):
     """ Calculates transition matrix.

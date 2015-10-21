@@ -2,7 +2,6 @@
 This file is part of the MasterMSM package.
 
 """
-
 import os
 #import sys
 #import copy
@@ -614,7 +613,7 @@ class MSM(object):
                 lvecsT_sorted[:,i] = lvecsT[:,iiT]
             return tauT, peqT, rvecsT_sorted, lvecsT_sorted
 
-    def boots(self, nboots=50, nproc=None, plot=False, slider=False):
+    def boots(self, nboots=100, nproc=None, plot=False, slider=False):
         """ Bootstrap the simulation data to calculate errors.
 
         We generate count matrices with the same number of counts
@@ -659,9 +658,7 @@ class MSM(object):
 
         # how many trajectory fragments?
         ltraj_median = np.median(ltraj)
-        #if ltraj_median > timetot/10.:
-        #    #print "     ...splitting trajectories"
-        while ltraj_median > timetot/10.:
+        while ltraj_median > timetot/50. and ltraj_median > 10.*self.lagt:
             trajs_new = []
             #cut trajectories in chunks
             for x in trajs:
@@ -671,14 +668,13 @@ class MSM(object):
             trajs = trajs_new
             ltraj = [len(x[0])*x[1] for x in trajs]
             ltraj_median = np.median(ltraj)
-
         # save trajs
         fd, filetmp = tempfile.mkstemp()
         file = os.fdopen(fd, 'wb')   
         cPickle.dump(trajs, file, protocol=cPickle.HIGHEST_PROTOCOL)
         file.close()
 
-       # print "     Number of trajectories: %g"%len(trajs)
+        #print "     Number of trajectories: %g"%len(trajs)
         #print "     Median of trajectory length: %g"%ltraj_median
 
         # now do it
@@ -732,14 +728,11 @@ class MSM(object):
                 peq_std.append(0.)
 
         if plot:
-            data = np.array(data)
-            fig = plt.figure()
-            fig.set_facecolor('white')
-            ax = fig.add_subplot(2,1,1)
-            binning = np.arange(0, 1, 0.01)
-            for n in range(10):
-                ax.hist(peq_keep[n], bins=binning)
-            ax.set_xlabel(r'$P_{eq}$')
+            fig, ax = plt.subplots()
+            ax.hist([x[0][0] for x in result])
+#            ax[1].hist([x[0][1] for x in result])
+            ax.set_xlabel(r'$\tau_1$')
+#            ax[1].set_xlabel(r'$\tau_2$')
 
        #     ax = fig.add_subplot(2,1,2)
        #     binning = np.arange(np.log10(np.min(tau_ave)) - 1,np.log10(np.max(tau_ave)) + 1 , 0.05)
