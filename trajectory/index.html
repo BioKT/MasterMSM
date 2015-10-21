@@ -135,7 +135,7 @@
           <div role="main">
             <div class="section">
               <h1 id="parsing-trajectories-the-trajectory-module">Parsing trajectories: the <code>trajectory</code> module</h1>
-<p>All the aspects related with parsing trajectory files in BestMSM are included
+<p>All the aspects related with parsing trajectory files in MasterMSM are included
 in the <code>trajectory</code> module. </p>
 <p>The first step when consists in reading discretized trajectory 
 files. This is done by constructing instances of the <code>TimeSeries</code> class. The file
@@ -149,7 +149,7 @@ format for the time series is very simple. One needs something like</p>
 <p>where the first column is the time stamp for the snapshots in the simulation
 and the second column is the list of states. The time stamps can be omitted, 
 in which case integer units of time will be used. The states can be anything
-that fits in a string, as they will be read as strings by BestMSM. </p>
+that fits in a string, as they will be read as strings by MasterMSM. </p>
 <p>For each trajectory we will generate an instance of the <code>TimeSeries</code> class in the
 following way:</p>
 <pre><code>from bestmsm import trajectory as traj
@@ -207,7 +207,7 @@ of time-stamps (<code>time</code>) and states (<code>states</code>).</p>
 
 <!--
 MkDocs version  : 0.12.2
-Docs Build Date : 2015-10-21 21:07:13.350492
+Docs Build Date : 2015-10-21 21:12:09.639794
 -->
 </body>
 </html>
