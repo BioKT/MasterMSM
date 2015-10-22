@@ -4,6 +4,7 @@ This file is part of the MasterMSM package.
 """
 import os
 #import sys
+import math
 #import copy
 #import operator
 import tempfile
@@ -218,9 +219,8 @@ class SuperMSM(object):
             lagtimes = np.array(time)
 
         # defining lag times to propopagate  
-        logs = np.linspace(np.log10(self.dt),np.log10(np.max(lagtimes)*5),20)
-        lagtimes_exp = 10**logs
-
+        #logs = np.linspace(np.log10(self.dt),np.log10(np.max(lagtimes)*5),20)
+        #lagtimes_exp = 10**logs
         init_states = [x for x in range(nkeys) if self.keys[x] in init]
 
         # create MSMs at multiple lag times
@@ -230,24 +230,25 @@ class SuperMSM(object):
                 self.msms[lagt] = MSM(self.data, self.keys, lagt)
                 self.msms[lagt].do_count(sliding=sliding)
                 self.msms[lagt].do_trans()
-                self.msms[lagt].do_rate()
             nkeysl = len(self.msms[lagt].keys)
 
-            # propagate rate matrix
-            pt = self.msms[lagt].propagateK(init=init, time=lagtimes_exp)
-            time = pt[0]
+            # propagate transition matrix
+            lagtimes_exp = np.logspace(np.log10(lagt), np.log10(np.max(lagtimes)*10), num=50)
+            ltimes_exp_int = [int(lagt*math.floor(x/float(lagt))) \
+                    for x in lagtimes_exp if x > lagt]
+            time, pop = self.msms[lagt].propagateT(init=init, time=ltimes_exp_int)
             ltime = len(time)
 
             # keep only selected states
-            pop = np.array(pt[1])
             pop_relax = np.zeros(ltime)
             for x in init:
                 ind = self.msms[lagt].keep_keys.index(x)
-                pop_relax += pop[:,ind]
+                #pop_relax += pop[:,ind]
+                pop_relax += np.array([x[ind] for x in pop])
             pMSM.append((time, pop_relax))
 
         # calculate population from simulation data
-        logs = np.linspace(np.log10(self.dt),np.log10(np.max(lagtimes)*5),10)
+        logs = np.linspace(np.log10(self.dt),np.log10(np.max(lagtimes)*10),10)
         lagtimes_md = 10**logs
         pMD = []
         epMD = []
@@ -1122,12 +1123,11 @@ class MSM(object):
         elif init is not None:
             #print "    initializing all population in states"
             #print init
-            pini = [self.peqK[x] if self.keep_keys[x] in init else 0. for x in range(nkeep)]
+            pini = [self.peqT[x] if self.keep_keys[x] in init else 0. for x in range(nkeep)]
         # check normalization and size
         if len(pini) != nkeep:
-            #print "    initial population vector and state space have different sizes"
-            #print "    stopping here" 
-#           np.sum(self.msms[lagt].propagateK(init=init)))
+            print "    initial population vector and state space have different sizes"
+            print "    stopping here" 
             return
         else:
             sum_pini = np.sum(pini)
@@ -1155,3 +1155,96 @@ class MSM(object):
         #else:
         #    pnorm = map(lambda x: 1 - (x-minpop)/(maxpop-minpop), ptot)
         return time, popul #popul #, pnorm
+
+    def propagateT(self, p0=None, init=None, time=None):
+         """ Propagation of transition matrix
+         
+         Parameters
+         ----------
+         p0 : string
+             Filename with initial population.
+    
+         init : string
+             State(s) where the population is initialized.
+    
+         time : list, int 
+             User defined range of temperatures for propagating the dynamics.
+         
+         Returns
+         -------
+         popul : array
+             Population of all states as a function of time.
+    
+         pnorm : array
+             Population of all states as a function of time - normalized.
+
+         Notes
+         -----
+         There is probably just one essential difference between propagateT
+         and propagateK. We are obtaining the time evolution of the population
+         towards the equilibrium distribution. Using K, we can obtain the 
+         population at any given time (P(t) = exp(Kt)P0), while here we are 
+         limited to powers of the transition matrix (hence, 
+         P(nt) = [T(t)**n]*P0).
+    
+         """
+         # defining times for relaxation 
+         try:
+             assert(time is None)
+             tmin = self.lagt
+             tmax = 1e4*self.lagt
+             logt = np.arange(np.log10(tmin), np.log10(tmax), 0.2)
+             time = 10**logt
+         except:
+             time = np.array(time)
+         ltime = len(time)
+         nkeep = len(self.keep_states)
+         if p0 is not None:
+             try:
+                 pini = np.array(p0)
+             except TypeError:
+                 try:
+                 #print "   reading initial population from file: %s"%p0
+                     pini = [float(y) for y in \
+                     filter(lambda x: x.split()[0] not in ["#","@"],
+                             open(p0, "r").readlines())]
+                 except TypeError:
+                     print "    p0 is not file"
+                     print "    exiting here"
+                     return
+         elif init is not None:
+             #print "    initializing all population in states"
+             #print init
+             pini = [self.peqT[x] if self.keep_keys[x] in init else 0. for x in range(nkeep)]
+         # check normalization and size
+         if len(pini) != nkeep:
+             print "    initial population vector and state space have different sizes"
+             print "    stopping here" 
+             return
+         else:
+             sum_pini = np.sum(pini)
+             pini_norm = [np.float(x)/sum_pini for x in pini]
+    
+         # propagate transition matrix : parallel version
+         popul = []
+         for t in time:
+             power = int(t/self.lagt)
+             x = [self.trans, power, pini_norm]
+             popul.append(msm_lib.propagateT_worker(x))
+         #nproc = mp.cpu_count()
+         #pool = mp.Pool(processes=nproc)
+         #pool_input = [(self.rate, t, pini_norm) for t in time]
+         #popul = pool.map(msm_lib.propagate_worker, tuple(pool_input))
+         #pool.close()
+         #pool.join()
+    
+         ## normalize relaxation
+         #imax = np.argmax(ptot)
+         #maxpop = ptot[imax]
+         #imin = np.argmin(ptot)
+         #minpop = ptot[imin]
+         #if imax < imin:
+         #    pnorm = map(lambda x: (x-minpop)/(maxpop-minpop), ptot)
+         #else:
+         #    pnorm = map(lambda x: 1 - (x-minpop)/(maxpop-minpop), ptot)
+         return time, popul #popul #, pnorm

@@ -533,6 +533,13 @@ def propagate_worker(x):
     popul = mat_mul_v(expkt, pini)
     return popul 
 
+def propagateT_worker(x):
+    """ propagate dynamics using power of transition matrix"""
+    trans, power, pini = x
+    trans_pow = np.linalg.matrix_power(trans,power)
+    popul = mat_mul_v(trans_pow, pini)
+    return popul 
+
 #def gen_path_lengths(keys, J, pfold, flux, FF, UU):
 #    """ use BHS prescription for defining path lenghts """
 #    nkeys = len(keys)
