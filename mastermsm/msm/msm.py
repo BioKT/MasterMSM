@@ -397,6 +397,68 @@ class MSM(object):
             self.tauK, self.peqK, self.rvecsK, self.lvecsK = \
                     self.calc_eigsK(evecs=True)
 
+    def do_lbrate(self, evecs=False):
+        """ Calculates the rate matrix using the lifetime based method.
+        
+        We use the method described by Buchete and Hummer.[1]_
+
+        Parameters
+        ----------
+        evecs : bool
+            Whether we want the left eigenvectors of the rate matrix.
+
+        Notes
+        -----
+        ..[1] N.-V. Buchete and G. Hummer, "Coarse master equations for
+        peptide folding dynamics", J. Phys. Chem. B (2008).
+
+        """
+        nkeep = len(self.keep_states)
+        self.rate = self.calc_lbrate_multi()
+
+    def calc_lbrate_multi(self):
+        """ Calculates the rate matrix using the lifetime based method.
+        
+        We use the method described by Buchete and Hummer.[1]_
+        The calculation is run in parallel for the number of trajectories
+        using multiprocessing.
+
+        Parameters
+        ----------
+        evecs : bool
+            Whether we want the left eigenvectors of the rate matrix.
+
+        Notes
+        -----
+        ..[1] N.-V. Buchete and G. Hummer, "Coarse master equations for
+        peptide folding dynamics", J. Phys. Chem. B (2008).
+
+        """
+        # define multiprocessing options
+        if not nproc:           
+            nproc = mp.cpu_count()
+            if len(self.data) < nproc:
+                nproc = len(self.data)
+                #print "\n    ...running on %g processors"%nproc
+        elif nproc > mp.cpu_count():
+            nproc = mp.cpu_count()
+        pool = mp.Pool(processes=nproc)
+
+        # generate multiprocessing input
+        mpinput = [[x.distraj, x.dt, self.keys, sliding] \
+                for x in self.data]
+
+        # run counting using multiprocessing
+        result = pool.map(msm_lib.calc_count_worker, mpinput)
+
+        pool.close()
+        pool.join()
+
+        # add up all independent counts
+        count = reduce(lambda x, y: np.matrix(x) + np.matrix(y), result)
+        
+        return np.array(count)
+
     def calc_count_multi(self, sliding=True, nproc=None):
         """ Calculate transition count matrix in parallel
 
@@ -414,9 +476,6 @@ class MSM(object):
             The count matrix.
         
         """
-        #print "\n    Calculating transition count matrix...\n"
-        #print "       sliding window option: ", sliding
-
         # define multiprocessing options
         if not nproc:           
             nproc = mp.cpu_count()
