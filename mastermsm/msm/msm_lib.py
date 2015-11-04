@@ -287,7 +287,7 @@ def calc_count_worker(x):
     ----------
     x : list
         List containing input for each mp worker. Includes:
-        states :the time series of states
+        distraj :the time series of states
         dt : the timestep for that trajectory
         keys : the keys used in the assignment
         lagt : the lag time for construction
@@ -560,3 +560,60 @@ def propagateT_worker(x):
 #            if J[j,i] > 0:
 #                Jpath[j,i] = np.log(Jnode[j]/J[j,i]) + 1
 #    return Jnode, Jpath
+
+#def calc_acf(x):
+#    """ mp worker that calculates the ACF for a given mode
+#
+#    Parameters
+#    ----------
+#    x : list
+#        List containing input for each mp worker. Includes:
+#        distraj :the time series of states
+#        dt : the timestep for that trajectory
+#        keys : the keys used in the assignment
+#        lagt : the lag time for construction
+#
+#    Returns
+#    -------
+#    acf : array
+#        The autocorrelation function from that trajectory.
+#
+#    """
+#    # parse input from multiprocessing
+#    distraj = x[0]
+#    dt = x[1]
+#    keys = x[2]
+#    nkeys = len(keys)
+#    lagt = x[3]
+##    time = 
+##    sliding = x[4]
+#
+##    ltraj = len(distraj) 
+##    lag = int(lagt/dt) # number of frames per lag time
+##    if sliding:
+##        slider = 1 # every state is initial state
+##    else:
+##        slider = lag
+##
+##    count = np.zeros([nkeys,nkeys], np.int32)
+##    for i in range(0, ltraj-lag, slider):
+##        j = i + lag
+##        state_i = distraj[i]
+##        state_j = distraj[j]
+##        if state_i in keys:
+##            idx_i = keys.index(state_i)
+##        if state_j in keys:
+##            idx_j = keys.index(state_j)
+##        try:
+##            count[idx_j][idx_i] += 1
+##        except UnboundLocalError:
+##            pass
+#    return acf 
+
+#def project_worker(x):
+#    """ project simulation trajectories on eigenmodes"""
+#    trans, power, pini = x
+#    trans_pow = np.linalg.matrix_power(trans,power)
+#    popul = mat_mul_v(trans_pow, pini)
+#    return popul 
+#

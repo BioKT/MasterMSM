@@ -418,7 +418,7 @@ class MSM(object):
 
     def calc_lbrate_multi(self):
         """ Calculates the rate matrix using the lifetime based method.
-        
+
         We use the method described by Buchete and Hummer.[1]_
         The calculation is run in parallel for the number of trajectories
         using multiprocessing.
@@ -456,7 +456,7 @@ class MSM(object):
 
         # add up all independent counts
         count = reduce(lambda x, y: np.matrix(x) + np.matrix(y), result)
-        
+
         return np.array(count)
 
     def calc_count_multi(self, sliding=True, nproc=None):
@@ -474,7 +474,7 @@ class MSM(object):
         -------
         array
             The count matrix.
-        
+
         """
         # define multiprocessing options
         if not nproc:           
@@ -498,9 +498,9 @@ class MSM(object):
 
         # add up all independent counts
         count = reduce(lambda x, y: np.matrix(x) + np.matrix(y), result)
-        
+
         return np.array(count)
- 
+
 #    def calc_count_seq(self, sliding=True):
 #        """ Calculate transition count matrix sequentially 
 #        
@@ -548,7 +548,7 @@ class MSM(object):
 
         ..[1] R. Tarjan, "Depth-first search and linear graph algorithms",
         SIAM Journal of Computing (1972).
-        
+
         """
         D = nx.DiGraph(self.count)
         keep_states = sorted(list(nx.strongly_connected_components(D)), 
@@ -560,7 +560,7 @@ class MSM(object):
 
     def calc_eigsK(self, evecs=False):
         """ Calculate eigenvalues and eigenvectors of rate matrix K
-        
+
         Parameters:
         -----------
         evecs : bool
@@ -582,7 +582,7 @@ class MSM(object):
 
         """
         evalsK, lvecsK, rvecsK = \
-                   spla.eig(self.rate, left=True)
+                spla.eig(self.rate, left=True)
         # sort modes
         nkeep = len(self.keep_states)
         elistK = []
@@ -617,7 +617,7 @@ class MSM(object):
     def calc_eigsT(self, evecs=False):
         """ 
         Calculate eigenvalues and eigenvectors of transition matrix T.
-        
+
         Parameters
         -----------
         evecs : bool
@@ -658,7 +658,7 @@ class MSM(object):
         # equilibrium probabilities
         ieqT, eT = elistT[0]
         peqT_sum = reduce(lambda x,y: x + y, map(lambda x: rvecsT[x,ieqT],
-             range(nkeep)))
+            range(nkeep)))
         peqT = rvecsT[:,ieqT]/peqT_sum
 
         if not evecs:
@@ -692,7 +692,7 @@ class MSM(object):
 
         plot : bool
             Whether we want to plot the distribution of tau / peq
-        
+
         Returns:
         --------
         tau_err : array
@@ -871,7 +871,7 @@ class MSM(object):
 #
 #        # do the calculation
 #        self.J, self.pfold, self.sum_flux, self.kf = msm_lib.run_commit(_states, \
-#                self.rate, self.peqK, _FF, _UU)
+        #                self.rate, self.peqK, _FF, _UU)
 ##        # write graph in dot format
 ##        if dot:
 ##            D = nx.DiGraph(J)
@@ -908,7 +908,7 @@ class MSM(object):
 #
 #        # generate graph from flux matrix
 #        Jnode, Jpath = msm_lib.gen_path_lengths(range(nkeys), J, pfold, \
-#                flux, _FF, _UU)
+        #                flux, _FF, _UU)
 #        JpathG = nx.DiGraph(Jpath.transpose())
 #
 #        # enumerate paths
@@ -925,7 +925,7 @@ class MSM(object):
 #                    #print " %2i -> %2i: %10.4e "%(path[0], path[1], J[path[1],path[0]])
 #                    for i in range(2, len(path)):
 #                        #print " %2i -> %2i: %10.4e %10.4e"%\
-#                        #        (path[i-1], path[i], J[path[i],path[i-1]], Jnode[path[i-1]])
+        #                        #        (path[i-1], path[i], J[path[i],path[i-1]], Jnode[path[i-1]])
 #                        f *= J[path[i],path[i-1]]/Jnode[path[i-1]]
 #                    tot_flux +=f
 #                    #print "  J(path) = %10.4e, %10.4e"%(f,tot_flux)
@@ -958,7 +958,7 @@ class MSM(object):
 #                break
 #        print Jcum
 #        visual_lib.write_dot(Jcum, nodeweight=self.peqK, \
-#                        rank=pfold, out=out)
+        #                        rank=pfold, out=out)
 #
 #    def do_dijkstra(self, FF=None, UU=None, cut=None, npath=None, out="graph.dot"):
 #        """ Obtaining the maximum flux path wrapping NetworkX's Dikjstra algorithm.
@@ -991,7 +991,7 @@ class MSM(object):
 #
 #        # generate graph from flux matrix
 #        Jnode, Jpath = msm_lib.gen_path_lengths(range(nkeys), J, pfold, \
-#                flux, _FF, _UU)
+        #                flux, _FF, _UU)
 #        Jnode_init = Jnode
 #        JpathG = nx.DiGraph(Jpath.transpose())
 #        
@@ -1003,7 +1003,7 @@ class MSM(object):
 #        while True:
 #            n +=1
 #            Jnode, Jpath = msm_lib.gen_path_lengths(range(nkeys), J, pfold, \
-#                        flux, _FF, _UU)
+        #                        flux, _FF, _UU)
 #            # generate nx graph from matrix
 #            JpathG = nx.DiGraph(Jpath.transpose())
 #            # find shortest path for sets of end states
@@ -1034,7 +1034,7 @@ class MSM(object):
 #            for j in range(2, len(sp)):
 #                i = j - 1
 #                print "%2i -> %2i: %10.4e %10.4e"%(sp[i], sp[j], \
-#                    self.J[sp[j],sp[i]], Jnode_init[sp[i]])
+        #                    self.J[sp[j],sp[i]], Jnode_init[sp[i]])
 #                f *= self.J[sp[j],sp[i]]/Jnode_init[sp[i]]
 #                path_fluxes.append(J[sp[j],sp[i]])
 #    
@@ -1070,7 +1070,7 @@ class MSM(object):
 #        print "\n Commulative flux: %10.4e"%tot_flux
 #        print " Fraction: %10.4e"%(tot_flux/self.sum_flux)
 ##        visual_lib.write_dot(Jcum, nodeweight=self.peqK, \
-##                        rank=pfold, out=out)
+        ##                        rank=pfold, out=out)
 #    
 #        return cum_paths
 #
@@ -1125,16 +1125,16 @@ class MSM(object):
 #            d_peq = msm_lib.partial_peq(peqK, s)
 #            d_pfold = msm_lib.partial_pfold(range(nkeep), K, d_K, _FF, _UU, s)
 #            dJ.append(msm_lib.partial_flux(range(nkeep), peqK, K, pfold, \
-#                    d_peq, d_K, d_pfold, _FF))
+        #                    d_peq, d_K, d_pfold, _FF))
 #            d_pu.append(np.sum([d_peq[x] for x in range(nkeep) \
-#                    if x not in _FF]))
+        #                    if x not in _FF]))
 #            d_kon.append((dJ[-1]*pu - sum_flux*d_pu[-1])/pu**2)
 #
 #        return dJ, d_peq, d_kon, kon 
 #
     def propagateK(self, p0=None, init=None, time=None):
         """ Propagation of rate matrix using matrix exponential 
-        
+
         Parameters
         ----------
         p0 : string
@@ -1145,7 +1145,7 @@ class MSM(object):
 
         time : list, array
             User defined range of temperatures for propagating the dynamics.
-        
+
         Returns
         -------
         popul : array
@@ -1171,10 +1171,10 @@ class MSM(object):
                 pini = np.array(p0)
             except TypeError:
                 try:
-                #print "   reading initial population from file: %s"%p0
+                    #print "   reading initial population from file: %s"%p0
                     pini = [float(y) for y in \
-                    filter(lambda x: x.split()[0] not in ["#","@"],
-                            open(p0, "r").readlines())]
+                            filter(lambda x: x.split()[0] not in ["#","@"],
+                                open(p0, "r").readlines())]
                 except TypeError:
                     print "    p0 is not file"
                     print "    exiting here"
@@ -1216,94 +1216,153 @@ class MSM(object):
         return time, popul #popul #, pnorm
 
     def propagateT(self, p0=None, init=None, time=None):
-         """ Propagation of transition matrix
-         
-         Parameters
-         ----------
-         p0 : string
-             Filename with initial population.
-    
-         init : string
-             State(s) where the population is initialized.
-    
-         time : list, int 
-             User defined range of temperatures for propagating the dynamics.
-         
-         Returns
-         -------
-         popul : array
-             Population of all states as a function of time.
-    
-         pnorm : array
-             Population of all states as a function of time - normalized.
+        """ Propagation of transition matrix
 
-         Notes
-         -----
-         There is probably just one essential difference between propagateT
-         and propagateK. We are obtaining the time evolution of the population
-         towards the equilibrium distribution. Using K, we can obtain the 
-         population at any given time (P(t) = exp(Kt)P0), while here we are 
-         limited to powers of the transition matrix (hence, 
-         P(nt) = [T(t)**n]*P0).
-    
-         """
-         # defining times for relaxation 
-         try:
-             assert(time is None)
-             tmin = self.lagt
-             tmax = 1e4*self.lagt
-             logt = np.arange(np.log10(tmin), np.log10(tmax), 0.2)
-             time = 10**logt
-         except:
-             time = np.array(time)
-         ltime = len(time)
-         nkeep = len(self.keep_states)
-         if p0 is not None:
-             try:
-                 pini = np.array(p0)
-             except TypeError:
-                 try:
-                 #print "   reading initial population from file: %s"%p0
-                     pini = [float(y) for y in \
-                     filter(lambda x: x.split()[0] not in ["#","@"],
-                             open(p0, "r").readlines())]
-                 except TypeError:
-                     print "    p0 is not file"
-                     print "    exiting here"
-                     return
-         elif init is not None:
-             #print "    initializing all population in states"
-             #print init
-             pini = [self.peqT[x] if self.keep_keys[x] in init else 0. for x in range(nkeep)]
-         # check normalization and size
-         if len(pini) != nkeep:
-             print "    initial population vector and state space have different sizes"
-             print "    stopping here" 
-             return
-         else:
-             sum_pini = np.sum(pini)
-             pini_norm = [np.float(x)/sum_pini for x in pini]
-    
-         # propagate transition matrix : parallel version
-         popul = []
-         for t in time:
-             power = int(t/self.lagt)
-             x = [self.trans, power, pini_norm]
-             popul.append(msm_lib.propagateT_worker(x))
-         #nproc = mp.cpu_count()
-         #pool = mp.Pool(processes=nproc)
-         #pool_input = [(self.rate, t, pini_norm) for t in time]
-         #popul = pool.map(msm_lib.propagate_worker, tuple(pool_input))
-         #pool.close()
-         #pool.join()
-    
-         ## normalize relaxation
-         #imax = np.argmax(ptot)
-         #maxpop = ptot[imax]
-         #imin = np.argmin(ptot)
-         #minpop = ptot[imin]
-         #if imax < imin:
-         #    pnorm = map(lambda x: (x-minpop)/(maxpop-minpop), ptot)
-         #else:
-         #    pnorm = map(lambda x: 1 - (x-minpop)/(maxpop-minpop), ptot)
-         return time, popul #popul #, pnorm
+        Parameters
+        ----------
+        p0 : string
+            Filename with initial population.
+
+        init : string
+            State(s) where the population is initialized.
+
+        time : list, int 
+            User defined range of temperatures for propagating the dynamics.
+
+        Returns
+        -------
+        popul : array
+            Population of all states as a function of time.
+
+        pnorm : array
+            Population of all states as a function of time - normalized.
+
+        Notes
+        -----
+        There is probably just one essential difference between propagateT
+        and propagateK. We are obtaining the time evolution of the population
+        towards the equilibrium distribution. Using K, we can obtain the 
+        population at any given time (P(t) = exp(Kt)P0), while here we are 
+        limited to powers of the transition matrix (hence, 
+        P(nt) = [T(t)**n]*P0).
+
+        """
+        # defining times for relaxation 
+        try:
+            assert(time is None)
+            tmin = self.lagt
+            tmax = 1e4*self.lagt
+            logt = np.arange(np.log10(tmin), np.log10(tmax), 0.2)
+            time = 10**logt
+        except:
+            time = np.array(time)
+        ltime = len(time)
+        nkeep = len(self.keep_states)
+        if p0 is not None:
+            try:
+                pini = np.array(p0)
+            except TypeError:
+                try:
+                    #print "   reading initial population from file: %s"%p0
+                    pini = [float(y) for y in \
+                            filter(lambda x: x.split()[0] not in ["#","@"],
+                                open(p0, "r").readlines())]
+                except TypeError:
+                    print "    p0 is not file"
+                    print "    exiting here"
+                    return
+        elif init is not None:
+            #print "    initializing all population in states"
+            #print init
+            pini = [self.peqT[x] if self.keep_keys[x] in init else 0. for x in range(nkeep)]
+        # check normalization and size
+        if len(pini) != nkeep:
+            print "    initial population vector and state space have different sizes"
+            print "    stopping here" 
+            return
+        else:
+            sum_pini = np.sum(pini)
+            pini_norm = [np.float(x)/sum_pini for x in pini]
+
+        # propagate transition matrix : parallel version
+        popul = []
+        tcum = []
+        for t in time:
+            power = int(t/self.lagt)
+            tcum.append(self.lagt*power)
+            x = [self.trans, power, pini_norm]
+            popul.append(msm_lib.propagateT_worker(x))
+        #nproc = mp.cpu_count()
+        #pool = mp.Pool(processes=nproc)
+        #pool_input = [(self.rate, t, pini_norm) for t in time]
+        #popul = pool.map(msm_lib.propagate_worker, tuple(pool_input))
+        #pool.close()
+        #pool.join()
+
+        ## normalize relaxation
+        #imax = np.argmax(ptot)
+        #maxpop = ptot[imax]
+        #imin = np.argmin(ptot)
+        #minpop = ptot[imin]
+        #if imax < imin:
+        #    pnorm = map(lambda x: (x-minpop)/(maxpop-minpop), ptot)
+        #else:
+        #    pnorm = map(lambda x: 1 - (x-minpop)/(maxpop-minpop), ptot)
+        return tcum, popul #popul #, pnorm
+
+    def acf_mode(self, modes=None):
+        """ Calculate mode autocorrelation functions.
+
+        We use the procedure described by Buchete and Hummer[1]_.
+
+        Parameters
+        ----------
+        mode : int, list
+           Index(es) for sorted autocorrelation functions.
+
+        time : list, int 
+            User defined range of temperatures for ACF.
+
+        Returns
+        -------
+        corr : array
+           The mode(s) autocorrelation function.
+        
+        Notes
+        -----
+        ..[1] N.-V. Buchete and G. Hummer, "Coarse master equations for
+        peptide folding dynamics", J. Phys. Chem. B (2008).
+
+        """
+
+        if not modes:
+            modes = range(1,len(self.keep_keys))
+
+        kk = self.keep_keys
+        trajs = [x.distraj for x in self.data]
+
+        acf_ave = {}
+        dt = self.data[0].dt
+        for m in modes:
+            x2 = []
+            acf_cum = []
+            for tr in trajs:
+                projected = []
+                for s in tr:
+                    try:
+                        projected.append(self.lvecsT[kk.index(s),m])
+                    except ValueError:
+                        pass
+                x2.extend([x**2 for x in projected])
+                acf = np.correlate(projected, projected, mode='full')
+                acf_half = acf[acf.size / 2:]
+                acf_cum.append(acf_half)
+            lmin = np.min([len(x) for x in acf_cum])
+
+            acf_ave[m] = []
+            for l in range(lmin):
+                num = np.sum([x[l] for x in acf_cum])
+                denom = np.sum([len(x)-l for x in acf_cum])
+                acf_ave[m].append(num/denom)
+            acf_ave[m] /=np.mean(x2)
+        return acf_ave
