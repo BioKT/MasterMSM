@@ -111,6 +111,12 @@ class TimeSeries(object):
                 keys.append(s)
         self.keys = keys
 
+    def gc(self):
+        """ Gets rid of the mdtraj attribute 
+
+        """
+        delattr (self, "mdt")
+
 #    def discrete_rama(self, A=[-100, -40, -60, 0], \
 #            L=[-180, -40, 120., 180.], \
 #            E=[50., 100., -40., 70.]):
