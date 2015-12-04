@@ -73,15 +73,19 @@ class TimeSeries(object):
         """
         return md.load(traj, top=top)
 
-    def discretize(self, method="rama", states=None):
+    def discretize(self, method="rama", states=None, nbin=50):
         """ Discretize the simulation data.
 
         Parameters
         ----------
         method : str
-            A method for doing the clustering.
+            A method for doing the clustering. Options are
+            "rama", "ramagrid"...
         states : list
             A list of states to be considered in the discretization.
+            Only for method "rama".
+        nbin : int
+            Number of bins in the grid. Only for "ramagrid".
 
         Returns
         -------
@@ -95,6 +99,11 @@ class TimeSeries(object):
             psi = md.compute_psi(self.mdt)
             res = [x for x in self.mdt.topology.residues]
             self.distraj = traj_lib.discrete_rama(phi, psi, states=states)
+        elif method == "ramagrid":
+            phi = md.compute_phi(self.mdt)
+            psi = md.compute_psi(self.mdt)
+            res = [x for x in self.mdt.topology.residues]
+            self.distraj = traj_lib.discrete_ramagrid(phi, psi, nbin)
 
     def find_keys(self, exclude=['O']):
         """ Finds out the discrete states in the trajectory
