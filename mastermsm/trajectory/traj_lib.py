@@ -74,7 +74,7 @@ def discrete_rama(phi, psi, seq=None, bounds=None, states=['A', 'E', 'L']):
         res_idx += 1
     return cstates 
 
-def discrete_ramagrid(phi, psi, bins):
+def discrete_ramagrid(phi, psi, nbins):
     """ Finely partition the Ramachandran map into a grid of states. 
 
     Parameters
@@ -85,7 +85,7 @@ def discrete_ramagrid(phi, psi, bins):
     psi : list
         A list of Psi Ramachandran angles.
 
-    bins : int
+    nbins : int
         The number of bins in the grid in each dimension.
 
     Returns
@@ -95,21 +95,10 @@ def discrete_ramagrid(phi, psi, bins):
 
     """
 
-    res_idx = 0
-    if len(phi[0]) != len(psi[0]):
-        print " Different number of phi and psi dihedrals"
-        print " STOPPING HERE"
-        sys.exit()
-
     cstates = []
-    ndih = len(phi[0])
-    for f,y in zip(phi[1],psi[1]):
-        s_list = [] 
-        for n in range(ndih):
-            s = _stategrid(f[n], y[n], bins)
-        #if s == "O" and len(prev_s_string) > 0:
-            s_list.append(s)
-        cstates.append(s_list)
+    for f, y in zip(phi[1], psi[1]):
+        s = _stategrid(f, y, nbins)
+        cstates.append(s)
     return cstates 
 #stats_out = open(stats_file,"w")
 #cum = 0
@@ -204,7 +193,7 @@ def _state(phi,psi,bounds):
 #state_file = sys.argv[2]
 #stats_file = sys.argv[3]
 
-def _stategrid(phi, psi, nbin):
+def _stategrid(phi, psi, nbins):
     """ Finds coarse state for a pair of phi-psi dihedrals
 
     Parameters
@@ -213,7 +202,7 @@ def _stategrid(phi, psi, nbin):
         Phi dihedral angle
     psi : float
         Psi dihedral angle
-    nbin : int
+    nbins : int
         Number of bins in each dimension of the grid
 
     Returns
@@ -222,8 +211,8 @@ def _stategrid(phi, psi, nbin):
         Index of bin
 
     """
-    print phi, psi
-    print "column :", int(0.5*(phi + math.pi)/math.pi*nbin)
-    print "row :", int(0.5*(psi + math.pi)/math.pi*nbin)
-    ibin = int(0.5*nbin*(phi/math.pi + 1.)) + int(0.5*nbin*(psi/math.pi + 1))*nbin
+    #print phi, psi
+    #print "column :", int(0.5*(phi + math.pi)/math.pi*nbins)
+    #print "row :", int(0.5*(psi + math.pi)/math.pi*nbins)
+    ibin = int(0.5*nbins*(phi/math.pi + 1.)) + int(0.5*nbins*(psi/math.pi + 1))*nbins
     return ibin

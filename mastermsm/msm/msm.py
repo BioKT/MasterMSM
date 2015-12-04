@@ -94,7 +94,7 @@ class SuperMSM(object):
         print "\n Building MSM from \n", [x.file_name for x in self.data]
         print "     # states: %g"%(len(self.keys))
 
-    def do_msm(self, lagt, sliding=True):
+    def do_msm(self, lagt, sliding=True, sym=False):
         """ 
         Construct MSM for specific value of lag time.
         
@@ -106,9 +106,12 @@ class SuperMSM(object):
         sliding : bool
             Whether a sliding window is used in counts.
 
+        sym : bool
+            Whether we want to enforce symmetrization.
+
         """
         self.msms[lagt] = MSM(self.data, keys=self.keys, lagt=lagt)
-        self.msms[lagt].do_count(sliding=sliding)
+        self.msms[lagt].do_count(sliding=sliding, sym=sym)
         
     def convergence_test(self, plot=True, save=None, N=1, sliding=True, \
             error=True, time=None, out=None):
@@ -335,7 +338,7 @@ class MSM(object):
         self.data = data
         self.lagt = lagt
 
-    def do_count(self, sliding=True):
+    def do_count(self, sliding=True, sym=False):
         """ Calculates the count matrix.
 
         Parameters
@@ -343,9 +346,14 @@ class MSM(object):
         sliding : bool
             Whether a sliding window is used in counts.
 
-        """
+        sym : bool
+            Whether we want to enforce symmetrization.
 
+        """
         self.count = self.calc_count_multi(sliding=sliding)
+        if sym:
+            print " symmetrizing"
+            self.count += self.count.transpose()
         self.keep_states, self.keep_keys = self.check_connect()
 
     def do_trans(self, evecs=False):

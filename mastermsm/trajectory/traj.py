@@ -73,7 +73,7 @@ class TimeSeries(object):
         """
         return md.load(traj, top=top)
 
-    def discretize(self, method="rama", states=None, nbin=50):
+    def discretize(self, method="rama", states=None, nbins=20):
         """ Discretize the simulation data.
 
         Parameters
@@ -84,7 +84,7 @@ class TimeSeries(object):
         states : list
             A list of states to be considered in the discretization.
             Only for method "rama".
-        nbin : int
+        nbins : int
             Number of bins in the grid. Only for "ramagrid".
 
         Returns
@@ -102,8 +102,7 @@ class TimeSeries(object):
         elif method == "ramagrid":
             phi = md.compute_phi(self.mdt)
             psi = md.compute_psi(self.mdt)
-            res = [x for x in self.mdt.topology.residues]
-            self.distraj = traj_lib.discrete_ramagrid(phi, psi, nbin)
+            self.distraj = traj_lib.discrete_ramagrid(phi, psi, nbins)
 
     def find_keys(self, exclude=['O']):
         """ Finds out the discrete states in the trajectory
