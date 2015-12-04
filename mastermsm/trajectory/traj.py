@@ -62,7 +62,7 @@ class TimeSeries(object):
         ----------
         top: str
             The topology file, may be a PDB or GRO file.
-        traj : list
+        traj : str 
             A list with the trajectory filenames to be read.
 
         Returns
