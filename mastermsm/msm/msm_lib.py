@@ -546,6 +546,63 @@ def calc_mlrate(nkeep, count, lagt, rate_init):
 
     """
 
+    # initialize rate matrix and equilibrium distribution enforcing detailed balance
+    p_init = np.sum(count, axis=0)
+    for i in range(nkeep):
+        p_prev = [p_init[i] if p_init[i] > 0 else np.min(p_init[p_init>0]) for i in range(nkeep)]
+                
+    rate_prev = detailed_balance(rate_init, p_prev)
+    
+
+    ml_prev = likelihood(rate_prev)
+
+    # initialize MC sampling
+    while True:
+
+        # random choice of MC move
+        rate, p = mc_move(rate_prev, p_prev)
+
+        # calculate likelihood
+        ml = likelihood(rate)
+
+        # Boltzmann acceptance / rejection
+        if ml < ml_prev: 
+            rate_prev = rate
+            p_prev = p
+        else:
+            delta_ml = ml - ml_prev
+            weight = boltzmann(np.exp(-beta*delta_ml))
+            if np.random.random() < weight:
+                rate_prev = rate
+                p_prev = p
+
+        break
+
+    return rate
+
+def detailed_balance(nkeep, rate, peq):
+    """ Enforce detailed balance in rate matrix.
+
+    Parameters
+    ----------
+    nkeep : int
+        The number of states.
+
+    rate : array
+        The rate matrix obeying detailed balance.
+
+    peq : array
+        The equilibrium probability
+
+    Returns
+    -------
+    rate : array
+        The rate matrix obeying detailed balance.
+
+    """
+    for i in range(nkeep):
+        for j in range(i):
+            rate[j,i] = rate[i,j]*peq[j]/peq[i]
     return rate
 
 def likelihood(nkeep, rate, count, lagt):
