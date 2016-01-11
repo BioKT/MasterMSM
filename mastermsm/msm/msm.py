@@ -305,6 +305,94 @@ class SuperMSM(object):
                 plt.savefig(out, dpi=300, format='png')
             plt.show()
 
+    def do_lbrate(self, evecs=False):
+        """ Calculates the rate matrix using the lifetime based method.
+        
+        We use the method described by Buchete and Hummer.[1]_
+
+        Parameters
+        ----------
+        evecs : bool
+            Whether we want the left eigenvectors of the rate matrix.
+
+        Notes
+        -----
+        ..[1] N.-V. Buchete and G. Hummer, "Coarse master equations for
+        peptide folding dynamics", J. Phys. Chem. B (2008).
+
+        """
+        nkeep = len(self.keys)
+        self.lbrate = self.calc_lbrate_multi()
+
+    def calc_lbrate_multi(self):
+        """ Calculates the rate matrix using the lifetime based method.
+
+        We use the method described by Buchete and Hummer.[1]_
+        The calculation is run in parallel for the number of trajectories
+        using multiprocessing.
+
+        Parameters
+        ----------
+        evecs : bool
+            Whether we want the left eigenvectors of the rate matrix.
+
+        Notes
+        -----
+        ..[1] N.-V. Buchete and G. Hummer, "Coarse master equations for
+        peptide folding dynamics", J. Phys. Chem. B (2008).
+
+        """
+        nkeys = len(self.keys)
+
+        # define multiprocessing options
+        nproc = mp.cpu_count()
+        if len(self.data) < nproc:
+            nproc = len(self.data)
+        pool = mp.Pool(processes=nproc)
+
+        # generate multiprocessing input
+        sliding = True
+        mpinput = [[x.distraj, x.dt, self.keys, x.dt, sliding]
+                for x in self.data]
+
+        # run counting using multiprocessing
+        result = pool.map(msm_lib.calc_count_worker, mpinput)
+
+        pool.close()
+        pool.join()
+
+        # add up all independent counts
+        count = reduce(lambda x, y: np.matrix(x) + np.matrix(y), result)
+
+        # calculate length of visits
+        mpinput = [[x.distraj, x.dt, self.keys] for x in self.data]
+
+        # run counting using multiprocessing
+        pool = mp.Pool(processes=nproc)
+        result = pool.map(msm_lib.calc_lifetime, mpinput)
+        pool.close()
+        pool.join()
+
+        # reduce
+        life = np.zeros((nkeys), float)
+        for k in range(nkeys):
+            kk = self.keys[k]
+            visits = list(itertools.chain([x[kk] for x in result if kk in x.keys()]))
+            time = np.mean(visits)
+            #time = np.exp(np.mean([np.log(x) for x in visits]))
+            life[k] = time/len(visits)
+
+        # calculate lifetime based rates
+        lbrate = np.zeros((nkeys,nkeys), float)
+        for i in range(nkeys):
+            ni = np.sum([count[x,i] for x in range(nkeys) if x != i])
+            for j in range(nkeys):
+                lbrate[j,i] = count[j,i]/(ni*life[i])
+            lbrate[i,i] = 0.
+            lbrate[i,i] = -np.sum(lbrate[:,i])
+        return lbrate 
+
+
 class MSM(object):
     """ A class for constructing an MSM at a specific lag time.
 
@@ -404,68 +492,6 @@ class MSM(object):
         else:
             self.tauK, self.peqK, self.rvecsK, self.lvecsK = \
                     self.calc_eigsK(evecs=True)
-
-    def do_lbrate(self, evecs=False):
-        """ Calculates the rate matrix using the lifetime based method.
-        
-        We use the method described by Buchete and Hummer.[1]_
-
-        Parameters
-        ----------
-        evecs : bool
-            Whether we want the left eigenvectors of the rate matrix.
-
-        Notes
-        -----
-        ..[1] N.-V. Buchete and G. Hummer, "Coarse master equations for
-        peptide folding dynamics", J. Phys. Chem. B (2008).
-
-        """
-        nkeep = len(self.keep_states)
-        self.rate = self.calc_lbrate_multi()
-
-    def calc_lbrate_multi(self):
-        """ Calculates the rate matrix using the lifetime based method.
-
-        We use the method described by Buchete and Hummer.[1]_
-        The calculation is run in parallel for the number of trajectories
-        using multiprocessing.
-
-        Parameters
-        ----------
-        evecs : bool
-            Whether we want the left eigenvectors of the rate matrix.
-
-        Notes
-        -----
-        ..[1] N.-V. Buchete and G. Hummer, "Coarse master equations for
-        peptide folding dynamics", J. Phys. Chem. B (2008).
-
-        """
-        # define multiprocessing options
-        if not nproc:           
-            nproc = mp.cpu_count()
-            if len(self.data) < nproc:
-                nproc = len(self.data)
-                #print "\n    ...running on %g processors"%nproc
-        elif nproc > mp.cpu_count():
-            nproc = mp.cpu_count()
-        pool = mp.Pool(processes=nproc)
-
-        # generate multiprocessing input
-        mpinput = [[x.distraj, x.dt, self.keys, sliding] \
-                for x in self.data]
-
-        # run counting using multiprocessing
-        result = pool.map(msm_lib.calc_count_worker, mpinput)
-
-        pool.close()
-        pool.join()
-
-        # add up all independent counts
-        count = reduce(lambda x, y: np.matrix(x) + np.matrix(y), result)
-
-        return np.array(count)
 
     def calc_count_multi(self, sliding=True, nproc=None):
         """ Calculate transition count matrix in parallel

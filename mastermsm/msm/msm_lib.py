@@ -327,6 +327,48 @@ def calc_count_worker(x):
             pass
     return count
 
+def calc_lifetime(x):
+    """ mp worker that calculates the count matrix from a trajectory
+
+    Parameters
+    ----------
+    x : list
+        List containing input for each mp worker. Includes:
+        distraj :the time series of states
+        dt : the timestep for that trajectory
+        keys : the keys used in the assignment
+
+    Returns
+    -------
+    count : array
+
+    """
+    # parse input from multiprocessing
+    distraj = x[0]
+    dt = x[1]
+    keys = x[2]
+    nkeys = len(keys)
+
+    ltraj = len(distraj) 
+
+    life = {}
+    l = 0
+    for j in range(1, ltraj):
+        i = j - 1
+        state_i = distraj[i]
+        state_j = distraj[j]
+        if state_i == state_j:
+            l += 1
+        elif state_j not in keys:
+            l += 1
+        else:
+            try:
+                life[state_i].append(l*dt)
+            except KeyError:
+                life[state_i] = [l]
+            l = 1
+    return life 
+
 def do_boots_worker(x):
     """ Worker function for parallel bootstrapping.
 
