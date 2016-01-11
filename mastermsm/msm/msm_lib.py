@@ -488,6 +488,134 @@ def calc_rate(nkeep, trans, lagt):
         rate[i][i] = -(np.sum(rate[:i,i]) + np.sum(rate[i+1:,i]))
     return rate
 
+def rand_rate(nkeep, count):
+    """ Randomly generate initial matrix.
+
+    Parameters
+    ----------
+    nkeep : int
+        Number of states in transition matrix.
+
+    count : np.array
+        Transition matrix.
+
+    Returns
+    -------
+    rand_rate : np.array
+        The random rate matrix.
+
+    """
+    nkeys = len(count)
+
+    rand_rate = np.zeros((nkeys, nkeys), float)
+    for i in range(nkeys):
+        for j in range(nkeys):
+            if i != j:
+                if (count[i,j] !=0)  and (count[j,i] != 0):
+                    rand_rate[j,i] = np.exp(np.random.randn()*-3)
+        rand_rate[i,i] = -np.sum(rand_rate[:,i] )
+    peq = np.random.random() 
+
+    return rand_rate
+
+def calc_mlrate(nkeep, count, lagt, rate_init):
+    """ Calculate rate matrix using maximum likelihood Bayesian method.
+
+    We use a the MLPB method described by Buchete and Hummer.[1]_
+
+    Parameters
+    ----------
+    nkeep : int
+        Number of states in transition matrix.
+
+    count : np.array
+        Transition matrix.
+
+    lagt : float
+        The lag time.      
+
+    Returns
+    -------
+    rate : np.array
+        The rate matrix.
+
+    Notes
+    -----
+    ..[1] N.-V. Buchete and G. Hummer, "Coarse master equations for
+        peptide folding dynamics", J. Phys. Chem. B (2008).
+
+    """
+
+    return rate
+
+def likelihood(nkeep, rate, count, lagt):
+    """ Likelihood of a rate matrix given a count matrix
+    
+    We use the procedure described by Buchete and Hummer.[1]_
+
+    Parameters
+    ----------
+    nkeep : int
+        Number of states in transition matrix.
+
+    count : np.array
+        Transition matrix.
+
+    lagt : float
+        The lag time.      
+
+    Returns
+    -------
+    mlog_like : float
+        The log likelihood 
+
+    Notes
+    -----
+    ..[1] N.-V. Buchete and G. Hummer, "Coarse master equations for
+        peptide folding dynamics", J. Phys. Chem. B (2008).
+
+    """
+    # calculate symmetrized rate matrix
+    ratesym = np.multiply(rate,rate.transpose())
+    ratesym = np.sqrt(ratesym)
+    for i in range(nkeep):
+        ratesym[i,i] = -ratesym[i,i]
+
+    # calculate eigenvalues and eigenvectors
+    evalsym, evectsym = np.linalg.eig(ratesym)
+
+    # index the solutions
+    indx_eig = np.argsort(-evalsym)
+
+    # equilibrium population
+    ieq = indx_eig[0]
+    peq = evectsym[:,ieq]**2
+
+    # calculate left and right eigenvectors
+    phiR = np.zeros((nkeep, nkeep))
+    phiL = np.zeros((nkeep, nkeep))
+    for i in range(nkeep):
+        phiR[:,i] = eigvectsym[:,i]*eigvectsym[:,ieq]
+        phiL[:,i] = eigvectsym[:,i]/eigvectsym[:,ieq]
+
+    # calculate propagators
+    ntrans = np.sum(count)
+    prop = np.zeros((nstates,nstates), float)
+    for i in range(nkeep):
+        for j in range(nkeep):
+            for n in range(nkeep):
+                prop[j,i] = prop[j,i] + \
+                 phiR[j,n]*phiL[i,n]*np.exp(-abs(evalsym[n])*lag_t)
+
+    # calculate likelihood using matrix of transitions
+    log_like = 0.
+    for i in range(nkeep):
+        for j in range(nkeep):
+            if count[j,i] > 0:
+                log_like = log_like + float(count[j,i])*np.log(prop[j,i])
+
+    return -log_like
+
 #def partial_rate(K, elem):
 #    """ calculate derivative of rate matrix """
 #    nstates = len(K[0])

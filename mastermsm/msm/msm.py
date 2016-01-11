@@ -323,7 +323,9 @@ class SuperMSM(object):
         """
         nkeep = len(self.keys)
         self.lbrate = self.calc_lbrate_multi()
-
+        self.evalsK, self.lvecsK, self.rvecsK = \
+                spla.eig(self.lbrate, left=True)
+        
     def calc_lbrate_multi(self):
         """ Calculates the rate matrix using the lifetime based method.
 
@@ -466,7 +468,7 @@ class MSM(object):
             self.tauT, self.peqT, self.rvecsT, self.lvecsT = \
                     self.calc_eigsT(evecs=True)
 
-    def do_rate(self, evecs=False):
+    def do_rate(self, method='Taylor', evecs=False):
         """ Calculates the rate matrix from the transition matrix. 
         
         We use a method based on a Taylor expansion.[1]_
@@ -475,6 +477,10 @@ class MSM(object):
         ----------
         evecs : bool
             Whether we want the left eigenvectors of the rate matrix.
+
+        method : str
+            Which method one wants to use. Acceptable values are 'Taylor'
+            and 'MLPB'.
 
         Notes
         -----
@@ -485,9 +491,14 @@ class MSM(object):
         """
         #print "\n    Calculating rate matrix ..."
         nkeep = len(self.keep_states)
-        self.rate = msm_lib.calc_rate(nkeep, self.trans, self.lagt)
+        if method == 'Taylor':
+            self.rate = msm_lib.calc_rate(nkeep, self.trans, self.lagt)
+        elif method == 'MLPB':
+            init_rate = msm_lib.rand_rate(nkeep, self.count)
+            self.rate = msm_lib.calc_mlrate(nkeep, self.count, self.lagt, rate_init)
+
         #print self.rate
-        if not evecs:
+        if not evecs: 
             self.tauK, self.peqK = self.calc_eigsK()
         else:
             self.tauK, self.peqK, self.rvecsK, self.lvecsK = \
