@@ -494,10 +494,10 @@ class MSM(object):
         if method == 'Taylor':
             self.rate = msm_lib.calc_rate(nkeep, self.trans, self.lagt)
         elif method == 'MLPB':
-            rate_init = msm_lib.rand_rate(nkeep, self.count)
+            rate_init =  msm_lib.calc_rate(nkeep, self.trans, self.lagt)#msm_lib.rand_rate(nkeep, self.count)
             print rate_init
 
-            self.rate = msm_lib.calc_mlrate(nkeep, self.count, self.lagt, rate_init)
+            self.rate, self.ml = msm_lib.calc_mlrate(nkeep, self.count, self.lagt, rate_init)
 
         #print self.rate
         if not evecs: 

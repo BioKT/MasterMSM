@@ -2,9 +2,10 @@
 This file is part of the MasterMSM package.
 
 """
+import copy
 import numpy as np
 import networkx as nx
-import os #, math, copy #,numarray,linalg
+import os #, math
 import itertools
 #import operator
 from scipy import linalg as spla
@@ -549,39 +550,64 @@ def calc_mlrate(nkeep, count, lagt, rate_init):
     # initialize rate matrix and equilibrium distribution enforcing detailed balance
     
     p_prev = np.sum(count, axis=0)/np.float(np.sum(count))
-    print p_prev
+    #print p_prev
                 
     rate_prev = detailed_balance(nkeep, rate_init, p_prev)
-    print rate_prev
+    #print rate_prev
 
     ml_prev = likelihood(nkeep, rate_prev, count, lagt)
-    print ml_prev
+    #print ml_prev
 
     # initialize MC sampling
-    beta = 1.
+    k = -0.002
+    #print "\n START"
+    #print rate_prev, p_prev, ml_prev
+    ml_cum = [ml_prev]
+    nstep = 0
     while True:
 
         # random choice of MC move
+        #print "\n MC move "
         rate, p = mc_move(nkeep, rate_prev, p_prev)
+        #print rate_prev, p_prev, ml_prev
+        #print 
+        #print "\n DB" 
         rate = detailed_balance(nkeep, rate, p)
+        #print rate_prev, p_prev, ml_prev
 
         # calculate likelihood
+        #print "\n ML"
         ml = likelihood(nkeep, rate, count, lagt)
+        #print rate_prev, p_prev, ml_prev
 
         # Boltzmann acceptance / rejection
-        if ml < ml_prev: 
+        if ml < ml_prev:
+            #print "\n ACCEPT"
             rate_prev = rate
             p_prev = p
+            ml_prev = ml
+            #print rate_prev, p_prev, ml_prev
         else:
             delta_ml = ml - ml_prev
-            weight = boltzmann(np.exp(-beta*delta_ml))
+            beta = (1 - np.exp(k*10000))/(np.exp(k*nstep) - np.exp(k*10000))
+            weight = np.exp(-beta*delta_ml)
             if np.random.random() < weight:
+            #    print "\n ACCEPT BOLTZMANN"
                 rate_prev = rate
                 p_prev = p
+                ml_prev = ml
+            #    print rate_prev, p_prev, ml_prev
+            #else:
+            #    print "\n REJECT"
+            #    print rate_prev, p_prev, ml_prev
+        nstep +=1
+        if nstep > 10000:
+            ml_cum.append(ml_prev)
+            break
+        else:
+            ml_cum.append(ml_prev)
 
-        break
-
-    return rate
+    return rate, ml_cum
 
 def mc_move(nkeep, rate, peq):
     """ Make MC move in either rate or equilibrium probability.
@@ -604,16 +630,32 @@ def mc_move(nkeep, rate, peq):
     nparam = nkeep*(nkeep - 1)/2 + nkeep - 1
     npeq = nkeep - 1
 
-    i = np.random.randint(0, nparam - 1)
-    print i
-    if i < npeq:
-        peq[i] += np.random.normal(loc=peq[i])
-    else: 
-        i = np.random.randint(0, nkeep-1)
-        j = np.random.randint(0, i-1)
-        rate[i,j] = np.random.normal(loc=rate[i,j]) 
+    #print rate, peq
+    nstep = 0
+    while True:
+        i = np.random.randint(0, nparam)
+        #print i
+        rate_new = copy.deepcopy(rate)
+        peq_new = copy.deepcopy(peq)
+        if i < npeq:
+            peq_new[i] = np.random.normal(loc=peq[i], scale=peq[i])
+            peq_new = peq_new/np.sum(peq_new)
+            if np.all(peq_new > 0):
+                break
+        else: 
+            i = np.random.randint(0, nkeep - 1)
+            try:
+                j = np.random.randint(i + 1, nkeep - 1)
+            except ValueError:
+                j = nkeep - 1
+            rate_new[j,i] = np.random.normal(loc=rate[j,i], scale=rate[j,i]) 
+            if np.all((rate_new - np.diag(np.diag(rate_new))) >= 0):
+                break
+            #else:
+            #    print rate_new - np.diag(np.diag(rate_new))
 
-    return rate, peq
+    #print rate_new, peq_new
+    return rate_new, peq_new
 
 
 def detailed_balance(nkeep, rate, peq):
@@ -634,6 +676,8 @@ def detailed_balance(nkeep, rate, peq):
     for i in range(nkeep):
         for j in range(i):
             rate[j,i] = rate[i,j]*peq[j]/peq[i]
+        rate[i,i] = 0
+        rate[i,i] = -np.sum(rate[:,i])
     return rate
 
 def likelihood(nkeep, rate, count, lagt):
