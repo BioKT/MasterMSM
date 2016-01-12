@@ -547,23 +547,26 @@ def calc_mlrate(nkeep, count, lagt, rate_init):
     """
 
     # initialize rate matrix and equilibrium distribution enforcing detailed balance
-    p_init = np.sum(count, axis=0)
-    for i in range(nkeep):
-        p_prev = [p_init[i] if p_init[i] > 0 else np.min(p_init[p_init>0]) for i in range(nkeep)]
-                
-    rate_prev = detailed_balance(rate_init, p_prev)
     
+    p_prev = np.sum(count, axis=0)/np.float(np.sum(count))
+    print p_prev
+                
+    rate_prev = detailed_balance(nkeep, rate_init, p_prev)
+    print rate_prev
 
-    ml_prev = likelihood(rate_prev)
+    ml_prev = likelihood(nkeep, rate_prev, count, lagt)
+    print ml_prev
 
     # initialize MC sampling
+    beta = 1.
     while True:
 
         # random choice of MC move
-        rate, p = mc_move(rate_prev, p_prev)
+        rate, p = mc_move(nkeep, rate_prev, p_prev)
+        rate = detailed_balance(nkeep, rate, p)
 
         # calculate likelihood
-        ml = likelihood(rate)
+        ml = likelihood(nkeep, rate, count, lagt)
 
         # Boltzmann acceptance / rejection
         if ml < ml_prev: 
@@ -580,6 +583,39 @@ def calc_mlrate(nkeep, count, lagt, rate_init):
 
     return rate
 
+def mc_move(nkeep, rate, peq):
+    """ Make MC move in either rate or equilibrium probability.
+
+    Changes in equilibrium probabilities are introduced so that the new value 
+    is drawn from a normal distribution centered at the current value.
+
+    Parameters
+    ----------
+    nkeep : int
+        The number of states.
+
+    rate : array
+        The rate matrix obeying detailed balance.
+
+    peq : array
+        The equilibrium probability
+    
+    """
+    nparam = nkeep*(nkeep - 1)/2 + nkeep - 1
+    npeq = nkeep - 1
+
+    i = np.random.randint(0, nparam - 1)
+    print i
+    if i < npeq:
+        peq[i] += np.random.normal(loc=peq[i])
+    else: 
+        i = np.random.randint(0, nkeep-1)
+        j = np.random.randint(0, i-1)
+        rate[i,j] = np.random.normal(loc=rate[i,j]) 
+
+    return rate, peq
+
+
 def detailed_balance(nkeep, rate, peq):
     """ Enforce detailed balance in rate matrix.
 
@@ -593,11 +629,6 @@ def detailed_balance(nkeep, rate, peq):
 
     peq : array
         The equilibrium probability
-
-    Returns
-    -------
-    rate : array
-        The rate matrix obeying detailed balance.
 
     """
     for i in range(nkeep):
@@ -652,17 +683,17 @@ def likelihood(nkeep, rate, count, lagt):
     phiR = np.zeros((nkeep, nkeep))
     phiL = np.zeros((nkeep, nkeep))
     for i in range(nkeep):
-        phiR[:,i] = eigvectsym[:,i]*eigvectsym[:,ieq]
-        phiL[:,i] = eigvectsym[:,i]/eigvectsym[:,ieq]
+        phiR[:,i] = evectsym[:,i]*evectsym[:,ieq]
+        phiL[:,i] = evectsym[:,i]/evectsym[:,ieq]
 
     # calculate propagators
     ntrans = np.sum(count)
-    prop = np.zeros((nstates,nstates), float)
+    prop = np.zeros((nkeep, nkeep), float)
     for i in range(nkeep):
         for j in range(nkeep):
             for n in range(nkeep):
                 prop[j,i] = prop[j,i] + \
-                 phiR[j,n]*phiL[i,n]*np.exp(-abs(evalsym[n])*lag_t)
+                 phiR[j,n]*phiL[i,n]*np.exp(-abs(evalsym[n])*lagt)
 
     # calculate likelihood using matrix of transitions
     log_like = 0.
