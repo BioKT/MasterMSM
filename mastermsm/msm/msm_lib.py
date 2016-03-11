@@ -400,8 +400,8 @@ def do_boots_worker(x):
         #print ncount_boots, "< %g"%ncount
     D = nx.DiGraph(count)
     #keep_states = sorted(nx.strongly_connected_components(D)[0])
-    keep_states = sorted(list(nx.strongly_connected_components(D)), 
-                key = len, reverse=True)[0]
+    keep_states = list(sorted(list(nx.strongly_connected_components(D)), 
+                key = len, reverse=True)[0])
     keep_keys = map(lambda x: keys[x], keep_states)
     nkeep = len(keep_keys)
     trans = np.zeros([nkeep, nkeep], float)
