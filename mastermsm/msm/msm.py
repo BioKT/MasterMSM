@@ -36,7 +36,7 @@ class SuperMSM(object):
 
        
     """
-    def __init__(self, trajs, file_keys=None):
+    def __init__(self, trajs, file_keys=None, keys=None):
         """ 
         
         Parameters
@@ -50,11 +50,14 @@ class SuperMSM(object):
 
         """
         self.data = trajs
-        try:
-            self.keys = map(lambda x: x.split()[0],
-                    open(file_keys, "r").readlines())
-        except TypeError:
-            self.keys = self._merge_trajs()
+        if isinstance(keys, list):
+            self.keys = keys
+        else:
+            try:
+                self.keys = map(lambda x: x.split()[0],
+                        open(file_keys, "r").readlines())
+            except TypeError:
+                self.keys = self._merge_trajs()
         self.dt = self._max_dt()
         self._out()
         self.msms = {}
@@ -91,7 +94,10 @@ class SuperMSM(object):
         Output description to user.
         
         """
-        print "\n Building MSM from \n", [x.file_name for x in self.data]
+        try:
+            print "\n Building MSM from \n", [x.file_name for x in self.data]
+        except AttributeError:
+            pass
         print "     # states: %g"%(len(self.keys))
 
     def do_msm(self, lagt, sliding=True, sym=False):
@@ -598,10 +604,10 @@ class MSM(object):
 
         """
         D = nx.DiGraph(self.count)
-        keep_states = sorted(list(nx.strongly_connected_components(D)), 
-                key = len, reverse=True)[0]
+        keep_states = list(sorted(list(nx.strongly_connected_components(D)), 
+                key = len, reverse=True)[0])
         keep_states.sort()
-        #keep_states = sorted(nx.strongly_connected_components(D)[0])
+        # keep_states = sorted(nx.strongly_connected_components(D)[0])
         keep_keys = map(lambda x: self.keys[x], keep_states)
         return keep_states, keep_keys
 
