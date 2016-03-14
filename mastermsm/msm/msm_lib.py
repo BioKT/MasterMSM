@@ -567,18 +567,11 @@ def calc_mlrate(nkeep, count, lagt, rate_init):
     while True:
 
         # random choice of MC move
-        #print "\n MC move "
         rate, p = mc_move(nkeep, rate_prev, p_prev)
-        #print rate_prev, p_prev, ml_prev
-        #print 
-        #print "\n DB" 
         rate = detailed_balance(nkeep, rate, p)
-        #print rate_prev, p_prev, ml_prev
 
         # calculate likelihood
-        #print "\n ML"
         ml = likelihood(nkeep, rate, count, lagt)
-        #print rate_prev, p_prev, ml_prev
 
         # Boltzmann acceptance / rejection
         if ml < ml_prev:
@@ -586,7 +579,6 @@ def calc_mlrate(nkeep, count, lagt, rate_init):
             rate_prev = rate
             p_prev = p
             ml_prev = ml
-            #print rate_prev, p_prev, ml_prev
         else:
             delta_ml = ml - ml_prev
             beta = (1 - np.exp(k*10000))/(np.exp(k*nstep) - np.exp(k*10000))
@@ -596,10 +588,8 @@ def calc_mlrate(nkeep, count, lagt, rate_init):
                 rate_prev = rate
                 p_prev = p
                 ml_prev = ml
-            #    print rate_prev, p_prev, ml_prev
             #else:
             #    print "\n REJECT"
-            #    print rate_prev, p_prev, ml_prev
         nstep +=1
         if nstep > 10000:
             ml_cum.append(ml_prev)
@@ -648,9 +638,12 @@ def mc_move(nkeep, rate, peq):
                 j = np.random.randint(i + 1, nkeep - 1)
             except ValueError:
                 j = nkeep - 1
-            rate_new[j,i] = np.random.normal(loc=rate[j,i], scale=rate[j,i]) 
-            if np.all((rate_new - np.diag(np.diag(rate_new))) >= 0):
-                break
+            try:
+                rate_new[j,i] = np.random.normal(loc=rate[j,i], scale=rate[j,i]) 
+                if np.all((rate_new - np.diag(np.diag(rate_new))) >= 0):
+                    break
+            except ValueError:
+                pass
             #else:
             #    print rate_new - np.diag(np.diag(rate_new))
 

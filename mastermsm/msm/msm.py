@@ -474,7 +474,7 @@ class MSM(object):
             self.tauT, self.peqT, self.rvecsT, self.lvecsT = \
                     self.calc_eigsT(evecs=True)
 
-    def do_rate(self, method='Taylor', evecs=False):
+    def do_rate(self, method='Taylor', evecs=False, init=False):
         """ Calculates the rate matrix from the transition matrix. 
         
         We use a method based on a Taylor expansion.[1]_
@@ -488,6 +488,9 @@ class MSM(object):
             Which method one wants to use. Acceptable values are 'Taylor'
             and 'MLPB'.
 
+        init : array
+            Rate matrix to start optimization from.
+
         Notes
         -----
         ..[1] D. De Sancho, J. Mittal and R. B. Best, "Folding kinetics
@@ -500,9 +503,10 @@ class MSM(object):
         if method == 'Taylor':
             self.rate = msm_lib.calc_rate(nkeep, self.trans, self.lagt)
         elif method == 'MLPB':
-            rate_init =  msm_lib.calc_rate(nkeep, self.trans, self.lagt)#msm_lib.rand_rate(nkeep, self.count)
-            print rate_init
-
+            if type(init) == 'numpy.ndarray':
+                rate_init =  msm_lib.calc_rate(nkeep, self.trans, self.lagt)#msm_lib.rand_rate(nkeep, self.count)
+            else:
+                rate_init = init
             self.rate, self.ml = msm_lib.calc_mlrate(nkeep, self.count, self.lagt, rate_init)
 
         #print self.rate
