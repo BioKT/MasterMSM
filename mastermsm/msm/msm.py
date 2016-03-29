@@ -51,6 +51,7 @@ class SuperMSM(object):
         """
         self.data = trajs
         if isinstance(keys, list):
+            print "Using the following keys", keys
             self.keys = keys
         else:
             try:
@@ -329,8 +330,10 @@ class SuperMSM(object):
         """
         nkeep = len(self.keys)
         self.lbrate = self.calc_lbrate_multi()
-        self.evalsK, self.lvecsK, self.rvecsK = \
-                spla.eig(self.lbrate, left=True)
+        #    self.evalsK, self.lvecsK, self.rvecsK = \
+        #            spla.eig(self.lbrate, left=True)
+        self.tauK, self.peqK, self.lvecsK, self.rvecsK = \
+                msm_lib.calc_eigsK(self.lbrate, evecs=True)
         
     def calc_lbrate_multi(self):
         """ Calculates the rate matrix using the lifetime based method.
@@ -365,7 +368,6 @@ class SuperMSM(object):
 
         # run counting using multiprocessing
         result = pool.map(msm_lib.calc_count_worker, mpinput)
-
         pool.close()
         pool.join()
 
@@ -374,7 +376,6 @@ class SuperMSM(object):
 
         # calculate length of visits
         mpinput = [[x.distraj, x.dt, self.keys] for x in self.data]
-
         # run counting using multiprocessing
         pool = mp.Pool(processes=nproc)
         result = pool.map(msm_lib.calc_lifetime, mpinput)
@@ -386,20 +387,21 @@ class SuperMSM(object):
         for k in range(nkeys):
             kk = self.keys[k]
             visits = list(itertools.chain([x[kk] for x in result if kk in x.keys()]))
-            time = np.mean(visits)
-            #time = np.exp(np.mean([np.log(x) for x in visits]))
-            life[k] = time/len(visits)
+            if len(visits) > 0:
+                life[k] = np.mean([item for lst in visits for item in lst])
+        self.life = life
 
         # calculate lifetime based rates
         lbrate = np.zeros((nkeys,nkeys), float)
         for i in range(nkeys):
+            kk = self.keys[k]
             ni = np.sum([count[x,i] for x in range(nkeys) if x != i])
-            for j in range(nkeys):
-                lbrate[j,i] = count[j,i]/(ni*life[i])
+            if ni > 0:
+                for j in range(nkeys):
+                    lbrate[j,i] = count[j,i]/(ni*life[i])
             lbrate[i,i] = 0.
             lbrate[i,i] = -np.sum(lbrate[:,i])
         return lbrate 
-
 
 class MSM(object):
     """ A class for constructing an MSM at a specific lag time.
@@ -503,10 +505,12 @@ class MSM(object):
         if method == 'Taylor':
             self.rate = msm_lib.calc_rate(nkeep, self.trans, self.lagt)
         elif method == 'MLPB':
-            if type(init) == 'numpy.ndarray':
-                rate_init =  msm_lib.calc_rate(nkeep, self.trans, self.lagt)#msm_lib.rand_rate(nkeep, self.count)
-            else:
+            print init
+            print type(init)
+            if isinstance(init, np.ndarray):
                 rate_init = init
+            else:
+                rate_init =  msm_lib.calc_rate(nkeep, self.trans, self.lagt) #msm_lib.rand_rate(nkeep, self.count)
             self.rate, self.ml = msm_lib.calc_mlrate(nkeep, self.count, self.lagt, rate_init)
 
         #print self.rate

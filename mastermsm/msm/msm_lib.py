@@ -24,6 +24,69 @@ import cPickle
 #            diff+=1
 #    return diff
 
+def calc_eigsK(rate, evecs=False):
+    """ Calculate eigenvalues and eigenvectors of rate matrix K
+
+    Parameters:
+    -----------
+    rate : array
+        The rate matrix to use.
+
+    evecs : bool
+        Whether we want the eigenvectors of the rate matrix.
+
+    Returns:
+    -------
+    tauK : numpy array
+        Relaxation times from K.
+
+    peqK : numpy array
+        Equilibrium probabilities from K.
+
+    rvecsK : numpy array, optional
+        Right eigenvectors of K, sorted.
+
+    lvecsK : numpy array, optional
+        Left eigenvectors of K, sorted.
+
+    """
+    evalsK, lvecsK, rvecsK = \
+            spla.eig(rate, left=True)
+
+    # sort modes
+    nkeys = len(rate)
+    elistK = []
+    for i in range(nkeys):
+        elistK.append([i,np.real(evalsK[i])])
+    elistK.sort(esort)
+
+    # calculate relaxation times from K and T
+    tauK = []
+    for i in range(nkeys):
+        if np.abs(elistK[i][1]) > 1e-10:
+            iiK, lamK = elistK[i]
+            tauK.append(-1./lamK)
+            if len(tauK) == 1:
+                ieqK = iiK
+
+    # equilibrium probabilities
+    ieqK, eK = elistK[0]
+    peqK_sum = reduce(lambda x, y: x + y, map(lambda x: rvecsK[x,ieqK],
+        range(nkeys)))
+    peqK = rvecsK[:,ieqK]/peqK_sum
+
+    if not evecs:
+        return tauK, peqK
+    else:
+        # sort eigenvectors
+        rvecsK_sorted = np.zeros((nkeys, nkeys), float)
+        lvecsK_sorted = np.zeros((nkeys, nkeys), float)
+        for i in range(nkeys):
+            iiK, lamK = elistK[i]
+            rvecsK_sorted[:,i] = rvecsK[:,iiK]
+            lvecsK_sorted[:,i] = lvecsK[:,iiK]
+        return tauK, peqK, rvecsK_sorted, lvecsK_sorted
+
 def esort(ei, ej):
     """ Sorts eigenvalues.
 
@@ -341,7 +404,7 @@ def calc_lifetime(x):
 
     Returns
     -------
-    count : array
+    life : dict
 
     """
     # parse input from multiprocessing
@@ -349,7 +412,6 @@ def calc_lifetime(x):
     dt = x[1]
     keys = x[2]
     nkeys = len(keys)
-
     ltraj = len(distraj) 
 
     life = {}
@@ -366,8 +428,9 @@ def calc_lifetime(x):
             try:
                 life[state_i].append(l*dt)
             except KeyError:
-                life[state_i] = [l]
+                life[state_i] = [l*dt]
             l = 1
+    life[state_i].append(l*dt)
     return life 
 
 def do_boots_worker(x):
@@ -559,7 +622,7 @@ def calc_mlrate(nkeep, count, lagt, rate_init):
     #print ml_prev
 
     # initialize MC sampling
-    k = -0.002
+    k = -0.001
     #print "\n START"
     #print rate_prev, p_prev, ml_prev
     ml_cum = [ml_prev]
