@@ -616,12 +616,12 @@ def calc_mlrate(nkeep, count, lagt, rate_init):
 
     # initialize MC sampling
     print "\n START"
-    print rate_prev,"\n", p_prev, ml_prev
+    #print rate_prev,"\n", p_prev, ml_prev
     ml_ref = ml_prev
     ml_cum = [ml_prev]
     temp_cum = [1.]
     nstep = 0
-    nsteps = 25000
+    nsteps = 2000
     k = -5./nsteps
     nfreq = 100
     ncycle = 0
@@ -661,7 +661,7 @@ def calc_mlrate(nkeep, count, lagt, rate_init):
             print "\n END of cycle %g"%ncycle
             print "   acceptance :%g"%(np.float(accept)/nsteps)
             accept = 0
-            print rate_prev,"\n", p_prev, ml_prev
+            #print rate_prev,"\n", p_prev, ml_prev
             if ml_cum[-1] < ml_ref or ncycle < 4:
                 nstep = 0
                 ml_ref = ml_cum[-1]
@@ -717,7 +717,7 @@ def mc_move(nkeep, rate, peq):
             except ValueError:
                 j = nkeep - 1
             try:
-                scale = np.mean(np.abs(rate))*0.1
+                scale = np.mean(np.abs(rate>0.))*0.1
                 #rate_new[j,i] = np.random.normal(loc=rate[j,i], scale=scale)
                 rate_new[j,i] = rate[j,i] + (np.random.random() - 0.5)*scale
                 if np.all((rate_new - np.diag(np.diag(rate_new))) >= 0):
