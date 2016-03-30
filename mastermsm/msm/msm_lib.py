@@ -609,26 +609,24 @@ def calc_mlrate(nkeep, count, lagt, rate_init):
         peptide folding dynamics", J. Phys. Chem. B (2008).
 
     """
-
     # initialize rate matrix and equilibrium distribution enforcing detailed balance
-    
     p_prev = np.sum(count, axis=0)/np.float(np.sum(count))
-    #print p_prev
-                
     rate_prev = detailed_balance(nkeep, rate_init, p_prev)
-    #print rate_prev
-
     ml_prev = likelihood(nkeep, rate_prev, count, lagt)
-    #print ml_prev
 
     # initialize MC sampling
-    k = -0.001
-    #print "\n START"
-    #print rate_prev, p_prev, ml_prev
+    print "\n START"
+    print rate_prev,"\n", p_prev, ml_prev
+    ml_ref = ml_prev
     ml_cum = [ml_prev]
+    temp_cum = [1.]
     nstep = 0
+    nsteps = 25000
+    k = -5./nsteps
+    nfreq = 100
+    ncycle = 0
+    accept = 0
     while True:
-
         # random choice of MC move
         rate, p = mc_move(nkeep, rate_prev, p_prev)
         rate = detailed_balance(nkeep, rate, p)
@@ -638,29 +636,42 @@ def calc_mlrate(nkeep, count, lagt, rate_init):
 
         # Boltzmann acceptance / rejection
         if ml < ml_prev:
-            #print "\n ACCEPT"
+            #print " ACCEPT\n"
             rate_prev = rate
             p_prev = p
             ml_prev = ml
+            accept +=1
         else:
             delta_ml = ml - ml_prev
-            beta = (1 - np.exp(k*10000))/(np.exp(k*nstep) - np.exp(k*10000))
+            beta = (1 - np.exp(k*nsteps))/(np.exp(k*nstep) - np.exp(k*nsteps)) if ncycle > 2 else 1.
+#            beta = 1
             weight = np.exp(-beta*delta_ml)
             if np.random.random() < weight:
-            #    print "\n ACCEPT BOLTZMANN"
+                #print " ACCEPT BOLTZMANN\n"
                 rate_prev = rate
                 p_prev = p
                 ml_prev = ml
-            #else:
-            #    print "\n REJECT"
+                accept +=1
         nstep +=1
-        if nstep > 10000:
+    
+        if nstep > nsteps:
+            ncycle +=1
             ml_cum.append(ml_prev)
-            break
-        else:
+            temp_cum.append(1./beta)
+            print "\n END of cycle %g"%ncycle
+            print "   acceptance :%g"%(np.float(accept)/nsteps)
+            accept = 0
+            print rate_prev,"\n", p_prev, ml_prev
+            if ml_cum[-1] < ml_ref or ncycle < 4:
+                nstep = 0
+                ml_ref = ml_cum[-1]
+            else:
+                break
+        elif nstep % nfreq == 0:
             ml_cum.append(ml_prev)
+            temp_cum.append(1./beta)
 
-    return rate, ml_cum
+    return rate, ml_cum, temp_cum
 
 def mc_move(nkeep, rate, peq):
     """ Make MC move in either rate or equilibrium probability.
@@ -691,18 +702,24 @@ def mc_move(nkeep, rate, peq):
         rate_new = copy.deepcopy(rate)
         peq_new = copy.deepcopy(peq)
         if i < npeq:
-            peq_new[i] = np.random.normal(loc=peq[i], scale=peq[i])
+            #print " Peq"
+            scale = np.mean(peq)*0.1
+#            peq_new[i] = np.random.normal(loc=peq[i], scale=scale)
+            peq_new[i] = peq[i] + (np.random.random() - 0.5)*scale
             peq_new = peq_new/np.sum(peq_new)
             if np.all(peq_new > 0):
                 break
         else: 
+            #print " Rate"
             i = np.random.randint(0, nkeep - 1)
             try:
                 j = np.random.randint(i + 1, nkeep - 1)
             except ValueError:
                 j = nkeep - 1
             try:
-                rate_new[j,i] = np.random.normal(loc=rate[j,i], scale=rate[j,i]) 
+                scale = np.mean(np.abs(rate))*0.1
+                #rate_new[j,i] = np.random.normal(loc=rate[j,i], scale=scale)
+                rate_new[j,i] = rate[j,i] + (np.random.random() - 0.5)*scale
                 if np.all((rate_new - np.diag(np.diag(rate_new))) >= 0):
                     break
             except ValueError:
@@ -710,7 +727,6 @@ def mc_move(nkeep, rate, peq):
             #else:
             #    print rate_new - np.diag(np.diag(rate_new))
 
-    #print rate_new, peq_new
     return rate_new, peq_new
 
 

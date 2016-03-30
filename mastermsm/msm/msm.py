@@ -330,8 +330,6 @@ class SuperMSM(object):
         """
         nkeep = len(self.keys)
         self.lbrate = self.calc_lbrate_multi()
-        #    self.evalsK, self.lvecsK, self.rvecsK = \
-        #            spla.eig(self.lbrate, left=True)
         self.tauK, self.peqK, self.lvecsK, self.rvecsK = \
                 msm_lib.calc_eigsK(self.lbrate, evecs=True)
         
@@ -476,10 +474,11 @@ class MSM(object):
             self.tauT, self.peqT, self.rvecsT, self.lvecsT = \
                     self.calc_eigsT(evecs=True)
 
-    def do_rate(self, method='Taylor', evecs=False, init=False):
+    def do_rate(self, method='Taylor', evecs=False, init=False, report=False):
         """ Calculates the rate matrix from the transition matrix. 
         
-        We use a method based on a Taylor expansion.[1]_
+        We use a method based on a Taylor expansion [1] or the maximum likelihood
+        propagator based (MLPB) method [2].
 
         Parameters
         ----------
@@ -493,11 +492,17 @@ class MSM(object):
         init : array
             Rate matrix to start optimization from.
 
+        report : bool
+            Whether to report the results from MC in MLPB.
+
         Notes
         -----
         ..[1] D. De Sancho, J. Mittal and R. B. Best, "Folding kinetics
         and unfolded state dynamics of the GB1 hairpin from molecular
         simulation", J. Chem. Theory Comput. (2013).
+
+        ..[2] N.-V. Buchete and G. Hummer, "Coarse master equations for
+        peptide folding dynamics", J. Phys. Chem. B (2008).
 
         """
         #print "\n    Calculating rate matrix ..."
@@ -505,13 +510,23 @@ class MSM(object):
         if method == 'Taylor':
             self.rate = msm_lib.calc_rate(nkeep, self.trans, self.lagt)
         elif method == 'MLPB':
-            print init
-            print type(init)
             if isinstance(init, np.ndarray):
                 rate_init = init
+            elif init == 'random':
+                rate_init = np.random.rand(nkeep, nkeep)*1.e-2
             else:
-                rate_init =  msm_lib.calc_rate(nkeep, self.trans, self.lagt) #msm_lib.rand_rate(nkeep, self.count)
-            self.rate, self.ml = msm_lib.calc_mlrate(nkeep, self.count, self.lagt, rate_init)
+                rate_init =  msm_lib.calc_rate(nkeep, self.trans, self.lagt) 
+            self.rate, ml, beta = msm_lib.calc_mlrate(nkeep, self.count, self.lagt, rate_init)
+            if report:
+                fig, ax = plt.subplots(2,1, sharex=True)
+                ax[0].plot(ml)
+                ax[0].plot(np.ones(len(ml))*ml[0], '--')
+                ax[0].set_ylabel('-ln($L$)')
+                ax[1].plot(beta)
+                ax[1].set_ylim(0,1.05)
+                ax[1].set_xlim(0,len(ml))
+                ax[1].set_xlabel('MC steps x n$_{freq}$')
+                ax[1].set_ylabel(r'1/$\beta$')
 
         #print self.rate
         if not evecs: 
