@@ -7,7 +7,6 @@ import os
 import math
 #import copy
 #import operator
-import tempfile
 import cPickle
 import itertools
 import numpy as np
@@ -379,7 +378,6 @@ class SuperMSM(object):
         result = pool.map(msm_lib.calc_lifetime, mpinput)
         pool.close()
         pool.join()
-
         # reduce
         life = np.zeros((nkeys), float)
         for k in range(nkeys):
@@ -753,7 +751,7 @@ class MSM(object):
         """ Bootstrap the simulation data to calculate errors.
 
         We generate count matrices with the same number of counts
-        as the original by bootstrapping the simulation data. There
+        as the original by bootstrapping the simulation data. The
         time series of discrete states are chopped into chunks to 
         form a pool. From the pool we randomly select samples until
         the number of counts reaches the original.
@@ -777,38 +775,33 @@ class MSM(object):
         peq_err : array
             Errors for the equilibrium probabilities
 
+        trans_err : array
+            Errors for the transition matrix
+
         """
-        #print "\n Doing bootstrap tests:"
-        # how much data is here?
+
+        filetmp = msm_lib.traj_split(data=self.data, lagt=self.lagt)
         # generate trajectory list for easy handling 
-        trajs = [[x.distraj, x.dt] for x in self.data]
-        ltraj = [len(x[0])*x[1] for x in trajs]
-        timetot = np.sum(ltraj) # total simulation time
-        ncount = np.sum(self.count)
-        #print "     Total time: %g"%timetot
-        #print "     Number of trajectories: %g"%len(trajs)
-        #print "     Total number of transitions: %g"%ncount
-
-        # how many resamples?
-        #print "     Number of resamples: %g"%nboots
-
         # how many trajectory fragments?
-        ltraj_median = np.median(ltraj)
-        while ltraj_median > timetot/50. and ltraj_median > 10.*self.lagt:
-            trajs_new = []
-            #cut trajectories in chunks
-            for x in trajs:
-                lx = len(x[0])
-                trajs_new.append([x[0][:lx/2], x[1]])
-                trajs_new.append([x[0][lx/2:], x[1]])
-            trajs = trajs_new
-            ltraj = [len(x[0])*x[1] for x in trajs]
-            ltraj_median = np.median(ltraj)
-        # save trajs
-        fd, filetmp = tempfile.mkstemp()
-        file = os.fdopen(fd, 'wb')   
-        cPickle.dump(trajs, file, protocol=cPickle.HIGHEST_PROTOCOL)
-        file.close()
+#        trajs = [[x.distraj, x.dt] for x in self.data]
+#        ltraj = [len(x[0])*x[1] for x in trajs]
+#        ltraj_median = np.median(ltraj)
+#        timetot = np.sum(ltraj) # total simulation time
+#        while ltraj_median > timetot/50. and ltraj_median > 10.*self.lagt:
+#            trajs_new = []
+#            #cut trajectories in chunks
+#            for x in trajs:
+#                lx = len(x[0])
+#                trajs_new.append([x[0][:lx/2], x[1]])
+#                trajs_new.append([x[0][lx/2:], x[1]])
+#            trajs = trajs_new
+#            ltraj = [len(x[0])*x[1] for x in trajs]
+#            ltraj_median = np.median(ltraj)
+#        # save trajs
+#        fd, filetmp = tempfile.mkstemp()
+#        file = os.fdopen(fd, 'wb')   
+#        cPickle.dump(trajs, file, protocol=cPickle.HIGHEST_PROTOCOL)
+#        file.close()
 
         #print "     Number of trajectories: %g"%len(trajs)
         #print "     Median of trajectory length: %g"%ltraj_median
@@ -821,15 +814,17 @@ class MSM(object):
         #print "     ...running on %g processors"%nproc
         pool = mp.Pool(processes=nproc)
 
-        multi_boots_input = map(lambda x: [filetmp, self.keys, self.lagt, ncount, 
+        ncount = np.sum(self.count)
+        multi_boots_input = map(lambda x: [filetmp, self.keys, self.lagt, ncount,
             slider], range(nboots))
         # TODO: find more elegant way to pass arguments
-        result = pool.map(msm_lib.do_boots_worker, multi_boots_input)
+        result = pool.map(msm_lib.do_bootsT_worker, multi_boots_input)
         pool.close()
         pool.join()
         tauT_boots = [x[0] for x in result]
         peqT_boots = [x[1] for x in result]
-        keep_keys_boots = [x[2] for x in result]
+        trans_boots = [x[2] for x in result]
+        keep_keys_boots = [x[3] for x in result]
         # TODO. rewrite so that auxiliary functions are in msm_lib
         tau_ave = []
         tau_std = []
@@ -863,6 +858,28 @@ class MSM(object):
                 peq_ave.append(0.)
                 peq_std.append(0.)
 
+        trans_ave = []
+        trans_std = []
+        for k in self.keys:
+            trans_ave_keep = []
+            trans_std_keep = []
+            for kk in self.keys:
+                data = []
+                for n in range(nboots):
+                    try:
+                        l = keep_keys_boots[n].index(k)
+                        ll = keep_keys_boots[n].index(kk)
+                        data.append(trans_boots[n][l,ll])
+                    except IndexError:
+                        data.append(0.)
+                try:
+                    trans_ave_keep.append(np.mean(data))
+                    trans_std_keep.append(np.std(data))
+                except RuntimeWarning:
+                    trans_ave_keep.append(0.)
+                    trans_std_keep.append(0.)
+            trans_ave.append(trans_ave_keep)
+            trans_std.append(trans_std_keep)
         if plot:
             fig, ax = plt.subplots()
             ax.hist([x[0][0] for x in result])
@@ -881,6 +898,8 @@ class MSM(object):
         self.tau_std = tau_std
         self.peq_ave = peq_ave
         self.peq_std = peq_std
+        self.trans_ave = np.array(trans_ave)
+        self.trans_std = np.array(trans_std)
 
 ##    def pcca(self, lagt=None, N=2, optim=False):
 ##        """ Wrapper for carrying out PCCA clustering

@@ -7,6 +7,7 @@ import numpy as np
 import networkx as nx
 import os #, math
 import itertools
+import tempfile
 #import operator
 from scipy import linalg as spla
 
@@ -430,10 +431,51 @@ def calc_lifetime(x):
             except KeyError:
                 life[state_i] = [l*dt]
             l = 1
-    life[state_i].append(l*dt)
+    #try: 
+    #    life[state_i].append(l*dt)
+    #except KeyError:
+    #    life[state_i] = [l*dt]
     return life 
 
-def do_boots_worker(x):
+def traj_split(data=None, lagt=None, fdboots=None):
+    """ Splits trajectories into fragments for bootstrapping
+    
+    Parameters:
+    ----------
+    data : list
+        Set of trajectories used for building the MSM.
+
+    lagt : float
+        Lag time for building the MSM.
+
+    Returns:
+    -------
+    filetmp : file object
+        Open file object with trajectory fragments.
+    
+    """
+    trajs = [[x.distraj, x.dt] for x in data]
+    ltraj = [len(x[0])*x[1] for x in trajs]
+    ltraj_median = np.median(ltraj)
+    timetot = np.sum(ltraj) # total simulation time
+    while ltraj_median > timetot/50. and ltraj_median > 10.*lagt:
+        trajs_new = []
+        #cut trajectories in chunks
+        for x in trajs:
+            lx = len(x[0])
+            trajs_new.append([x[0][:lx/2], x[1]])
+            trajs_new.append([x[0][lx/2:], x[1]])
+        trajs = trajs_new
+        ltraj = [len(x[0])*x[1] for x in trajs]
+        ltraj_median = np.median(ltraj)
+    # save trajs
+    fd, filetmp = tempfile.mkstemp()
+    file = os.fdopen(fd, 'wb')   
+    cPickle.dump(trajs, file, protocol=cPickle.HIGHEST_PROTOCOL)
+    file.close()
+    return filetmp
+
+def do_bootsT_worker(x):
     """ Worker function for parallel bootstrapping.
 
     Parameters:
@@ -486,7 +528,7 @@ def do_boots_worker(x):
     peqT_sum = reduce(lambda x,y: x + y, map(lambda x: rvecsT[x,ieqT],
              range(nkeep)))
     peqT = rvecsT[:,ieqT]/peqT_sum
-    return tauT, peqT, keep_keys
+    return tauT, peqT, trans, keep_keys
 
 def calc_trans(nkeep=None, keep_states=None, count=None):
     """ Calculates transition matrix.
