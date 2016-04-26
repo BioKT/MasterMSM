@@ -475,7 +475,7 @@ def traj_split(data=None, lagt=None, fdboots=None):
     file.close()
     return filetmp
 
-def do_bootsT_worker(x):
+def do_boots_worker(x):
     """ Worker function for parallel bootstrapping.
 
     Parameters:
@@ -1033,3 +1033,127 @@ def propagateT_worker(x):
 #    popul = mat_mul_v(trans_pow, pini)
 #    return popul 
 #
+
+def peq_averages(peq_boots, keep_keys_boots, keys):
+    """ Return averages from bootstrap results 
+
+    Parameters:
+    ----------
+    peq_boots : list
+        List of Peq arrays
+
+    keep_keys_boots : list
+        List of key lists
+
+    keys : list
+        List of keys
+
+    Returns:
+    -------
+    peq_ave : array
+        Peq averages
+
+    peq_std : array
+        Peq std
+
+    """
+    peq_ave = []
+    peq_std = []
+    peq_indexes = []
+    peq_keep = []
+    for k in keys:
+        peq_indexes.append([x.index(k) if k in x else None for x in keep_keys_boots])
+    nboots = len(peq_boots)
+    for k in keys:
+        l = keys.index(k)
+        data = []
+        for n in range(nboots):
+            if peq_indexes[l][n] is not None:
+                data.append(peq_boots[n][peq_indexes[l][n]])
+        try:
+            peq_ave.append(np.mean(data))
+            peq_std.append(np.std(data))
+            peq_keep.append(data)
+        except RuntimeWarning:
+            peq_ave.append(0.)
+            peq_std.append(0.)
+    return peq_ave, peq_std
+
+def tau_averages(tau_boots, keys):
+    """ Return averages from bootstrap results
+
+    Parameters:
+    ----------
+    tau_boots : list
+        List of Tau arrays
+
+    Returns:
+    -------
+    tau_ave : array
+        Tau averages
+
+    tau_std : array
+        Tau std
+
+    """
+    tau_ave = []
+    tau_std = []
+    tau_keep = []
+    for n in range(len(keys)-1):
+        try:
+            data = [x[n] for x in tau_boots if not np.isnan(x[n])]
+            tau_ave.append(np.mean(data))
+            tau_std.append(np.std(data))
+            tau_keep.append(data)
+        except IndexError:
+            continue
+    return tau_ave, tau_std
+
+
+def matrix_ave(mat_boots, keep_keys_boots, keys):
+    """ Return averages from bootstrap results
+
+    Parameters:
+    ----------
+    mat_boots : list
+        List of matrix arrays
+
+    keep_keys_boots : list
+        List of key lists
+
+    keys : list
+        List of keys
+
+    Returns:
+    -------
+    mat_ave : array
+        Matrix averages
+
+    mat_std : array
+        Matrix std
+
+    """
+    mat_ave = []
+    mat_std = []
+    nboots = len(keep_keys_boots)
+    for k in keys:
+        mat_ave_keep = []
+        mat_std_keep = []
+        for kk in keys:
+            data = []
+            for n in range(nboots):
+                try:
+                    l = keep_keys_boots[n].index(k)
+                    ll = keep_keys_boots[n].index(kk)
+                    data.append(mat_boots[n][l,ll])
+                except IndexError:
+                    data.append(0.)
+            try:
+                mat_ave_keep.append(np.mean(data))
+                mat_std_keep.append(np.std(data))
+            except RuntimeWarning:
+                mat_ave_keep.append(0.)
+                mat_std_keep.append(0.)
+        mat_ave.append(mat_ave_keep)
+        mat_std.append(mat_std_keep)
+    return mat_ave, mat_std

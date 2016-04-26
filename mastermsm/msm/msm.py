@@ -311,33 +311,10 @@ class SuperMSM(object):
                 plt.savefig(out, dpi=300, format='png')
             plt.show()
 
-    def do_lbrate(self, evecs=False):
+    def do_lbrate(self, evecs=False, error=False):
         """ Calculates the rate matrix using the lifetime based method.
         
         We use the method described by Buchete and Hummer.[1]_
-
-        Parameters
-        ----------
-        evecs : bool
-            Whether we want the left eigenvectors of the rate matrix.
-
-        Notes
-        -----
-        ..[1] N.-V. Buchete and G. Hummer, "Coarse master equations for
-        peptide folding dynamics", J. Phys. Chem. B (2008).
-
-        """
-        nkeep = len(self.keys)
-        self.lbrate = self.calc_lbrate_multi()
-        self.tauK, self.peqK, self.lvecsK, self.rvecsK = \
-                msm_lib.calc_eigsK(self.lbrate, evecs=True)
-        
-    def calc_lbrate_multi(self):
-        """ Calculates the rate matrix using the lifetime based method.
-
-        We use the method described by Buchete and Hummer.[1]_
-        The calculation is run in parallel for the number of trajectories
-        using multiprocessing.
 
         Parameters
         ----------
@@ -397,7 +374,12 @@ class SuperMSM(object):
                     lbrate[j,i] = count[j,i]/(ni*life[i])
             lbrate[i,i] = 0.
             lbrate[i,i] = -np.sum(lbrate[:,i])
-        return lbrate 
+
+        self.lbrate = lbrate
+        self.tauK, self.peqK, self.lvecsK, self.rvecsK = \
+                msm_lib.calc_eigsK(self.lbrate, evecs=True)
+        if error:
+            self.lbrate_error = self.lbrate/np.sqrt(count)
 
 class MSM(object):
     """ A class for constructing an MSM at a specific lag time.
@@ -764,50 +746,10 @@ class MSM(object):
         nproc : int
             Number of processors to use
 
-        plot : bool
-            Whether we want to plot the distribution of tau / peq
-
-        Returns:
-        --------
-        tau_err : array
-            Errors for the relaxation times
-
-        peq_err : array
-            Errors for the equilibrium probabilities
-
-        trans_err : array
-            Errors for the transition matrix
-
         """
-
-        filetmp = msm_lib.traj_split(data=self.data, lagt=self.lagt)
         # generate trajectory list for easy handling 
-        # how many trajectory fragments?
-#        trajs = [[x.distraj, x.dt] for x in self.data]
-#        ltraj = [len(x[0])*x[1] for x in trajs]
-#        ltraj_median = np.median(ltraj)
-#        timetot = np.sum(ltraj) # total simulation time
-#        while ltraj_median > timetot/50. and ltraj_median > 10.*self.lagt:
-#            trajs_new = []
-#            #cut trajectories in chunks
-#            for x in trajs:
-#                lx = len(x[0])
-#                trajs_new.append([x[0][:lx/2], x[1]])
-#                trajs_new.append([x[0][lx/2:], x[1]])
-#            trajs = trajs_new
-#            ltraj = [len(x[0])*x[1] for x in trajs]
-#            ltraj_median = np.median(ltraj)
-#        # save trajs
-#        fd, filetmp = tempfile.mkstemp()
-#        file = os.fdopen(fd, 'wb')   
-#        cPickle.dump(trajs, file, protocol=cPickle.HIGHEST_PROTOCOL)
-#        file.close()
+        filetmp = msm_lib.traj_split(data=self.data, lagt=self.lagt)
 
-        #print "     Number of trajectories: %g"%len(trajs)
-        #print "     Median of trajectory length: %g"%ltraj_median
-
-        # now do it
-        #print "     ...doing bootstrap analysis"
         # multiprocessing options
         if not nproc:           
             nproc = mp.cpu_count()
@@ -818,88 +760,17 @@ class MSM(object):
         multi_boots_input = map(lambda x: [filetmp, self.keys, self.lagt, ncount,
             slider], range(nboots))
         # TODO: find more elegant way to pass arguments
-        result = pool.map(msm_lib.do_bootsT_worker, multi_boots_input)
+        result = pool.map(msm_lib.do_boots_worker, multi_boots_input)
         pool.close()
         pool.join()
         tauT_boots = [x[0] for x in result]
         peqT_boots = [x[1] for x in result]
         trans_boots = [x[2] for x in result]
         keep_keys_boots = [x[3] for x in result]
-        # TODO. rewrite so that auxiliary functions are in msm_lib
-        tau_ave = []
-        tau_std = []
-        tau_keep = []
-        for n in range(len(self.keys)-1):
-            try:
-                data = [x[n] for x in tauT_boots if not np.isnan(x[n])]
-                tau_ave.append(np.mean(data))
-                tau_std.append(np.std(data))
-                tau_keep.append(data)
-            except IndexError:
-                continue
-        peq_ave = []
-        peq_std = []
-        peq_indexes = []
-        peq_keep = []
-        for k in self.keys:
-            peq_indexes.append([x.index(k) if k in x else None for x in keep_keys_boots])
 
-        for k in self.keys:
-            l = self.keys.index(k)
-            data = []
-            for n in range(nboots):
-                if peq_indexes[l][n] is not None:
-                    data.append(peqT_boots[n][peq_indexes[l][n]])
-            try:
-                peq_ave.append(np.mean(data))
-                peq_std.append(np.std(data))
-                peq_keep.append(data)
-            except RuntimeWarning:
-                peq_ave.append(0.)
-                peq_std.append(0.)
-
-        trans_ave = []
-        trans_std = []
-        for k in self.keys:
-            trans_ave_keep = []
-            trans_std_keep = []
-            for kk in self.keys:
-                data = []
-                for n in range(nboots):
-                    try:
-                        l = keep_keys_boots[n].index(k)
-                        ll = keep_keys_boots[n].index(kk)
-                        data.append(trans_boots[n][l,ll])
-                    except IndexError:
-                        data.append(0.)
-                try:
-                    trans_ave_keep.append(np.mean(data))
-                    trans_std_keep.append(np.std(data))
-                except RuntimeWarning:
-                    trans_ave_keep.append(0.)
-                    trans_std_keep.append(0.)
-            trans_ave.append(trans_ave_keep)
-            trans_std.append(trans_std_keep)
-        if plot:
-            fig, ax = plt.subplots()
-            ax.hist([x[0][0] for x in result])
-#            ax[1].hist([x[0][1] for x in result])
-            ax.set_xlabel(r'$\tau_1$')
-#            ax[1].set_xlabel(r'$\tau_2$')
-
-       #     ax = fig.add_subplot(2,1,2)
-       #     binning = np.arange(np.log10(np.min(tau_ave)) - 1,np.log10(np.max(tau_ave)) + 1 , 0.05)
-       #     for n in range(10):
-       #         ax.hist(np.log10(tau_keep[n]), bins=binning)
-       #     ax.set_xlabel(r'$\tau$')
-       #     plt.show()
-
-        self.tau_ave = tau_ave
-        self.tau_std = tau_std
-        self.peq_ave = peq_ave
-        self.peq_std = peq_std
-        self.trans_ave = np.array(trans_ave)
-        self.trans_std = np.array(trans_std)
+        self.peq_ave, self.peq_std = msm_lib.peq_averages(peqT_boots, keep_keys_boots, self.keys)
+        self.tau_ave, self.tau_std = msm_lib.tau_averages(tauT_boots, self.keys)
+        self.trans_ave, self.trans_std = msm_lib.matrix_ave(trans_boots, keep_keys_boots, self.keys)
 
 ##    def pcca(self, lagt=None, N=2, optim=False):
 ##        """ Wrapper for carrying out PCCA clustering
