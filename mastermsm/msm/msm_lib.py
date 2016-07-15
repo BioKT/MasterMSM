@@ -274,76 +274,76 @@ def mat_mul_v(m, v):
 #                kon += K[target,i]*peq[i]
 #    return kon
 #
-#def run_commit(states, K, peq, FF, UU):
-#    """ calculate committors and reactive flux """
-#    nstates = len(states)
-#    # define end-states
-#    UUFF = UU + FF
-#    print "   definitely FF and UU states", UUFF
-#    I = filter(lambda x: x not in UU+FF, states)
-#    NI = len(I)
-#
-#    # calculate committors
-#    b = np.zeros([NI], float)
-#    A = np.zeros([NI,NI], float)
-#    for j_ind in range(NI):
-#        j = I[j_ind]
-#        summ = 0.
-#        for i in FF:
-#            summ += K[i][j]
-#        b[j_ind] = -summ
-#        for i_ind in range(NI):
-#            i = I[i_ind]
-#            A[j_ind][i_ind] = K[i][j]       
-#    # solve Ax=b
-#    Ainv = np.linalg.inv(A)
-#    x = np.dot(Ainv,b)
-#    #XX = np.dot(Ainv,A)
-#
-#    pfold = np.zeros(nstates,float)
-#    for i in range(nstates):
-#        if i in UU:
-#            pfold[i] = 0.0
-#        elif i in FF:
-#            pfold[i] = 1.0
-#        else:
-#            ii = I.index(i)
-#            pfold[i] = x[ii]
-#                        
-#    # stationary distribution
-#    pss = np.zeros(nstates,float)
-#    for i in range(nstates):
-#        pss[i] = (1-pfold[i])*peq[i]
-#
-#    # flux matrix and reactive flux
-#    J = np.zeros([nstates,nstates],float)
-#    for i in range(nstates):
-#        for j in range(nstates):
-#            J[j][i] = K[j][i]*peq[i]*(pfold[j]-pfold[i])
-#
-#    # dividing line is committor = 0.5 
-#    sum_flux = 0
-#    left = [x for x in range(nstates) if pfold[x] < 0.5]
-#    right = [x for x in range(nstates) if pfold[x] > 0.5]
-#    for i in left:
-#        for j in right:
-#            #print "%i --> %i: %10.4e"%(i, j, J[j][i])
-#            sum_flux += J[j][i]
-#
-#    # dividing line is reaching end states 
-#    #sum_flux = 0
-#    #for i in range(nstates):
-#    #    for j in range(nstates):
-#    #        if j in FF: #  dividing line corresponds to I to F transitions
-#    #            sum_flux += J[j][i]
-#    #print "   reactive flux: %g"%sum_flux
-#
-#    #sum of populations for all reactant states
-#    pU = np.sum([peq[x] for x in range(nstates) if pfold[x] < 0.5])
-# #   pU = np.sum(peq[filter(lambda x: x in UU, range(nstates))])
-#    kf = sum_flux/pU
-##    print "   binding rate: %g"%kf
-#    return J, pfold, sum_flux, kf
+def run_commit(states, K, peq, FF, UU):
+    """ calculate committors and reactive flux """
+    nstates = len(states)
+    # define end-states
+    UUFF = UU + FF
+    print "   definitely FF and UU states", UUFF
+    I = filter(lambda x: x not in UU+FF, states)
+    NI = len(I)
+
+    # calculate committors
+    b = np.zeros([NI], float)
+    A = np.zeros([NI,NI], float)
+    for j_ind in range(NI):
+        j = I[j_ind]
+        summ = 0.
+        for i in FF:
+            summ += K[i][j]
+        b[j_ind] = -summ
+        for i_ind in range(NI):
+            i = I[i_ind]
+            A[j_ind][i_ind] = K[i][j]       
+    # solve Ax=b
+    Ainv = np.linalg.inv(A)
+    x = np.dot(Ainv,b)
+    #XX = np.dot(Ainv,A)
+
+    pfold = np.zeros(nstates,float)
+    for i in range(nstates):
+        if i in UU:
+            pfold[i] = 0.0
+        elif i in FF:
+            pfold[i] = 1.0
+        else:
+            ii = I.index(i)
+            pfold[i] = x[ii]
+                        
+    # stationary distribution
+    pss = np.zeros(nstates,float)
+    for i in range(nstates):
+        pss[i] = (1-pfold[i])*peq[i]
+
+    # flux matrix and reactive flux
+    J = np.zeros([nstates,nstates],float)
+    for i in range(nstates):
+        for j in range(nstates):
+            J[j][i] = K[j][i]*peq[i]*(pfold[j]-pfold[i])
+
+    # dividing line is committor = 0.5 
+    sum_flux = 0
+    left = [x for x in range(nstates) if pfold[x] < 0.5]
+    right = [x for x in range(nstates) if pfold[x] > 0.5]
+    for i in left:
+        for j in right:
+            #print "%i --> %i: %10.4e"%(i, j, J[j][i])
+            sum_flux += J[j][i]
+
+    # dividing line is reaching end states 
+    #sum_flux = 0
+    #for i in range(nstates):
+    #    for j in range(nstates):
+    #        if j in FF: #  dividing line corresponds to I to F transitions
+    #            sum_flux += J[j][i]
+    #print "   reactive flux: %g"%sum_flux
+
+    #sum of populations for all reactant states
+    pU = np.sum([peq[x] for x in range(nstates) if pfold[x] < 0.5])
+ #   pU = np.sum(peq[filter(lambda x: x in UU, range(nstates))])
+    kf = sum_flux/pU
+#    print "   binding rate: %g"%kf
+    return J, pfold, sum_flux, kf
 
 def calc_count_worker(x):
     """ mp worker that calculates the count matrix from a trajectory

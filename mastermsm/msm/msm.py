@@ -321,6 +321,9 @@ class SuperMSM(object):
         evecs : bool
             Whether we want the left eigenvectors of the rate matrix.
 
+        error : bool
+            Whether to include errors or not.
+
         Notes
         -----
         ..[1] N.-V. Buchete and G. Hummer, "Coarse master equations for
@@ -810,34 +813,34 @@ class MSM(object):
 ##        tauK, peqK, rvecsK_sorted, lvecsK_sorted = self.rate.calc_eigs(lagt=lagt, evecs=False)
 #
 #
-#    def do_pfold(self, FF=None, UU=None, dot=False):
-#        """ Wrapper to calculate reactive fluxes and committors using the 
-#        Berzhkovskii-Hummer-Szabo method, J Chem Phys (2009)
-#        
-#        Parameters
-#        ----------
-#        FF : list
-#            Folded states.
-#        UU : list
-#            Unfolded states.
-#        dot : string
-#            Filename to output dot graph.
-#
-#        """
-#        #print "\n Calculating commitment probabilities and fluxes..."
-#        _states = range(len(self.keep_states))
-#        if isinstance(FF, list):
-#            _FF = [self.keep_keys.index(x) for x in FF]
-#        else:
-#            _FF = [self.keep_keys.index(FF)]
-#        if isinstance(UU, list):
-#            _UU = [self.keep_keys.index(x) for x in UU]
-#        else:
-#            _UU = [self.keep_keys.index(UU)]
-#
-#        # do the calculation
-#        self.J, self.pfold, self.sum_flux, self.kf = msm_lib.run_commit(_states, \
-        #                self.rate, self.peqK, _FF, _UU)
+    def do_pfold(self, FF=None, UU=None, dot=False):
+        """ Wrapper to calculate reactive fluxes and committors using the 
+        Berzhkovskii-Hummer-Szabo method, J Chem Phys (2009)
+        
+        Parameters
+        ----------
+        FF : list
+            Folded states.
+        UU : list
+            Unfolded states.
+        dot : string
+            Filename to output dot graph.
+
+        """
+        #print "\n Calculating commitment probabilities and fluxes..."
+        _states = range(len(self.keep_states))
+        if isinstance(FF, list):
+            _FF = [self.keep_keys.index(x) for x in FF]
+        else:
+            _FF = [self.keep_keys.index(FF)]
+        if isinstance(UU, list):
+            _UU = [self.keep_keys.index(x) for x in UU]
+        else:
+            _UU = [self.keep_keys.index(UU)]
+
+        # do the calculation
+        self.J, self.pfold, self.sum_flux, self.kf = msm_lib.run_commit(_states, \
+                       self.rate, self.peqK, _FF, _UU)
 ##        # write graph in dot format
 ##        if dot:
 ##            D = nx.DiGraph(J)
