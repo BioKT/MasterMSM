@@ -458,7 +458,7 @@ def traj_split(data=None, lagt=None, fdboots=None):
     ltraj = [len(x[0])*x[1] for x in trajs]
     ltraj_median = np.median(ltraj)
     timetot = np.sum(ltraj) # total simulation time
-    while ltraj_median > timetot/50. and ltraj_median > 10.*lagt:
+    while ltraj_median > timetot/20. and ltraj_median > 10.*lagt:
         trajs_new = []
         #cut trajectories in chunks
         for x in trajs:

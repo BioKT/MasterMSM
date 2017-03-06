@@ -732,7 +732,7 @@ class MSM(object):
                 lvecsT_sorted[:,i] = lvecsT[:,iiT]
             return tauT, peqT, rvecsT_sorted, lvecsT_sorted
 
-    def boots(self, nboots=100, nproc=None, plot=False, slider=False):
+    def boots(self, nboots=100, nproc=None, plot=False, sliding=True):
         """ Bootstrap the simulation data to calculate errors.
 
         We generate count matrices with the same number of counts
@@ -761,11 +761,12 @@ class MSM(object):
 
         ncount = np.sum(self.count)
         multi_boots_input = map(lambda x: [filetmp, self.keys, self.lagt, ncount,
-            slider], range(nboots))
+            sliding], range(nboots))
         # TODO: find more elegant way to pass arguments
         result = pool.map(msm_lib.do_boots_worker, multi_boots_input)
         pool.close()
         pool.join()
+        print result
         tauT_boots = [x[0] for x in result]
         peqT_boots = [x[1] for x in result]
         trans_boots = [x[2] for x in result]
@@ -773,7 +774,7 @@ class MSM(object):
 
         self.peq_ave, self.peq_std = msm_lib.peq_averages(peqT_boots, keep_keys_boots, self.keys)
         self.tau_ave, self.tau_std = msm_lib.tau_averages(tauT_boots, self.keys)
-        self.trans_ave, self.trans_std = msm_lib.matrix_ave(trans_boots, keep_keys_boots, self.keys)
+        #self.trans_ave, self.trans_std = msm_lib.matrix_ave(trans_boots, keep_keys_boots, self.keys)
 
 ##    def pcca(self, lagt=None, N=2, optim=False):
 ##        """ Wrapper for carrying out PCCA clustering
