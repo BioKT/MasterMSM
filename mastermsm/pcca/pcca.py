@@ -95,33 +95,34 @@ class PCCA(msm.MSM):
         mappedtraj = []
         keep_states = self.parent.keep_states
         keep_keys = self.parent.keep_keys
+        mt_states = []
         for data in self.parent.data:
-            mt = traj.TimeSeries()
-            mt.dt = data.dt
-            mt.time = data.time
-            mt.states = []
-            mt.filename = data.filename
-            for s in data.states:
+            for s in data.distraj:
                 try:
-                    mt.states.append([k for k, v in self.macros.iteritems() \
+                    mt_states.append([k for k, v in self.macros.iteritems() \
                            if keep_keys.index(s) in v][0])
                 except ValueError:
                     #print " not in keep_keys"
                     try:
-                        prev = mt.states[-1]
+                        prev = mt_states[-1]
                     except IndexError:
                         pass
+            mt = traj.TimeSeries(distraj=mt_states, dt=data.dt)
             mappedtraj.append(mt)
-        self.mappedtraj = mappedtraj
-        super(PCCA, self).__init__(self.mappedtraj, keys=range(self.N), lagt=self.parent.lagt)
+        super(PCCA, self).__init__(mappedtraj, keys=range(self.N), lagt=self.parent.lagt)
 
-#    def metastability(self):
-#        """ Calculate metastability according to the definition
-#        in Chodera et al, J Chem Phys, (2007)
-#
-#        """
-#        return pcca_lib.metastability(self.trans)
-#
+    def metastability(self):
+        """ Calculate metastability according to the definition
+        in Chodera et al, J Chem Phys, (2007)
+
+        Returns
+        -------
+        float 
+            Metastability
+
+        """
+        return pcca_lib.metastability(self.trans)
+
 #    def optim(self, nsteps=1, nwrite=None, fout="mc.dat"):
 #        """ MC optimization using the metastability Q as energy.
 #        
