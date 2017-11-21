@@ -1,4 +1,6 @@
 [![Build Status](https://travis-ci.org/daviddesancho/MasterMSM.svg?branch=develop)](https://travis-ci.org/daviddesancho/MasterMSM)
+[![Code Health](https://landscape.io/github/daviddesancho/MasterMSM/develop/landscape.svg?style=flat)](https://landscape.io/github/daviddesancho/MasterMSM/develop)
+
 
 MasterMSM
 =======
