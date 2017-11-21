@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/daviddesancho/MasterMSM.svg?branch=develop)](https://travis-ci.org/daviddesancho/MasterMSM)
+
 MasterMSM
 =======
 MasterMSM is a Python package for building master equation / Markov state models.
