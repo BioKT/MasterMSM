@@ -766,7 +766,6 @@ class MSM(object):
         result = pool.map(msm_lib.do_boots_worker, multi_boots_input)
         pool.close()
         pool.join()
-        print result
         tauT_boots = [x[0] for x in result]
         peqT_boots = [x[1] for x in result]
         trans_boots = [x[2] for x in result]
