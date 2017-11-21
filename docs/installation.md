@@ -4,8 +4,8 @@ repository and using the standard installation instructions for packages built
 using [Distutils](https://docs.python.org/2/distutils/index.html)
 
 ```
-git clone http://github.com/daviddesancho/bestmsm destination/bestmsm
-cd destination/bestmsm
+git clone http://github.com/daviddesancho/mastermsm destination/bestmsm
+cd destination/mastermsm
 python setup.py install --user
 ```
 ### Parallel processing in Python and MasterMSM

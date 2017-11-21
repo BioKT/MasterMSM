@@ -23,7 +23,7 @@ For each trajectory we will generate an instance of the `TimeSeries` class in th
 following way:
 
 ```
-from bestmsm import trajectory as traj
+from mastermsm import trajectory as traj
 
 mytraj0 = traj.TimeSeries("filename0")
 mytraj1 = traj.TimeSeries("filename1")
