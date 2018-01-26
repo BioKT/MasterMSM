@@ -2,6 +2,7 @@
 This file is part of the MasterMSM package.
 
 """
+import os
 import mdtraj as md
 import traj_lib
 
@@ -72,28 +73,34 @@ class TimeSeries(object):
 
     def _read_distraj(self, distraj=None, dt=None):
         """ Loads discrete trajectories directly.
-
-        Parameters
-        ----------
-        distraj : str, list
-            File or list with discrete trajectory. 
-
-        Returns
-        -------
-        mdtrajs : list
-            A list of mdtraj Trajectory objects.
-
-        """
+    
+            Parameters
+            ----------
+            distraj : str, list
+                File or list with discrete trajectory. 
+    
+            Returns
+            -------
+            mdtrajs : list
+                A list of mdtraj Trajectory objects.
+    
+       """
         if isinstance(distraj, list):
+            print "got here"
             cstates = distraj
             if dt is None:
                 dt = 1.
             return cstates, dt
-        elif isinstance(distraj, list):
+    
+        elif os.path.isfile(distraj):
             raw = open(distraj, "r").readlines()
-            try: 
+            try:
                 cstates = [x.split()[1] for x in raw]
-                dt = float(raw[1][0]) - float(raw[2][0])
+                dt =  float(raw[2].split()[0]) - float(raw[1].split()[0])
+                try: # make them integers if you can
+                    cstates = [int(x) for x in cstates]
+                except ValueError:
+                    pass
                 return cstates, dt
             except IndexError:
                 cstates = [x.split()[0] for x in raw]
