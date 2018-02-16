@@ -322,21 +322,21 @@ def run_commit(states, K, peq, FF, UU):
             J[j][i] = K[j][i]*peq[i]*(pfold[j]-pfold[i])
 
     # dividing line is committor = 0.5 
-    sum_flux = 0
-    left = [x for x in range(nstates) if pfold[x] < 0.5]
-    right = [x for x in range(nstates) if pfold[x] > 0.5]
-    for i in left:
-        for j in right:
-            #print "%i --> %i: %10.4e"%(i, j, J[j][i])
-            sum_flux += J[j][i]
+    #sum_flux = 0
+    #left = [x for x in range(nstates) if pfold[x] < 0.5]
+    #right = [x for x in range(nstates) if pfold[x] > 0.5]
+    #for i in left:
+    #    for j in right:
+    #        #print "%i --> %i: %10.4e"%(i, j, J[j][i])
+    #        sum_flux += J[j][i]
 
     # dividing line is reaching end states 
-    #sum_flux = 0
-    #for i in range(nstates):
-    #    for j in range(nstates):
-    #        if j in FF: #  dividing line corresponds to I to F transitions
-    #            sum_flux += J[j][i]
-    #print "   reactive flux: %g"%sum_flux
+    sum_flux = 0
+    for i in range(nstates):
+        for j in range(nstates):
+            if j in FF: #  dividing line corresponds to I to F transitions
+                sum_flux += J[j][i]
+    print "   reactive flux: %g"%sum_flux
 
     #sum of populations for all reactant states
     pU = np.sum([peq[x] for x in range(nstates) if pfold[x] < 0.5])
