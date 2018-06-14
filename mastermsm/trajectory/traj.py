@@ -86,7 +86,6 @@ class TimeSeries(object):
     
        """
         if isinstance(distraj, list):
-            print "got here"
             cstates = distraj
             if dt is None:
                 dt = 1.
