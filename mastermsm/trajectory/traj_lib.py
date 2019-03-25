@@ -50,8 +50,8 @@ def discrete_rama(phi, psi, seq=None, bounds=None, states=['A', 'E', 'L']):
     
     res_idx = 0
     if len(phi[0]) != len(psi[0]):
-        print " Different number of phi and psi dihedrals"
-        print " STOPPING HERE"
+        print (" Different number of phi and psi dihedrals")
+        print (" STOPPING HERE")
         sys.exit()
 
     cstates = []
