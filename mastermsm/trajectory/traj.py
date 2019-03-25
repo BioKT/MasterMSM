@@ -27,21 +27,21 @@ class TimeSeries(object):
     dt : float
         The time step
     
-
-
     Note
     ----
     Further documentation on mdtraj can be found in [1]_.
 
     References
     ----------
-    .. [1] R. T. McGibbon, K. A. Beauchamp, C. R. Schwantes, L. P. Wang, C. X.
-    Hernandez, M. P. Harrigan, T. J. Lane, J. M. Swails, and V. S. Pande, "MDTraj: 
-    a modern, open library for the analysis of molecular dynamics trajectories",
-    bioRxiv (2014).
+    .. [1] McGibbon, RT., Beauchamp, KA., Harrigan, MP., Klein, C.,
+    Swails, JM., Hernandez, CX., Schwantes, CR., Wang, LP., Lane, 
+    TJ. and Pande, VS." 
+    MDTraj: A Modern Open Library for the Analysis of
+    Molecular Dynamics Trajectories", Biophys. J. (2015).
 
     
     """
+
     def __init__(self, top=None, traj=None, method=None, dt=None, distraj=None):
         """
         Parameters
