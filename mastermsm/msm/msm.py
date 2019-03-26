@@ -50,7 +50,7 @@ class SuperMSM(object):
         """
         self.data = trajs
         if isinstance(keys, list):
-            print "Using the following keys", keys
+            print ("Using the following keys", keys)
             self.keys = keys
         else:
             try:
@@ -95,10 +95,10 @@ class SuperMSM(object):
         
         """
         try:
-            print "\n Building MSM from \n", [x.file_name for x in self.data]
+            print ("\n Building MSM from \n", [x.file_name for x in self.data])
         except AttributeError:
             pass
-        print "     # states: %g"%(len(self.keys))
+        print ("     # states: %g"%(len(self.keys)))
 
     def do_msm(self, lagt, sliding=True, sym=False):
         """ 
@@ -275,10 +275,10 @@ class SuperMSM(object):
             try:
                 pMD.append((lagt, float(num)/den))
             except ZeroDivisionError:
-                print " ZeroDivisionError: pMD.append((lagt, float(num)/den)) " 
-                print " lagt",lagt
-                print " num", num
-                print " den", den
+                print (" ZeroDivisionError: pMD.append((lagt, float(num)/den)) ")
+                print (" lagt",lagt)
+                print (" num", num)
+                print (" den", den)
                 sys.exit()
 
             if error:
@@ -431,7 +431,7 @@ class MSM(object):
         """
         self.count = self.calc_count_multi(sliding=sliding)
         if sym:
-            print " symmetrizing"
+            print (" symmetrizing")
             self.count += self.count.transpose()
         self.keep_states, self.keep_keys = self.check_connect()
 
@@ -1145,8 +1145,8 @@ class MSM(object):
                             filter(lambda x: x.split()[0] not in ["#","@"],
                                 open(p0, "r").readlines())]
                 except TypeError:
-                    print "    p0 is not file"
-                    print "    exiting here"
+                    print ("    p0 is not file")
+                    print ("    exiting here")
                     return
         elif init is not None:
             #print "    initializing all population in states"
@@ -1154,8 +1154,8 @@ class MSM(object):
             pini = [self.peqT[x] if self.keep_keys[x] in init else 0. for x in range(nkeep)]
         # check normalization and size
         if len(pini) != nkeep:
-            print "    initial population vector and state space have different sizes"
-            print "    stopping here" 
+            print ("    initial population vector and state space have different sizes")
+            print ("    stopping here") 
             return
         else:
             sum_pini = np.sum(pini)
@@ -1237,8 +1237,8 @@ class MSM(object):
                             filter(lambda x: x.split()[0] not in ["#","@"],
                                 open(p0, "r").readlines())]
                 except TypeError:
-                    print "    p0 is not file"
-                    print "    exiting here"
+                    print ("    p0 is not file")
+                    print ("    exiting here")
                     return
         elif init is not None:
             #print "    initializing all population in states"
@@ -1246,8 +1246,8 @@ class MSM(object):
             pini = [self.peqT[x] if self.keep_keys[x] in init else 0. for x in range(nkeep)]
         # check normalization and size
         if len(pini) != nkeep:
-            print "    initial population vector and state space have different sizes"
-            print "    stopping here" 
+            print ("    initial population vector and state space have different sizes")
+            print ("    stopping here") 
             return
         else:
             sum_pini = np.sum(pini)
