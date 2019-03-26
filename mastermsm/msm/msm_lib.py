@@ -279,7 +279,7 @@ def run_commit(states, K, peq, FF, UU):
     nstates = len(states)
     # define end-states
     UUFF = UU + FF
-    print "   definitely FF and UU states", UUFF
+    print ("   definitely FF and UU states", UUFF)
     I = filter(lambda x: x not in UU+FF, states)
     NI = len(I)
 
@@ -336,7 +336,7 @@ def run_commit(states, K, peq, FF, UU):
         for j in range(nstates):
             if j in FF: #  dividing line corresponds to I to F transitions
                 sum_flux += J[j][i]
-    print "   reactive flux: %g"%sum_flux
+    print ("   reactive flux: %g"%sum_flux)
 
     #sum of populations for all reactant states
     pU = np.sum([peq[x] for x in range(nstates) if pfold[x] < 0.5])
@@ -657,7 +657,7 @@ def calc_mlrate(nkeep, count, lagt, rate_init):
     ml_prev = likelihood(nkeep, rate_prev, count, lagt)
 
     # initialize MC sampling
-    print "\n START"
+    print ("\n START")
     #print rate_prev,"\n", p_prev, ml_prev
     ml_ref = ml_prev
     ml_cum = [ml_prev]
@@ -700,7 +700,7 @@ def calc_mlrate(nkeep, count, lagt, rate_init):
             ncycle +=1
             ml_cum.append(ml_prev)
             temp_cum.append(1./beta)
-            print "\n END of cycle %g"%ncycle
+            print ("\n END of cycle %g"%ncycle)
             print "   acceptance :%g"%(np.float(accept)/nsteps)
             accept = 0
             #print rate_prev,"\n", p_prev, ml_prev
