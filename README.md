@@ -1,3 +1,4 @@
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/8de7cd9c56ac4b35b79b9b27c5c6a08e)](https://app.codacy.com/app/daviddesancho/MasterMSM?utm_source=github.com&utm_medium=referral&utm_content=daviddesancho/MasterMSM&utm_campaign=Badge_Grade_Dashboard)
 [![Build Status](https://travis-ci.org/daviddesancho/MasterMSM.svg?branch=develop)](https://travis-ci.org/daviddesancho/MasterMSM)
 [![Documentation Status](https://readthedocs.org/projects/mastermsm/badge/?version=develop)](https://mastermsm.readthedocs.io/en/develop/?badge=develop)
 
