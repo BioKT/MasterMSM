@@ -1,5 +1,4 @@
 [![Build Status](https://travis-ci.org/daviddesancho/MasterMSM.svg?branch=develop)](https://travis-ci.org/daviddesancho/MasterMSM)
-[![Code Health](https://landscape.io/github/daviddesancho/MasterMSM/develop/landscape.svg?style=flat)](https://landscape.io/github/daviddesancho/MasterMSM/develop)
 [![Documentation Status](https://readthedocs.org/projects/mastermsm/badge/?version=develop)](https://mastermsm.readthedocs.io/en/develop/?badge=develop)
 
 
