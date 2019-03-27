@@ -5,7 +5,7 @@
 MasterMSM
 =======
 MasterMSM is a Python package for building master equation / Markov state models.
-You can read the documentation [here](http://daviddesancho.github.io/MasterMSM).
+You can read the documentation [here](https://mastermsm.readthedocs.io).
 
 Contributors
 ------------
