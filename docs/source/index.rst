@@ -22,6 +22,7 @@ the chemical master equation. This package will allow you to:
    :maxdepth: 2 
    :caption: Contents:
 
+   about
    installation
    support
 
