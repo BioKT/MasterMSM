@@ -13,4 +13,3 @@ introduced by Buchete and Hummer
 The main difference relies in that instead of using transition matrices we focus in
 rate matrices, which determine the time evolution of the system as described by
 the chemical master equation.
-
