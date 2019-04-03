@@ -28,7 +28,7 @@ import pickle
 def calc_eigsK(rate, evecs=False):
     """ Calculate eigenvalues and eigenvectors of rate matrix K
 
-    Parameters:
+    Parameters
     -----------
     rate : array
         The rate matrix to use.
@@ -440,7 +440,7 @@ def calc_lifetime(x):
 def traj_split(data=None, lagt=None, fdboots=None):
     """ Splits trajectories into fragments for bootstrapping
     
-    Parameters:
+    Parameters
     ----------
     data : list
         Set of trajectories used for building the MSM.
@@ -478,7 +478,7 @@ def traj_split(data=None, lagt=None, fdboots=None):
 def do_boots_worker(x):
     """ Worker function for parallel bootstrapping.
 
-    Parameters:
+    Parameters
     ----------
     x : list
         A list containing the trajectory filename, the states, the lag time
@@ -1037,7 +1037,7 @@ def propagateT_worker(x):
 def peq_averages(peq_boots, keep_keys_boots, keys):
     """ Return averages from bootstrap results 
 
-    Parameters:
+    Parameters
     ----------
     peq_boots : list
         List of Peq arrays
@@ -1082,7 +1082,7 @@ def peq_averages(peq_boots, keep_keys_boots, keys):
 def tau_averages(tau_boots, keys):
     """ Return averages from bootstrap results
 
-    Parameters:
+    Parameters
     ----------
     tau_boots : list
         List of Tau arrays
@@ -1113,7 +1113,7 @@ def tau_averages(tau_boots, keys):
 def matrix_ave(mat_boots, keep_keys_boots, keys):
     """ Return averages from bootstrap results
 
-    Parameters:
+    Parameters
     ----------
     mat_boots : list
         List of matrix arrays
