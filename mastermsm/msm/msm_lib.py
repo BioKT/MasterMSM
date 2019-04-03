@@ -12,7 +12,7 @@ import tempfile
 from scipy import linalg as spla
 
 #import multiprocessing as mp
-import cPickle
+import pickle
 
 ## thermal energy (kJ/mol)
 #beta = 1./(8.314e-3*300)
@@ -471,7 +471,7 @@ def traj_split(data=None, lagt=None, fdboots=None):
     # save trajs
     fd, filetmp = tempfile.mkstemp()
     file = os.fdopen(fd, 'wb')   
-    cPickle.dump(trajs, file, protocol=cPickle.HIGHEST_PROTOCOL)
+    pickle.dump(trajs, file, protocol=cPickle.HIGHEST_PROTOCOL)
     file.close()
     return filetmp
 
@@ -490,7 +490,7 @@ def do_boots_worker(x):
     filetmp, keys, lagt, ncount, slider = x
     nkeys = len(keys)
     finp = open(filetmp, 'rb')
-    trans = cPickle.load(finp)
+    trans = pickle.load(finp)
     finp.close()
     ltrans = len(trans)
     np.random.seed()
@@ -701,7 +701,7 @@ def calc_mlrate(nkeep, count, lagt, rate_init):
             ml_cum.append(ml_prev)
             temp_cum.append(1./beta)
             print ("\n END of cycle %g"%ncycle)
-            print "   acceptance :%g"%(np.float(accept)/nsteps)
+            print ("   acceptance :%g"%(np.float(accept)/nsteps))
             accept = 0
             #print rate_prev,"\n", p_prev, ml_prev
             if ml_cum[-1] < ml_ref or ncycle < 4:
