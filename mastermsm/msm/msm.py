@@ -7,7 +7,7 @@ import os
 import math
 #import copy
 #import operator
-import cPickle
+#import pickle
 import itertools
 import numpy as np
 import networkx as nx
