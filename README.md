@@ -17,10 +17,6 @@ Installation
     cd destination/mastermsm
     python setup.py install --user
 
-When running you will probably have to use
-
-    export VECLIB_MAXIMUM_THREADS=1
-
 External libraries
 ------------------
     mdtraj : https://mdtraj.org
