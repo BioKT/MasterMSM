@@ -2,7 +2,3 @@ numpy
 scipy
 matplotlib
 networkx
-sphinx
-itertools
-multiprocessing
-pickle
