@@ -1,7 +1,8 @@
 Installation
 ============
-You can install MasterMSM by simply downloading the package from the GitHub
-repository and using the standard installation instructions for packages built
+You can install MasterMSM by simply downloading the package from the 
+`GitHub repository <https://github.com/daviddesancho/MasterMSM>`
+and using the standard installation instructions for packages built
 using `Distutils <https://docs.python.org/3/distutils/index.html>`_.
 
 .. code-block:: bash

@@ -3,3 +3,7 @@ scipy
 matplotlib
 networkx
 sphinx
+mdtraj
+itertools
+multiprocessing
+pickle
