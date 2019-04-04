@@ -3,7 +3,7 @@
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/facdc755bf3c4c269f55738117db4c38)](https://www.codacy.com/app/daviddesancho/MasterMSM?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=daviddesancho/MasterMSM&amp;utm_campaign=Badge_Grade)
 
 MasterMSM
-=======
+=========
 MasterMSM is a Python package for building master equation / Markov state models.
 You can read the documentation [here](https://mastermsm.readthedocs.io).
 
