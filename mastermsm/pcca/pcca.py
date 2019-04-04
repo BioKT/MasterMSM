@@ -3,7 +3,7 @@ import copy
 from mastermsm.msm import msm 
 from mastermsm.trajectory import traj
 #import msm_lib
-import pcca_lib
+import mastermsm.pcca.pcca_lib
 
 """ 
 This file is part of the MasterMSM package.
