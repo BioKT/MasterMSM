@@ -14,7 +14,8 @@ import networkx as nx
 import scipy.linalg as spla
 import matplotlib.pyplot as plt
 import multiprocessing as mp
-import msm_lib
+import mastermsm.msm.msm_lib
+#msm_lib
 #from operator import itemgetter
 
 class SuperMSM(object):
