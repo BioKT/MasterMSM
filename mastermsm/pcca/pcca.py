@@ -73,13 +73,13 @@ class PCCA(msm.MSM):
             elif method is "sign":
                 macro_new, vals = pcca_lib.split_sign(macros, lvecs[:,n])
             macros = copy.deepcopy(macro_new)
-        print "\n Initial membership of microstates to macrostates:"
+        print ("\n Initial membership of microstates to macrostates:")
         if len(self.parent.keep_keys) < 100:
             for k,v in macros.iteritems():
-                print k, [self.parent.keep_keys[x] for x in v]
+                print (k, [self.parent.keep_keys[x] for x in v])
         else:
             for k,v in macros.iteritems():
-                print k,":", len(v)
+                print (k,":", len(v))
         return macros
 
     def map_trajectory(self):
@@ -91,7 +91,7 @@ class PCCA(msm.MSM):
             The mapped trajectory.
 
         """
-        print "\n Mapping trajectory onto macrostates..."
+        print ("\n Mapping trajectory onto macrostates...")
         mappedtraj = []
         keep_states = self.parent.keep_states
         keep_keys = self.parent.keep_keys
