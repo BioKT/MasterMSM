@@ -5,7 +5,7 @@ have become one of the key methodologies to analyze data from molecular dynamics
 (MD) simulations. You can find information about MSMs in general in the following
 volume
 
-* `An Introduction to Markov State Models and Their Application to Long Timescale Molecular Simulation <http://dx.doi.org/10.1007/978-94-007-7606-7>`_, edited by Pande, Bowman and Noe. 
+* `An Introduction to Markov State Models and Their Application to Long Timescale Molecular Simulation <http://dx.doi.org/10.1007/978-94-007-7606-7>`_, edited by Pande, Bowman and Noe (Springer, 2014). 
 
 The MasterMSM library brings a different flavour of MSMs, based on the methods 
 introduced by Buchete and Hummer 
