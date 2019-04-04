@@ -32,13 +32,13 @@ def discrete_rama(phi, psi, seq=None, bounds=None, states=['A', 'E', 'L']):
 
     Notes
     -----
-    Here we follow Buchete and Hummer for the assignment procedure.[1]_
+    Here we follow Buchete and Hummer for the assignment procedure [1]_ .
 
-    ..[1] N. V. Buchete and G. Hummer, "Coarse master equations for 
-    peptide folding dynamics", J. Phys. Chem. B. (2008).
+.. [1] N. V. Buchete and G. Hummer, "Coarse master equations for peptide folding 
+    dynamics", J. Phys. Chem. B. (2008).
+
 
     """
-
     if bounds is None:
         TBA_bounds = {}
         if 'A' in states:
@@ -92,6 +92,7 @@ def discrete_ramagrid(phi, psi, nbins):
     -------
     cstates : list
         The sequence of coarse states.
+
 
     """
 

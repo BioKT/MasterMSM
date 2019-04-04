@@ -39,9 +39,7 @@ class TimeSeries(object):
     MDTraj: A Modern Open Library for the Analysis of
     Molecular Dynamics Trajectories", Biophys. J. (2015).
 
-    
     """
-
     def __init__(self, top=None, traj=None, method=None, dt=None, distraj=None):
         """
         Parameters
