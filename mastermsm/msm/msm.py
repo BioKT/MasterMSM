@@ -105,7 +105,7 @@ class SuperMSM(object):
         """ 
         Construct MSM for specific value of lag time.
         
-        Parameters:
+        Parameters
         -----------
         lagt : float
             The lag time.
@@ -124,7 +124,7 @@ class SuperMSM(object):
             error=True, time=None, out=None):
         """ Carry out convergence test for relaxation times.
 
-        Parameters:
+        Parameters
         -----------
         plot : bool
             Whether the lag time dependence of the relaxation times should be plotted.
@@ -200,7 +200,7 @@ class SuperMSM(object):
 
         We follow the procedure described by Prinz et al.[1]_
 
-        Parameters:
+        Parameters
         -----------
         init : str
             The states from which the relaxation should be simulated.
@@ -621,12 +621,12 @@ class MSM(object):
     def calc_eigsK(self, evecs=False):
         """ Calculate eigenvalues and eigenvectors of rate matrix K
 
-        Parameters:
+        Parameters
         -----------
         evecs : bool
             Whether we want the eigenvectors of the rate matrix.
 
-        Returns:
+        Returns
         -------
         tauK : numpy array
             Relaxation times from K.
