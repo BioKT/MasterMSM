@@ -24,17 +24,9 @@ the chemical master equation. This package will allow you to:
 
    about
    installation
+   documentation
    support
 
-
-Reference
-=========
-
-.. toctree::
-   :maxdepth: 2
-
-   trajectory
-   msm 
 
 
 Indices and tables
