@@ -16,12 +16,33 @@ This module contains everything necessary to get your time series data
 into MasterMSM. The main class object within this module is the TimeSeries
 object.
 
+.. currentmodule:: mastermsm
+
+.. autosummary::
+    :toctree: 
+
+    trajectory 
+
+
 MSM module
 ----------
+.. currentmodule:: mastermsm
+
+.. autosummary::
+    :toctree: 
+
+    msm 
+
 
 PCCA module
 -----------
+.. currentmodule:: mastermsm
 
+.. autosummary::
+    :toctree: 
+
+    pcca
+    
 Examples
 --------
 We have put together a few simple Python notebooks to help you learn the basics
