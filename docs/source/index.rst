@@ -19,7 +19,7 @@ the chemical master equation. This package will allow you to:
 * Carry out sensitivity analysis of networks.
 
 .. toctree::
-   :maxdepth: 2 
+   :maxdepth:  3
    :caption: Contents:
 
    about

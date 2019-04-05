@@ -29,7 +29,7 @@ MSM module
 .. currentmodule:: mastermsm
 
 .. autosummary::
-    :toctree: 
+    :toctree: modules 
 
     msm 
 
