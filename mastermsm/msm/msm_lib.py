@@ -8,6 +8,7 @@ import networkx as nx
 import os #, math
 import itertools
 import tempfile
+from functools import reduce
 #import operator
 from scipy import linalg as spla
 

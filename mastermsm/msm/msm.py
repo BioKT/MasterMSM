@@ -5,6 +5,7 @@ This file is part of the MasterMSM package.
 import os
 #import sys
 import math
+from functools import reduce
 #import copy
 #import operator
 #import pickle
@@ -14,8 +15,7 @@ import networkx as nx
 import scipy.linalg as spla
 import matplotlib.pyplot as plt
 import multiprocessing as mp
-import mastermsm.msm.msm_lib
-#msm_lib
+from ..msm import msm_lib
 #from operator import itemgetter
 
 class SuperMSM(object):
