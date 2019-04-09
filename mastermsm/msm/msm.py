@@ -765,7 +765,6 @@ class MSM(object):
         ncount = np.sum(self.count)
         multi_boots_input = list(map(lambda x: [filetmp, self.keys, self.lagt, ncount,
             sliding], range(nboots)))
-        print (multi_boots_input)
         # TODO: find more elegant way to pass arguments
         result = pool.map(msm_lib.do_boots_worker, multi_boots_input)
         pool.close()
