@@ -508,7 +508,7 @@ def do_boots_worker(x):
     #keep_states = sorted(nx.strongly_connected_components(D)[0])
     keep_states = list(sorted(list(nx.strongly_connected_components(D)), 
                 key = len, reverse=True)[0])
-    keep_keys = map(lambda x: keys[x], keep_states)
+    keep_keys = list(map(lambda x: keys[x], keep_states))
     nkeep = len(keep_keys)
     trans = np.zeros([nkeep, nkeep], float)
     for i in range(nkeep):
