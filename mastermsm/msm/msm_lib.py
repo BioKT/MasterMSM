@@ -60,7 +60,7 @@ def calc_eigsK(rate, evecs=False):
     elistK = []
     for i in range(nkeys):
         elistK.append([i,np.real(evalsK[i])])
-    elistK.sort(esort)
+    elistK.sort(key=esort)
 
     # calculate relaxation times from K and T
     tauK = []
@@ -520,7 +520,7 @@ def do_boots_worker(x):
     elistT = []
     for i in range(nkeep):
         elistT.append([i,np.real(evalsT[i])])
-    elistT.sort(esort)
+    elistT.sort(key=esort)
     tauT = []
     for i in range(1,nkeep):
         _, lamT = elistT[i]
