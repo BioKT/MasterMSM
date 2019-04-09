@@ -8,7 +8,7 @@ import networkx as nx
 import os #, math
 import itertools
 import tempfile
-from functools import reduce
+from functools import reduce, cmp_to_key 
 #import operator
 from scipy import linalg as spla
 
@@ -60,7 +60,7 @@ def calc_eigsK(rate, evecs=False):
     elistK = []
     for i in range(nkeys):
         elistK.append([i,np.real(evalsK[i])])
-    elistK.sort(key=esort)
+    elistK.sort(key=cmp_to_key(esort))
 
     # calculate relaxation times from K and T
     tauK = []
@@ -520,7 +520,7 @@ def do_boots_worker(x):
     elistT = []
     for i in range(nkeep):
         elistT.append([i,np.real(evalsT[i])])
-    elistT.sort(key=esort)
+    elistT.sort(key=cmp_to_key(esort))
     tauT = []
     for i in range(1,nkeep):
         _, lamT = elistT[i]
