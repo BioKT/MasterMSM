@@ -55,8 +55,8 @@ class SuperMSM(object):
             self.keys = keys
         else:
             try:
-                self.keys = map(lambda x: x.split()[0],
-                        open(file_keys, "r").readlines())
+                self.keys = list(map(lambda x: x.split()[0],
+                        open(file_keys, "r").readlines()))
             except TypeError:
                 self.keys = self._merge_trajs()
         self.dt = self._max_dt()
@@ -615,7 +615,7 @@ class MSM(object):
                 key = len, reverse=True)[0])
         keep_states.sort()
         # keep_states = sorted(nx.strongly_connected_components(D)[0])
-        keep_keys = map(lambda x: self.keys[x], keep_states)
+        keep_keys = list(map(lambda x: self.keys[x], keep_states))
         return keep_states, keep_keys
 
     def calc_eigsK(self, evecs=False):
@@ -763,8 +763,9 @@ class MSM(object):
         pool = mp.Pool(processes=nproc)
 
         ncount = np.sum(self.count)
-        multi_boots_input = map(lambda x: [filetmp, self.keys, self.lagt, ncount,
-            sliding], range(nboots))
+        multi_boots_input = list(map(lambda x: [filetmp, self.keys, self.lagt, ncount,
+            sliding], range(nboots)))
+        print (multi_boots_input)
         # TODO: find more elegant way to pass arguments
         result = pool.map(msm_lib.do_boots_worker, multi_boots_input)
         pool.close()
