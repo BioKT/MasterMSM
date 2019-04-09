@@ -464,8 +464,8 @@ def traj_split(data=None, lagt=None, fdboots=None):
         #cut trajectories in chunks
         for x in trajs:
             lx = len(x[0])
-            trajs_new.append([x[0][:lx/2], x[1]])
-            trajs_new.append([x[0][lx/2:], x[1]])
+            trajs_new.append([x[0][:int(lx/2)], x[1]])
+            trajs_new.append([x[0][int(lx/2):], x[1]])
         trajs = trajs_new
         ltraj = [len(x[0])*x[1] for x in trajs]
         ltraj_median = np.median(ltraj)
