@@ -5,7 +5,7 @@ This file is part of the MasterMSM package.
 import os
 #import sys
 import math
-from functools import reduce
+from functools import reduce, cmp_to_key
 #import copy
 #import operator
 #import pickle
@@ -648,7 +648,7 @@ class MSM(object):
         elistK = []
         for i in range(nkeep):
             elistK.append([i,np.real(evalsK[i])])
-        elistK.sort(msm_lib.esort)
+        elistK.sort(key=cmp_to_key(msm_lib.esort))
 
         # calculate relaxation times from K and T
         tauK = []
@@ -707,7 +707,9 @@ class MSM(object):
         elistT = []
         for i in range(nkeep):
             elistT.append([i,np.real(evalsT[i])])
-        elistT.sort(msm_lib.esort)
+        #elistT.sort(key=msm_lib.esort)
+        elistT.sort(key=cmp_to_key(msm_lib.esort))
+        print (elistT)
 
         # calculate relaxation times 
         tauT = []
