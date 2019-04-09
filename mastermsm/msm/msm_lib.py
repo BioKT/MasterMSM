@@ -472,7 +472,7 @@ def traj_split(data=None, lagt=None, fdboots=None):
     # save trajs
     fd, filetmp = tempfile.mkstemp()
     file = os.fdopen(fd, 'wb')   
-    pickle.dump(trajs, file, protocol=cPickle.HIGHEST_PROTOCOL)
+    pickle.dump(trajs, file, protocol=pickle.HIGHEST_PROTOCOL)
     file.close()
     return filetmp
 
