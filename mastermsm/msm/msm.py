@@ -320,7 +320,7 @@ class SuperMSM(object):
     def do_lbrate(self, evecs=False, error=False):
         """ Calculates the rate matrix using the lifetime based method.
         
-        We use the method described by Buchete and Hummer.[1]_
+        We use the method described by Buchete and Hummer [1]_.
 
         Parameters
         ----------
@@ -332,7 +332,7 @@ class SuperMSM(object):
 
         Notes
         -----
-        .. [1] N.-V. Buchete and G. Hummer, "Coarse master equations for
+        .. [1] N.-V. Buchete and G. Hummer, "Coarse master equations for 
         peptide folding dynamics", J. Phys. Chem. B (2008).
 
         """
