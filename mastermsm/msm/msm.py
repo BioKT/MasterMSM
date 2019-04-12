@@ -709,7 +709,6 @@ class MSM(object):
             elistT.append([i,np.real(evalsT[i])])
         #elistT.sort(key=msm_lib.esort)
         elistT.sort(key=cmp_to_key(msm_lib.esort))
-        print (elistT)
 
         # calculate relaxation times 
         tauT = []
