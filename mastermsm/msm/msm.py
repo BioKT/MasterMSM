@@ -3,6 +3,8 @@ This file is part of the MasterMSM package.
 
 """
 import os
+import warnings
+
 #import sys
 import math
 from functools import reduce, cmp_to_key
@@ -219,7 +221,7 @@ class SuperMSM(object):
 
         Notes
         -----
-        ..[1] J.-H. Prinz et al, "Markov models of molecular kinetics: Generation
+        .. [1] J.-H. Prinz et al, "Markov models of molecular kinetics: Generation
         and validation", J. Chem. Phys. (2011).
 
         """
@@ -330,7 +332,7 @@ class SuperMSM(object):
 
         Notes
         -----
-        ..[1] N.-V. Buchete and G. Hummer, "Coarse master equations for
+        .. [1] N.-V. Buchete and G. Hummer, "Coarse master equations for
         peptide folding dynamics", J. Phys. Chem. B (2008).
 
         """
@@ -469,8 +471,8 @@ class MSM(object):
     def do_rate(self, method='Taylor', evecs=False, init=False, report=False):
         """ Calculates the rate matrix from the transition matrix. 
         
-        We use a method based on a Taylor expansion [1] or the maximum likelihood
-        propagator based (MLPB) method [2].
+        We use a method based on a Taylor expansion [1]_ or the maximum likelihood
+        propagator based (MLPB) method [2]_.
 
         Parameters
         ----------
@@ -489,11 +491,11 @@ class MSM(object):
 
         Notes
         -----
-        ..[1] D. De Sancho, J. Mittal and R. B. Best, "Folding kinetics
+        .. [1] D. De Sancho, J. Mittal and R. B. Best, "Folding kinetics
         and unfolded state dynamics of the GB1 hairpin from molecular
         simulation", J. Chem. Theory Comput. (2013).
 
-        ..[2] N.-V. Buchete and G. Hummer, "Coarse master equations for
+        .. [2] N.-V. Buchete and G. Hummer, "Coarse master equations for
         peptide folding dynamics", J. Phys. Chem. B (2008).
 
 
@@ -614,7 +616,7 @@ class MSM(object):
         -----
         We use the Tarjan algorithm as implemented in NetworkX. [1]_
 
-        ..[1] R. Tarjan, "Depth-first search and linear graph algorithms",
+        .. [1] R. Tarjan, "Depth-first search and linear graph algorithms",
         SIAM Journal of Computing (1972).
 
         """
@@ -720,6 +722,7 @@ class MSM(object):
 
         # calculate relaxation times 
         tauT = []
+        warnings.filterwarnings("ignore", category=RuntimeWarning) 
         for i in range(1, nkeep):
             iiT, lamT = elistT[i]
             tauT.append(-self.lagt/np.log(lamT))
@@ -1292,7 +1295,7 @@ class MSM(object):
     def acf_mode(self, modes=None):
         """ Calculate mode autocorrelation functions.
 
-        We use the procedure described by Buchete and Hummer[1]_.
+        We use the procedure described by Buchete and Hummer [1]_.
 
         Parameters
         ----------
@@ -1309,11 +1312,10 @@ class MSM(object):
         
         Notes
         -----
-        ..[1] N.-V. Buchete and G. Hummer, "Coarse master equations for
+        .. [1] N.-V. Buchete and G. Hummer, "Coarse master equations for
         peptide folding dynamics", J. Phys. Chem. B (2008).
 
         """
-
         if not modes:
             modes = range(1,len(self.keep_keys))
 
