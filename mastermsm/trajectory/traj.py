@@ -4,7 +4,7 @@ This file is part of the MasterMSM package.
 """
 import os
 import mdtraj as md
-import mastermsm.trajectory.traj_lib
+from ..trajectory import traj_lib
 
 class TimeSeries(object):
     """ 
