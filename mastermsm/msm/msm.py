@@ -34,9 +34,11 @@ class SuperMSM(object):
     msms : dict
         A dictionary containing MSMs for different lag times.
 
+    sym : bool
+        Whether we want to enforce symmetrization.
        
     """
-    def __init__(self, trajs, file_keys=None, keys=None):
+    def __init__(self, trajs, file_keys=None, keys=None, sym=False):
         """ 
         
         Parameters
@@ -47,6 +49,9 @@ class SuperMSM(object):
         file_keys : str
             A file from which the states are read. If not defined
             keys are automatically generated from the time series.
+
+        sym : bool
+            Tells MSM whether to symmetrize count matrices or not.
 
         """
         self.data = trajs
@@ -61,6 +66,7 @@ class SuperMSM(object):
                 self.keys = self._merge_trajs()
         self.dt = self._max_dt()
         self._out()
+        self.sym = sym
         self.msms = {}
 
     def _merge_trajs(self):
@@ -101,7 +107,7 @@ class SuperMSM(object):
             pass
         print ("     # states: %g"%(len(self.keys)))
 
-    def do_msm(self, lagt, sliding=True, sym=False):
+    def do_msm(self, lagt, sliding=True):
         """ 
         Construct MSM for specific value of lag time.
         
@@ -113,12 +119,9 @@ class SuperMSM(object):
         sliding : bool
             Whether a sliding window is used in counts.
 
-        sym : bool
-            Whether we want to enforce symmetrization.
-
         """
-        self.msms[lagt] = MSM(self.data, keys=self.keys, lagt=lagt)
-        self.msms[lagt].do_count(sliding=sliding, sym=sym)
+        self.msms[lagt] = MSM(self.data, keys=self.keys, lagt=lagt, sym=self.sym)
+        self.msms[lagt].do_count(sliding=sliding)
         
     def convergence_test(self, plot=True, save=None, N=1, sliding=True, \
             error=True, time=None, out=None):
@@ -157,7 +160,7 @@ class SuperMSM(object):
         # create MSMs at multiple lag times
         for lagt in lagtimes:
             if lagt not in self.msms.keys():
-                self.msms[lagt] = MSM(self.data, self.keys, lagt)
+                self.msms[lagt] = MSM(self.data, self.keys, lagt, sym=self.sym)
                 self.msms[lagt].do_count(sliding=sliding)
                 self.msms[lagt].do_trans()
                 if error:               
@@ -392,33 +395,41 @@ class MSM(object):
     ----------
     keys : list of str
         Names of states.
+
     count : np array
         Transition count matrix.
+
     keep_states : list of str
         Names of states after removing not strongly connected sets.
 
+    sym : bool
+        Whether we want to enforce symmetrization.
+
     """
-    def __init__(self, data=None, keys=None, lagt=None):
+    def __init__(self, data=None, keys=None, lagt=None, sym=False):
         """
         
         Parameters
         ----------
         data : list
             Set of trajectories used for the construction.
+
         keys : list of str
             Set of states in the model.
+
         lag : float
             Lag time for building the MSM.
-        sliding : bool
-            Whether the method of sliding windows or independent counts 
-            are used.
+
+        sym : bool
+            Whether we want to enforce symmetrization.
 
         """
         self.keys = keys
         self.data = data
         self.lagt = lagt
+        self.sym = sym
 
-    def do_count(self, sliding=True, sym=False):
+    def do_count(self, sliding=True):
         """ Calculates the count matrix.
 
         Parameters
@@ -426,12 +437,9 @@ class MSM(object):
         sliding : bool
             Whether a sliding window is used in counts.
 
-        sym : bool
-            Whether we want to enforce symmetrization.
-
         """
         self.count = self.calc_count_multi(sliding=sliding)
-        if sym:
+        if self.sym:
             print (" symmetrizing")
             self.count += self.count.transpose()
         self.keep_states, self.keep_keys = self.check_connect()
@@ -487,6 +495,7 @@ class MSM(object):
 
         ..[2] N.-V. Buchete and G. Hummer, "Coarse master equations for
         peptide folding dynamics", J. Phys. Chem. B (2008).
+
 
         """
         #print "\n    Calculating rate matrix ..."
@@ -558,7 +567,6 @@ class MSM(object):
 
         # add up all independent counts
         count = reduce(lambda x, y: np.matrix(x) + np.matrix(y), result)
-
         return np.array(count)
 
 #    def calc_count_seq(self, sliding=True):
