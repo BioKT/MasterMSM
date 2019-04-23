@@ -34,7 +34,7 @@ MSM module
     msm 
 
 
-PCCA module
+FEWSM module
 -----------
 .. currentmodule:: mastermsm
 
