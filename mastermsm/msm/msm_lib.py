@@ -919,6 +919,8 @@ def partial_peq(peq, elem):
     
     Parameters
     ----------
+    peq : np.array
+        Equilibrium probabilities.
 
     """
     nstates = len(peq)
@@ -927,7 +929,7 @@ def partial_peq(peq, elem):
         if i != elem:
             d_peq.append(beta*peq[i]*peq[elem])
         else:
-            d_peq.append(-beta*peq[i]*(1.-peq[i]))
+            d_peq.append(-beta*peq[i]*(1. - peq[i]))
     return d_peq
 
 def partial_pfold(states, K, d_K, FF, UU, elem):
