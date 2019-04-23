@@ -7,7 +7,7 @@ Subpackages
 .. toctree::
 
     mastermsm.msm
-    mastermsm.pcca
+    mastermsm.fewsm
     mastermsm.trajectory
 
 Module contents

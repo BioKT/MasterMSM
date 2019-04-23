@@ -41,7 +41,7 @@ PCCA module
 .. autosummary::
     :toctree: 
 
-    pcca
+    fewsm
     
 Examples
 --------
