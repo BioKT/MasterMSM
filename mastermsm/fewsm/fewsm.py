@@ -3,15 +3,15 @@ import copy
 from mastermsm.msm import msm 
 from mastermsm.trajectory import traj
 #import msm_lib
-import mastermsm.pcca.pcca_lib
+import mastermsm.fewsm.fewsm_lib
 
 """ 
 This file is part of the MasterMSM package.
 
 """
-class PCCA(msm.MSM):
+class FEWSM(msm.MSM):
     """
-    A class for doing PCCA clustering
+    A class for doing clustering of MSMs into few-state models
 
     Attributes
     ----------
@@ -69,9 +69,9 @@ class PCCA(msm.MSM):
         macros[0] = range(len(keep_states))
         for n in range(1, N):
             if method is "robust":
-                macro_new, vals = pcca_lib.split_sigma(macros, lvecs[:,n])
+                macro_new, vals = fewsm_lib.split_sigma(macros, lvecs[:,n])
             elif method is "sign":
-                macro_new, vals = pcca_lib.split_sign(macros, lvecs[:,n])
+                macro_new, vals = fewsm_lib.split_sign(macros, lvecs[:,n])
             macros = copy.deepcopy(macro_new)
         print ("\n Initial membership of microstates to macrostates:")
         if len(self.parent.keep_keys) < 100:
@@ -109,7 +109,7 @@ class PCCA(msm.MSM):
                         pass
             mt = traj.TimeSeries(distraj=mt_states, dt=data.dt)
             mappedtraj.append(mt)
-        super(PCCA, self).__init__(mappedtraj, keys=range(self.N), lagt=self.parent.lagt)
+        super(FEWSM, self).__init__(mappedtraj, keys=range(self.N), lagt=self.parent.lagt)
 
     def metastability(self):
         """ Calculate metastability according to the definition
@@ -121,7 +121,7 @@ class PCCA(msm.MSM):
             Metastability
 
         """
-        return pcca_lib.metastability(self.trans)
+        return fewsm_lib.metastability(self.trans)
 
 #    def optim(self, nsteps=1, nwrite=None, fout="mc.dat"):
 #        """ MC optimization using the metastability Q as energy.
@@ -181,12 +181,12 @@ class PCCA(msm.MSM):
 #                    macro_new[imac].remove(imic)
 #                    macro_new[jmac].append(imic)
 #                    # calculate transition count matrix for new mapping
-#                    count_mac_new = pcca_lib.map_micro2macro(self.parent.count, macro_new, self.parent.keep_states)
+#                    count_mac_new = fewsm_lib.map_micro2macro(self.parent.count, macro_new, self.parent.keep_states)
 #                    Tmacro_new = msm_lib.calc_trans(nmac, range(nmac), count_mac_new)
 #                    # calculate metastability
-#                    q_new = pcca_lib.metastability(Tmacro_new)
-#                    delta = pcca_lib.beta(imc,mcsteps)*(q - q_new) # calculate increment (Q is a -Energy)
-#                    if pcca_lib.metropolis(delta):
+#                    q_new = fewsm_lib.metastability(Tmacro_new)
+#                    delta = fewsm_lib.beta(imc,mcsteps)*(q - q_new) # calculate increment (Q is a -Energy)
+#                    if fewsm_lib.metropolis(delta):
 #                        #print "ACCEPT"
 #                        macro = copy.deepcopy(macro_new)
 #                        count_mac = count_mac_new
@@ -200,7 +200,7 @@ class PCCA(msm.MSM):
 #                        reject+=1
 #                        #print " REJECT"
 #
-#                    out.write ("%6i %12.10e %10.6e\n"%(imc + nmc*mcsteps,q,1./pcca_lib.beta(imc,mcsteps)))
+#                    out.write ("%6i %12.10e %10.6e\n"%(imc + nmc*mcsteps,q,1./fewsm_lib.beta(imc,mcsteps)))
 #                    imc +=1
 #                cont = False    
 #        print " final :", q
