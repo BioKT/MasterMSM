@@ -15,9 +15,9 @@ from scipy import linalg as spla
 #import multiprocessing as mp
 import pickle
 
-## thermal energy (kJ/mol)
-#beta = 1./(8.314e-3*300)
-#
+# thermal energy (kJ/mol)
+beta = 1./(8.314e-3*300)
+
 #def difference(k1, k2):
 #    l = len(k1)
 #    diff = 0
@@ -276,12 +276,45 @@ def mat_mul_v(m, v):
 #    return kon
 #
 def run_commit(states, K, peq, FF, UU):
-    """ calculate committors and reactive flux """
+    """ Calculate committors and reactive flux
+    
+    Parameters
+    ----------
+    states : list
+        States in the MSM.
+
+    K : np.array
+        Rate matrix.
+
+    peq : np.array
+        Equilibrium distribution.
+
+    FF : list
+        Definitely folded states.
+
+    UU : list
+        Definitely unfolded states.
+
+    Returns
+    -------
+    J : np.array
+        Reactive flux matrix.
+
+    pfold : np.array
+        Values of the committor.
+        
+    sum_flux : float
+        Sum of reactive fluxes.
+    
+    kf : float
+        Folding rate from flux over population relationship.
+
+    """
     nstates = len(states)
     # define end-states
     UUFF = UU + FF
     print ("   definitely FF and UU states", UUFF)
-    I = filter(lambda x: x not in UU+FF, states)
+    I = list(filter(lambda x: x not in UU+FF, states))
     NI = len(I)
 
     # calculate committors
@@ -323,27 +356,17 @@ def run_commit(states, K, peq, FF, UU):
             J[j][i] = K[j][i]*peq[i]*(pfold[j]-pfold[i])
 
     # dividing line is committor = 0.5 
-    #sum_flux = 0
-    #left = [x for x in range(nstates) if pfold[x] < 0.5]
-    #right = [x for x in range(nstates) if pfold[x] > 0.5]
-    #for i in left:
-    #    for j in right:
-    #        #print "%i --> %i: %10.4e"%(i, j, J[j][i])
-    #        sum_flux += J[j][i]
-
-    # dividing line is reaching end states 
     sum_flux = 0
-    for i in range(nstates):
-        for j in range(nstates):
-            if j in FF: #  dividing line corresponds to I to F transitions
-                sum_flux += J[j][i]
-    print ("   reactive flux: %g"%sum_flux)
+    left = [x for x in range(nstates) if pfold[x] < 0.5]
+    right = [x for x in range(nstates) if pfold[x] > 0.5]
+    for i in left:
+        for j in right:
+            sum_flux += J[j][i]
 
     #sum of populations for all reactant states
     pU = np.sum([peq[x] for x in range(nstates) if pfold[x] < 0.5])
  #   pU = np.sum(peq[filter(lambda x: x in UU, range(nstates))])
     kf = sum_flux/pU
-#    print "   binding rate: %g"%kf
     return J, pfold, sum_flux, kf
 
 def calc_count_worker(x):
@@ -863,86 +886,117 @@ def likelihood(nkeep, rate, count, lagt):
 
     return -log_like
 
-#def partial_rate(K, elem):
-#    """ calculate derivative of rate matrix """
-#    nstates = len(K[0])
-#    d_K = np.zeros((nstates,nstates), float)
-#    for i in range(nstates):
-#        if i != elem:
-#            d_K[i,elem] = beta/2.*K[i,elem];
-#            d_K[elem,i] = -beta/2.*K[elem,i];
-#    for i in range(nstates):
-#        d_K[i,i] = -np.sum(d_K[:,i])
-#    return d_K
-#
-#def partial_peq(peq, elem):
-#    """ calculate derivative of equilibrium distribution """
-#    nstates = len(peq)
-#    d_peq = []
-#    for i in range(nstates):
-#        if i != elem:
-#            d_peq.append(beta*peq[i]*peq[elem])
-#        else:
-#            d_peq.append(-beta*peq[i]*(1.-peq[i]))
-#    return d_peq
-#
-#def partial_pfold(states, K, d_K, FF, UU, elem):
-#    """ calculate derivative of pfold """
-#    nstates = len(states)
-#    # define end-states
-#    UUFF = UU+FF
-#    I = filter(lambda x: x not in UU+FF, range(nstates))
-#    NI = len(I)
-#    # calculate committors
-#    b = np.zeros([NI], float)
-#    A = np.zeros([NI,NI], float)
-#    db = np.zeros([NI], float)
-#    dA = np.zeros([NI,NI], float)
-#    for j_ind in range(NI):
-#        j = I[j_ind]
-#        summ = 0.
-#        sumd = 0.
-#        for i in FF:
-#            summ += K[i][j]
-#            sumd+= d_K[i][j]
-#        b[j_ind] = -summ
-#        db[j_ind] = -sumd
-#        for i_ind in range(NI):
-#            i = I[i_ind]
-#            A[j_ind][i_ind] = K[i][j]
-#            dA[j_ind][i_ind] = d_K[i][j]
-#
-#    # solve Ax + Bd(x) = c
-#    Ainv = np.linalg.inv(A)
-#    pfold = np.dot(Ainv,b)
-#    x = np.dot(Ainv,db - np.dot(dA,pfold))
-#
-#    dpfold = np.zeros(nstates,float)
-#    for i in range(nstates):
-#        if i in UU:
-#            dpfold[i] = 0.0
-#        elif i in FF:
-#            dpfold[i] = 0.0
-#        else:
-#            ii = I.index(i)
-#            dpfold[i] = x[ii]
-#    return dpfold
-#
-#def partial_flux(states,peq,K,pfold,d_peq,d_K,d_pfold,target):
-#    """ calculate derivative of flux """
-#    # flux matrix and reactive flux
-#    nstates = len(states)
-#    sum_d_flux = 0
-#    d_J = np.zeros((nstates,nstates),float)
-#    for i in range(nstates):
-#        for j in range(nstates):
-#            d_J[j][i] = d_K[j][i]*peq[i]*(pfold[j]-pfold[i]) + \
-#                K[j][i]*d_peq[i]*(pfold[j]-pfold[i]) + \
-#                K[j][i]*peq[i]*(d_pfold[j]-d_pfold[i])
-#            if j in target and K[j][i]>0: #  dividing line corresponds to I to F transitions                        
-#                sum_d_flux += d_J[j][i]
-#    return sum_d_flux
-#
+def partial_rate(K, elem):
+    """ Calculates the derivative of the rate matrix 
+    
+    Parameters
+    ----------
+    K : np.array
+        The rate matrix.
+
+    elem : int
+        Integer corresponding to which we calculate the
+        partial derivative.
+
+    Returns
+    -------
+    d_K : np.array
+        Partial derivative of rate matrix.
+
+    """
+    nstates = len(K[0])
+    d_K = np.zeros((nstates,nstates), float)
+    for i in range(nstates):
+        if i != elem:
+            d_K[i,elem] = beta/2.*K[i,elem];
+            d_K[elem,i] = -beta/2.*K[elem,i];
+    for i in range(nstates):
+        d_K[i,i] = -np.sum(d_K[:,i])
+    return d_K
+
+def partial_peq(peq, elem):
+    """ calculate derivative of equilibrium distribution
+    
+    Parameters
+    ----------
+
+    """
+    nstates = len(peq)
+    d_peq = []
+    for i in range(nstates):
+        if i != elem:
+            d_peq.append(beta*peq[i]*peq[elem])
+        else:
+            d_peq.append(-beta*peq[i]*(1.-peq[i]))
+    return d_peq
+
+def partial_pfold(states, K, d_K, FF, UU, elem):
+    """ Calculates derivative of pfold.
+    
+    Parameters
+    ----------
+    
+    """
+    nstates = len(states)
+    # define end-states
+    UUFF = UU+FF
+    I = list(filter(lambda x: x not in UU+FF, range(nstates)))
+    NI = len(I)
+    # calculate committors
+    b = np.zeros([NI], float)
+    A = np.zeros([NI,NI], float)
+    db = np.zeros([NI], float)
+    dA = np.zeros([NI,NI], float)
+    for j_ind in range(NI):
+        j = I[j_ind]
+        summ = 0.
+        sumd = 0.
+        for i in FF:
+            summ += K[i][j]
+            sumd+= d_K[i][j]
+        b[j_ind] = -summ
+        db[j_ind] = -sumd
+        for i_ind in range(NI):
+            i = I[i_ind]
+            A[j_ind][i_ind] = K[i][j]
+            dA[j_ind][i_ind] = d_K[i][j]
+
+    # solve Ax + Bd(x) = c
+    Ainv = np.linalg.inv(A)
+    pfold = np.dot(Ainv,b)
+    x = np.dot(Ainv,db - np.dot(dA,pfold))
+
+    dpfold = np.zeros(nstates,float)
+    for i in range(nstates):
+        if i in UU:
+            dpfold[i] = 0.0
+        elif i in FF:
+            dpfold[i] = 0.0
+        else:
+            ii = I.index(i)
+            dpfold[i] = x[ii]
+    return dpfold
+
+def partial_flux(states,peq,K,pfold,d_peq,d_K,d_pfold,target):
+    """ calculates derivative of reactive flux.
+
+    Parameters
+    ----------
+
+    """
+    # flux matrix and reactive flux
+    nstates = len(states)
+    sum_d_flux = 0
+    d_J = np.zeros((nstates,nstates),float)
+    for i in range(nstates):
+        for j in range(nstates):
+            d_J[j][i] = d_K[j][i]*peq[i]*(pfold[j]-pfold[i]) + \
+                K[j][i]*d_peq[i]*(pfold[j]-pfold[i]) + \
+                K[j][i]*peq[i]*(d_pfold[j]-d_pfold[i])
+            if j in target and K[j][i]>0: #  dividing line corresponds to I to F transitions                        
+                sum_d_flux += d_J[j][i]
+    return sum_d_flux
+
 def propagate_worker(x):
     """ propagate dynamics using rate matrix exponential"""
     rate, t, pini = x
