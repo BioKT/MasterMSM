@@ -1080,10 +1080,10 @@ class MSM(object):
         d_peq : list
             Derivative of equilibrium populations.
 
-        d_kon : list
+        d_kf : list
             Derivative of global rate.
 
-        kon : float
+        kf : float
             Global rate.
 
         Notes
@@ -1101,7 +1101,7 @@ class MSM(object):
         self.do_pfold(FF=FF, UU=UU)
         pfold = self.pfold
         sum_flux = self.sum_flux
-        kon = self.kf
+        kf = self.kf
  
         if isinstance(FF, list):
             _FF = [self.keep_keys.index(x) for x in FF]
@@ -1112,10 +1112,10 @@ class MSM(object):
         else:
             _UU = [self.keep_keys.index(UU)]
 
-        pu = np.sum([peqK[x] for x in range(nkeep) if x not in _FF])
+        pu = np.sum([peqK[x] for x in range(nkeep) if pfold[x] < 0.5]) 
         dJ = []
         d_pu = []
-        d_kon = []
+        d_lnkf = []
         for s in range(nkeep):
             d_K = msm_lib.partial_rate(K, s)
             d_peq = msm_lib.partial_peq(peqK, s)
@@ -1123,13 +1123,12 @@ class MSM(object):
             dJ.append(msm_lib.partial_flux(range(nkeep), peqK, K, pfold, \
                            d_peq, d_K, d_pfold, _FF))
             d_pu.append(np.sum([d_peq[x] for x in range(nkeep) \
-                           if x not in _FF]))
-            d_kon.append((dJ[-1]*pu - sum_flux*d_pu[-1])/pu**2)
-
+                            if pfold[x] < 0.5]))
+            d_lnkf.append((dJ[-1]*pu - sum_flux*d_pu[-1])/pu**2)
+        self.kf = kf
+        self.d_pu = d_pu
         self.dJ = dJ
-        self.d_peq = d_peq
-        self.d_kon = d_kon
-        self.kon = kon
+        self.d_lnkf = d_lnkf/sum_flux
 
     def propagateK(self, p0=None, init=None, time=None):
         """ Propagation of rate matrix using matrix exponential 
