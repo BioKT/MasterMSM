@@ -34,17 +34,16 @@ def discrete_rama(phi, psi, seq=None, bounds=None, states=['A', 'E', 'L']):
     -----
     Here we follow Buchete and Hummer for the assignment procedure [1]_ .
 
-.. [1] N. V. Buchete and G. Hummer, "Coarse master equations for peptide folding 
-    dynamics", J. Phys. Chem. B. (2008).
+.. [1] N. V. Buchete and G. Hummer, "Coarse master equations for peptide folding dynamics", J. Phys. Chem. B. (2008).
 
 
     """
     if bounds is None:
         TBA_bounds = {}
         if 'A' in states:
-            TBA_bounds['A'] = [ -100., -40., -60., 0. ]
+            TBA_bounds['A'] = [ -100., -40., -50., -10. ]
         if 'E' in states:
-            TBA_bounds['E'] = [ -180., -40., 120.,180. ]
+            TBA_bounds['E'] = [ -180., -40., 125.,165. ]
         if 'L' in states:
             TBA_bounds['L'] = [ 50., 100., -40.,70.0 ]
     
