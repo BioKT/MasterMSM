@@ -681,13 +681,13 @@ def calc_mlrate(nkeep, count, lagt, rate_init):
     ml_prev = likelihood(nkeep, rate_prev, count, lagt)
 
     # initialize MC sampling
-    print ("\n START")
+    print ("MLPB optimization of rate matrix:\n START")
     #print rate_prev,"\n", p_prev, ml_prev
     ml_ref = ml_prev
     ml_cum = [ml_prev]
     temp_cum = [1.]
     nstep = 0
-    nsteps = 2000
+    nsteps = len(p_prev)**2
     k = -5./nsteps
     nfreq = 100
     ncycle = 0
@@ -727,10 +727,11 @@ def calc_mlrate(nkeep, count, lagt, rate_init):
             print ("\n END of cycle %g"%ncycle)
             print ("   acceptance :%g"%(np.float(accept)/nsteps))
             accept = 0
-            #print rate_prev,"\n", p_prev, ml_prev
-            if ml_cum[-1] < ml_ref or ncycle < 4:
+            print (rate_prev)
+            print ("   L old =", ml_ref,"; L new:", ml_prev)
+            if ml_cum[-1] < ml_ref or ncycle < 2:
                 nstep = 0
-                ml_ref = ml_cum[-1]
+                ml_ref = np.mean(ml_cum[-nsteps:])
             else:
                 break
         elif nstep % nfreq == 0:
