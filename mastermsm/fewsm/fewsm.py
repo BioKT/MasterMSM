@@ -1,9 +1,9 @@
 import copy
 #import random
-from mastermsm.msm import msm 
-from mastermsm.trajectory import traj
+from ..msm import msm 
+from ..trajectory import traj
 #import msm_lib
-import mastermsm.fewsm.fewsm_lib
+from ..fewsm import fewsm_lib
 
 """ 
 This file is part of the MasterMSM package.
