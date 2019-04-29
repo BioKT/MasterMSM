@@ -1,3 +1,8 @@
+""" 
+This file is part of the MasterMSM package.
+
+"""
+
 import sys,copy,itertools,random,math
 import numpy as np
 from scipy import linalg as scipyla

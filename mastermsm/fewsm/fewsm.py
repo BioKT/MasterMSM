@@ -1,3 +1,8 @@
+""" 
+This file is part of the MasterMSM package.
+
+"""
+
 import copy
 #import random
 from ..msm import msm 
@@ -5,10 +10,6 @@ from ..trajectory import traj
 #import msm_lib
 from ..fewsm import fewsm_lib
 
-""" 
-This file is part of the MasterMSM package.
-
-"""
 class FEWSM(msm.MSM):
     """
     A class for doing clustering of MSMs into few-state models
@@ -66,7 +67,7 @@ class FEWSM(msm.MSM):
         macros = {}
         keep_states = self.parent.keep_states
         keep_keys = self.parent.keep_keys
-        macros[0] = range(len(keep_states))
+        macros[0] = list(range(len(keep_states)))
         for n in range(1, N):
             if method is "robust":
                 macro_new, vals = fewsm_lib.split_sigma(macros, lvecs[:,n])
@@ -75,10 +76,10 @@ class FEWSM(msm.MSM):
             macros = copy.deepcopy(macro_new)
         print ("\n Initial membership of microstates to macrostates:")
         if len(self.parent.keep_keys) < 100:
-            for k,v in macros.iteritems():
+            for k,v in macros.items():
                 print (k, [self.parent.keep_keys[x] for x in v])
         else:
-            for k,v in macros.iteritems():
+            for k,v in macros.items():
                 print (k,":", len(v))
         return macros
 
@@ -99,7 +100,7 @@ class FEWSM(msm.MSM):
         for data in self.parent.data:
             for s in data.distraj:
                 try:
-                    mt_states.append([k for k, v in self.macros.iteritems() \
+                    mt_states.append([k for k, v in self.macros.items() \
                            if keep_keys.index(s) in v][0])
                 except ValueError:
                     #print " not in keep_keys"
@@ -108,8 +109,10 @@ class FEWSM(msm.MSM):
                     except IndexError:
                         pass
             mt = traj.TimeSeries(distraj=mt_states, dt=data.dt)
+            print (mt)
             mappedtraj.append(mt)
-        super(FEWSM, self).__init__(mappedtraj, keys=range(self.N), lagt=self.parent.lagt)
+        self.mappedtraj = mappedtraj 
+        #super().__init__(mappedtraj, keys=range(self.N), lagt=self.parent.lagt)
 
     def metastability(self):
         """ Calculate metastability according to the definition
