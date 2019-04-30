@@ -17,10 +17,6 @@ setup(
 		author_email='daviddesancho.at.gmail.com',
 		license='GPL',
         	packages=find_packages(),
-#        	packages=['mastermsm', 
-#                    'mastermsm.msm',
-#                    'mastermsm.trajectory',
-#                    'mastermsm.pcca'],
 		keywords= "markov state model",
 		long_description=read('README.md'),
 		classifiers = ["""\
