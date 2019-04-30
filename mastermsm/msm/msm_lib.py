@@ -6,7 +6,6 @@ import copy
 import numpy as np
 import networkx as nx
 import os #, math
-import itertools
 import tempfile
 from functools import reduce, cmp_to_key
 #import operator
@@ -424,7 +423,6 @@ def calc_lifetime(x):
     distraj = x[0]
     dt = x[1]
     keys = x[2]
-    nkeys = len(keys)
     ltraj = len(distraj)
 
     life = {}
@@ -918,7 +916,6 @@ def partial_pfold(states, K, d_K, FF, UU, elem):
     """
     nstates = len(states)
     # define end-states
-    UUFF = UU+FF
     I = list(filter(lambda x: x not in UU+FF, range(nstates)))
     NI = len(I)
     # calculate committors
