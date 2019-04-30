@@ -1,4 +1,4 @@
-""" 
+"""
 This file is part of the MasterMSM package.
 
 """
@@ -8,7 +8,7 @@ import networkx as nx
 import os #, math
 import itertools
 import tempfile
-from functools import reduce, cmp_to_key 
+from functools import reduce, cmp_to_key
 #import operator
 from scipy import linalg as spla
 #import multiprocessing as mp
@@ -214,7 +214,7 @@ def mat_mul_v(m, v):
 ##   # order eigenvalues and calculate left and right eigenvectors
 ##   eigval = zeros((nstates),float)
 ##   PsiR = zeros((nstates,nstates),float)
-##   PsiL = zeros((nstates,nstates),float)       
+##   PsiL = zeros((nstates,nstates),float)
 ##   for i in arange(nstates):
 ##       eigval[i] = eigvalsym[index[i]]
 ##       PsiR[:,i] = eigvectsym[:,index[i]]*eigvectsym[:,ieq]
@@ -227,7 +227,7 @@ def mat_mul_v(m, v):
 #    return mat_mul_v(expkt,pini)
 #
 #def propagate_eig(elist, rvecs, lvecs, t, pini):
-#    # propagate dynamics using rate matrix exponential using eigenvalues and eigenvectors 
+#    # propagate dynamics using rate matrix exponential using eigenvalues and eigenvectors
 #    nstates = len(pini)
 #    p = np.zeros((nstates),float)
 #    for n in range(nstates):
@@ -245,7 +245,7 @@ def mat_mul_v(m, v):
 #        k = int(np.random.random()*n)
 #        traj_list_dt_new.append(traj_list_dt[k])
 #        i += 1
-#    return traj_list_dt_new 
+#    return traj_list_dt_new
 #
 #def boots_pick(filename, blocksize):
 #    raw = open(filename).readlines()
@@ -269,7 +269,7 @@ def mat_mul_v(m, v):
 #
 def run_commit(states, K, peq, FF, UU):
     """ Calculate committors and reactive flux
-    
+
     Parameters
     ----------
     states : list
@@ -316,7 +316,7 @@ def run_commit(states, K, peq, FF, UU):
         b[j_ind] = -summ
         for i_ind in range(NI):
             i = I[i_ind]
-            A[j_ind][i_ind] = K[i][j]       
+            A[j_ind][i_ind] = K[i][j]
     # solve Ax=b
     Ainv = np.linalg.inv(A)
     x = np.dot(Ainv,b)
@@ -331,7 +331,7 @@ def run_commit(states, K, peq, FF, UU):
         else:
             ii = I.index(i)
             pfold[i] = x[ii]
-                        
+
     # stationary distribution
     pss = np.zeros(nstates,float)
     for i in range(nstates):
@@ -343,7 +343,7 @@ def run_commit(states, K, peq, FF, UU):
         for j in range(nstates):
             J[j][i] = K[j][i]*peq[i]*(pfold[j]-pfold[i])
 
-    # dividing line is committor = 0.5 
+    # dividing line is committor = 0.5
     sum_flux = 0
     left = [x for x in range(nstates) if pfold[x] < 0.5]
     right = [x for x in range(nstates) if pfold[x] > 0.5]
@@ -382,7 +382,7 @@ def calc_count_worker(x):
     lagt = x[3]
     sliding = x[4]
 
-    ltraj = len(distraj) 
+    ltraj = len(distraj)
     lag = int(lagt/dt) # number of frames per lag time
     if sliding:
         slider = 1 # every state is initial state
@@ -425,7 +425,7 @@ def calc_lifetime(x):
     dt = x[1]
     keys = x[2]
     nkeys = len(keys)
-    ltraj = len(distraj) 
+    ltraj = len(distraj)
 
     life = {}
     l = 0
@@ -443,15 +443,15 @@ def calc_lifetime(x):
             except KeyError:
                 life[state_i] = [l*dt]
             l = 1
-    #try: 
+    #try:
     #    life[state_i].append(l*dt)
     #except KeyError:
     #    life[state_i] = [l*dt]
-    return life 
+    return life
 
 def traj_split(data=None, lagt=None, fdboots=None):
     """ Splits trajectories into fragments for bootstrapping
-    
+
     Parameters
     ----------
     data : list
@@ -463,7 +463,7 @@ def traj_split(data=None, lagt=None, fdboots=None):
     -------
     filetmp : file object
         Open file object with trajectory fragments.
-    
+
     """
     trajs = [[x.distraj, x.dt] for x in data]
     ltraj = [len(x[0])*x[1] for x in trajs]
@@ -481,7 +481,7 @@ def traj_split(data=None, lagt=None, fdboots=None):
         ltraj_median = np.median(ltraj)
     # save trajs
     fd, filetmp = tempfile.mkstemp()
-    file = os.fdopen(fd, 'wb')   
+    file = os.fdopen(fd, 'wb')
     pickle.dump(trajs, file, protocol=pickle.HIGHEST_PROTOCOL)
     file.close()
     return filetmp
@@ -494,7 +494,7 @@ def do_boots_worker(x):
     x : list
         A list containing the trajectory filename, the states, the lag time
         and the total number of transitions.
- 
+
     """
 
     #print "# Process %s running on input %s"%(mp.current_process(), x[0])
@@ -516,13 +516,13 @@ def do_boots_worker(x):
         #print ncount_boots, "< %g"%ncount
     D = nx.DiGraph(count)
     #keep_states = sorted(nx.strongly_connected_components(D)[0])
-    keep_states = list(sorted(list(nx.strongly_connected_components(D)), 
+    keep_states = list(sorted(list(nx.strongly_connected_components(D)),
                 key = len, reverse=True)[0])
     keep_keys = list(map(lambda x: keys[x], keep_states))
     nkeep = len(keep_keys)
     trans = np.zeros([nkeep, nkeep], float)
     for i in range(nkeep):
-        ni = reduce(lambda x, y: x + y, map(lambda x: 
+        ni = reduce(lambda x, y: x + y, map(lambda x:
             count[keep_states[x]][keep_states[i]], range(nkeep)))
         for j in range(nkeep):
             trans[j][i] = float(count[keep_states[j]][keep_states[i]])/float(ni)
@@ -564,7 +564,7 @@ def calc_trans(nkeep=None, keep_states=None, count=None):
     """
     trans = np.zeros([nkeep, nkeep], float)
     for i in range(nkeep):
-        ni = reduce(lambda x, y: x + y, map(lambda x: 
+        ni = reduce(lambda x, y: x + y, map(lambda x:
             count[keep_states[x]][keep_states[i]], range(nkeep)))
         for j in range(nkeep):
             trans[j][i] = float(count[keep_states[j]][keep_states[i]])/float(ni)
@@ -582,7 +582,7 @@ def calc_rate(nkeep, trans, lagt):
     trans: np.array
         Transition matrix.
     lagt : float
-        The lag time.      
+        The lag time.
 
     Returns
     -------
@@ -629,7 +629,7 @@ def rand_rate(nkeep, count):
                 if (count[i,j] !=0)  and (count[j,i] != 0):
                     rand_rate[j,i] = np.exp(np.random.randn()*-3)
         rand_rate[i,i] = -np.sum(rand_rate[:,i] )
-    peq = np.random.random() 
+    peq = np.random.random()
 
     return rand_rate
 
@@ -645,7 +645,7 @@ def calc_mlrate(nkeep, count, lagt, rate_init):
     count : np.array
         Transition matrix.
     lagt : float
-        The lag time.      
+        The lag time.
 
     Returns
     -------
@@ -702,7 +702,7 @@ def calc_mlrate(nkeep, count, lagt, rate_init):
                 ml_prev = ml
                 accept +=1
         nstep +=1
-    
+
         if nstep > nsteps:
             ncycle +=1
             ml_cum.append(ml_prev)
@@ -726,7 +726,7 @@ def calc_mlrate(nkeep, count, lagt, rate_init):
 def mc_move(nkeep, rate, peq):
     """ Make MC move in either rate or equilibrium probability.
 
-    Changes in equilibrium probabilities are introduced so that the new value 
+    Changes in equilibrium probabilities are introduced so that the new value
     is drawn from a normal distribution centered at the current value.
 
     Parameters
@@ -737,7 +737,7 @@ def mc_move(nkeep, rate, peq):
         The rate matrix obeying detailed balance.
     peq : array
         The equilibrium probability
-    
+
     """
     nparam = nkeep*(nkeep - 1)/2 + nkeep - 1
     npeq = nkeep - 1
@@ -757,7 +757,7 @@ def mc_move(nkeep, rate, peq):
             peq_new = peq_new/np.sum(peq_new)
             if np.all(peq_new > 0):
                 break
-        else: 
+        else:
             #print " Rate"
             i = np.random.randint(0, nkeep - 1)
             try:
@@ -800,7 +800,7 @@ def detailed_balance(nkeep, rate, peq):
 
 def likelihood(nkeep, rate, count, lagt):
     """ Likelihood of a rate matrix given a count matrix
-    
+
     We use the procedure described by Buchete and Hummer.[1]_
 
     Parameters
@@ -810,12 +810,12 @@ def likelihood(nkeep, rate, count, lagt):
     count : np.array
         Transition matrix.
     lagt : float
-        The lag time.      
+        The lag time.
 
     Returns
     -------
     mlog_like : float
-        The log likelihood 
+        The log likelihood
 
     Notes
     -----
@@ -865,8 +865,8 @@ def likelihood(nkeep, rate, count, lagt):
     return -log_like
 
 def partial_rate(K, elem):
-    """ Calculates the derivative of the rate matrix 
-    
+    """ Calculates the derivative of the rate matrix
+
     Parameters
     ----------
     K : np.array
@@ -893,7 +893,7 @@ def partial_rate(K, elem):
 
 def partial_peq(peq, elem):
     """ calculate derivative of equilibrium distribution
-    
+
     Parameters
     ----------
     peq : np.array
@@ -911,10 +911,10 @@ def partial_peq(peq, elem):
 
 def partial_pfold(states, K, d_K, FF, UU, elem):
     """ Calculates derivative of pfold.
-    
+
     Parameters
     ----------
-    
+
     """
     nstates = len(states)
     # define end-states
@@ -969,7 +969,7 @@ def partial_flux(states,peq,K,pfold,d_peq,d_K,d_pfold,target):
             d_J[j][i] = d_K[j][i]*peq[i]*(pfold[j]-pfold[i]) + \
                 K[j][i]*d_peq[i]*(pfold[j]-pfold[i]) + \
                 K[j][i]*peq[i]*(d_pfold[j]-d_pfold[i])
-            if j in target and K[j][i]>0: #  dividing line corresponds to I to F transitions                        
+            if j in target and K[j][i]>0: #  dividing line corresponds to I to F transitions
                 sum_d_flux += d_J[j][i]
     return sum_d_flux
 
@@ -978,14 +978,14 @@ def propagate_worker(x):
     rate, t, pini = x
     expkt = spla.expm(rate*t)
     popul = mat_mul_v(expkt, pini)
-    return popul 
+    return popul
 
 def propagateT_worker(x):
     """ propagate dynamics using power of transition matrix"""
     trans, power, pini = x
     trans_pow = np.linalg.matrix_power(trans,power)
     popul = mat_mul_v(trans_pow, pini)
-    return popul 
+    return popul
 
 #def gen_path_lengths(keys, J, pfold, flux, FF, UU):
 #    """ use BHS prescription for defining path lenghts """
@@ -1032,10 +1032,10 @@ def propagateT_worker(x):
 #    keys = x[2]
 #    nkeys = len(keys)
 #    lagt = x[3]
-##    time = 
+##    time =
 ##    sliding = x[4]
 #
-##    ltraj = len(distraj) 
+##    ltraj = len(distraj)
 ##    lag = int(lagt/dt) # number of frames per lag time
 ##    if sliding:
 ##        slider = 1 # every state is initial state
@@ -1055,18 +1055,18 @@ def propagateT_worker(x):
 ##            count[idx_j][idx_i] += 1
 ##        except UnboundLocalError:
 ##            pass
-#    return acf 
+#    return acf
 
 #def project_worker(x):
 #    """ project simulation trajectories on eigenmodes"""
 #    trans, power, pini = x
 #    trans_pow = np.linalg.matrix_power(trans,power)
 #    popul = mat_mul_v(trans_pow, pini)
-#    return popul 
+#    return popul
 #
 
 def peq_averages(peq_boots, keep_keys_boots, keys):
-    """ Return averages from bootstrap results 
+    """ Return averages from bootstrap results
 
     Parameters
     ----------
