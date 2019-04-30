@@ -1,4 +1,4 @@
-""" 
+"""
 This file is part of the MasterMSM package.
 
 """
@@ -34,11 +34,11 @@ class SuperMSM(object):
         A dictionary containing MSMs for different lag times.
     sym : bool
         Whether we want to enforce symmetrization.
-       
+
     """
     def __init__(self, trajs, file_keys=None, keys=None, sym=False):
-        """ 
-        
+        """
+
         Parameters
         ----------
         trajs : list
@@ -66,9 +66,9 @@ class SuperMSM(object):
         self.msms = {}
 
     def _merge_trajs(self):
-        """ 
+        """
         Merge all trajectories into a consistent set.
-        
+
         Returns
         -------
         new_keys : list
@@ -81,21 +81,21 @@ class SuperMSM(object):
         return new_keys
 
     def _max_dt(self):
-        """ 
+        """
         Find maximum dt in trajectories.
 
         Returns
         -------
         float
-            The maximum value of the time-step within the trajectories.            
-        
+            The maximum value of the time-step within the trajectories.
+
         """
         return np.min([x.dt for x in self.data])
 
     def _out(self):
-        """ 
+        """
         Output description to user.
-        
+
         """
         try:
             print ("\n Building MSM from \n", [x.file_name for x in self.data])
@@ -104,9 +104,9 @@ class SuperMSM(object):
         print ("     # states: %g"%(len(self.keys)))
 
     def do_msm(self, lagt, sliding=True):
-        """ 
+        """
         Construct MSM for specific value of lag time.
-        
+
         Parameters
         -----------
         lagt : float
@@ -117,7 +117,7 @@ class SuperMSM(object):
         """
         self.msms[lagt] = MSM(self.data, keys=self.keys, lagt=lagt, sym=self.sym)
         self.msms[lagt].do_count(sliding=sliding)
-        
+
     def convergence_test(self, save=None, N=1, sliding=True, \
             error=True, time=None, out=None):
         """ Carry out convergence test for relaxation times.
@@ -151,9 +151,9 @@ class SuperMSM(object):
                 self.msms[lagt] = MSM(self.data, self.keys, lagt, sym=self.sym)
                 self.msms[lagt].do_count(sliding=sliding)
                 self.msms[lagt].do_trans()
-                if error:               
+                if error:
                     self.msms[lagt].boots(nboots=50)
-            else: 
+            else:
                 if not hasattr(self.msms[lagt], 'tau_ave') and error:
                     self.msms[lagt].boots(nboots=50)
 
@@ -185,7 +185,7 @@ class SuperMSM(object):
         except:
             lagtimes = np.array(time)
 
-        # defining lag times to propopagate  
+        # defining lag times to propopagate
         #logs = np.linspace(np.log10(self.dt),np.log10(np.max(lagtimes)*5),20)
         #lagtimes_exp = 10**logs
         init_states = [x for x in range(nkeys) if self.keys[x] in init]
@@ -248,7 +248,7 @@ class SuperMSM(object):
 
     def do_lbrate(self, evecs=False, error=False):
         """ Calculates the rate matrix using the lifetime based method.
-        
+
         We use the method described by Buchete and Hummer [1]_.
 
         Parameters
@@ -260,7 +260,7 @@ class SuperMSM(object):
 
         Notes
         -----
-        .. [1] N.-V. Buchete and G. Hummer, "Coarse master equations for 
+        .. [1] N.-V. Buchete and G. Hummer, "Coarse master equations for
         peptide folding dynamics", J. Phys. Chem. B (2008).
 
         """
@@ -335,7 +335,7 @@ class MSM(object):
     """
     def __init__(self, data=None, keys=None, lagt=None, sym=False):
         """
-        
+
         Parameters
         ----------
         data : list
@@ -377,7 +377,7 @@ class MSM(object):
         ----------
         evecs : bool
             Whether we want the left eigenvectors of the transition matrix.
-        
+
         """
         #print "\n    Calculating transition matrix ..."
         nkeep = len(self.keep_states)
@@ -391,8 +391,8 @@ class MSM(object):
                     self.calc_eigsT(evecs=True)
 
     def do_rate(self, method='Taylor', evecs=False, init=False, report=False):
-        """ Calculates the rate matrix from the transition matrix. 
-        
+        """ Calculates the rate matrix from the transition matrix.
+
         We use a method based on a Taylor expansion [1]_ or the maximum likelihood
         propagator based (MLPB) method [2]_.
 
@@ -429,7 +429,7 @@ class MSM(object):
             elif init == 'random':
                 rate_init = np.random.rand(nkeep, nkeep)*1.e-2
             else:
-                rate_init =  msm_lib.calc_rate(nkeep, self.trans, self.lagt) 
+                rate_init =  msm_lib.calc_rate(nkeep, self.trans, self.lagt)
             self.rate, ml, beta = msm_lib.calc_mlrate(nkeep, self.count, self.lagt, rate_init)
             if report:
                 fig, ax = plt.subplots(2,1, sharex=True)
@@ -443,7 +443,7 @@ class MSM(object):
                 ax[1].set_ylabel(r'1/$\beta$')
 
         #print self.rate
-        if not evecs: 
+        if not evecs:
             self.tauK, self.peqK = self.calc_eigsK()
         else:
             self.tauK, self.peqK, self.rvecsK, self.lvecsK = \
@@ -466,7 +466,7 @@ class MSM(object):
 
         """
         # define multiprocessing options
-        if not nproc:           
+        if not nproc:
             nproc = mp.cpu_count()
             if len(self.data) < nproc:
                 nproc = len(self.data)
@@ -490,8 +490,8 @@ class MSM(object):
         return np.array(count)
 
 #    def calc_count_seq(self, sliding=True):
-#        """ Calculate transition count matrix sequentially 
-#        
+#        """ Calculate transition count matrix sequentially
+#
 #        """
 #        keys = self.keys
 #        nkeys = len(keys)
@@ -518,9 +518,9 @@ class MSM(object):
 #                except IndexError:
 #                    pass
 #        return count
-#   
+#
     def check_connect(self):
-        """ Check connectivity of rate matrix. 
+        """ Check connectivity of rate matrix.
 
         Returns
         -------
@@ -538,7 +538,7 @@ class MSM(object):
 
         """
         D = nx.DiGraph(self.count)
-        keep_states = list(sorted(list(nx.strongly_connected_components(D)), 
+        keep_states = list(sorted(list(nx.strongly_connected_components(D)),
                 key = len, reverse=True)[0])
         keep_states.sort()
         # keep_states = sorted(nx.strongly_connected_components(D)[0])
@@ -599,7 +599,7 @@ class MSM(object):
             return tauK, peqK, rvecsK_sorted, lvecsK_sorted
 
     def calc_eigsT(self, evecs=False):
-        """ 
+        """
         Calculate eigenvalues and eigenvectors of transition matrix T.
 
         Parameters
@@ -631,9 +631,9 @@ class MSM(object):
         #elistT.sort(key=msm_lib.esort)
         elistT.sort(key=cmp_to_key(msm_lib.esort))
 
-        # calculate relaxation times 
+        # calculate relaxation times
         tauT = []
-        warnings.filterwarnings("ignore", category=RuntimeWarning) 
+        warnings.filterwarnings("ignore", category=RuntimeWarning)
         for i in range(1, nkeep):
             iiT, lamT = elistT[i]
             tauT.append(-self.lagt/np.log(lamT))
@@ -661,7 +661,7 @@ class MSM(object):
 
         We generate count matrices with the same number of counts
         as the original by bootstrapping the simulation data. The
-        time series of discrete states are chopped into chunks to 
+        time series of discrete states are chopped into chunks to
         form a pool. From the pool we randomly select samples until
         the number of counts reaches the original.
 
@@ -673,11 +673,11 @@ class MSM(object):
             Number of processors to use
 
         """
-        # generate trajectory list for easy handling 
+        # generate trajectory list for easy handling
         filetmp = msm_lib.traj_split(data=self.data, lagt=self.lagt)
 
         # multiprocessing options
-        if not nproc:           
+        if not nproc:
             nproc = mp.cpu_count()
         #print "     ...running on %g processors"%nproc
         pool = mp.Pool(processes=nproc)
@@ -711,14 +711,14 @@ class MSM(object):
 ##
 ##        optim : bool
 ##            Whether optimization is desired.
-##        
+##
 ##        """
 ##
 ##        return pcca.PCCA(parent=self, lagt=lagt, optim=optim)
 #
 #    def rate_scale(self, iscale=None, scaling=1):
 #        """ Scaling columns of the rate matrix by a certain value
-#        
+#
 #        Parameters
 #        ----------
 #        states : list
@@ -737,9 +737,9 @@ class MSM(object):
 #
 #
     def do_pfold(self, FF=None, UU=None, dot=False):
-        """ Wrapper to calculate reactive fluxes and committors using the 
+        """ Wrapper to calculate reactive fluxes and committors using the
         Berzhkovskii-Hummer-Szabo method, J Chem Phys (2009)
-        
+
         Parameters
         ----------
         FF : list
@@ -773,7 +773,7 @@ class MSM(object):
 #
 #    def all_paths(self, FF=None, UU=None, out="graph.dot", cut=1):
 #        """ Enumerate all paths in network.
-#        
+#
 #        Parameters
 #        ----------
 #        FF : list
@@ -805,7 +805,7 @@ class MSM(object):
 #
 #        # enumerate paths
 #        tot_flux = 0
-#        paths = []        
+#        paths = []
 #        Jcum = np.zeros((nkeys, nkeys), float)
 #        paths_cum = {}
 #        p = 0
@@ -836,7 +836,7 @@ class MSM(object):
 #        # sort paths based on flux
 #        sorted_paths = sorted(paths_cum.items(), key=operator.itemgetter(1))
 #        sorted_paths.reverse()
-#   
+#
 #        # print paths up to a flux threshold
 #        cum = 0
 #        for k,v in sorted_paths:
@@ -845,7 +845,7 @@ class MSM(object):
 #            cum += f
 #            for j in range(1, len(path)):
 #                i = j - 1
-#                Jcum[path[j],path[i]] = J[path[j],path[i]] 
+#                Jcum[path[j],path[i]] = J[path[j],path[i]]
 #            if cum/tot_flux > cut:
 #                break
 #        print Jcum
@@ -854,7 +854,7 @@ class MSM(object):
 #
 #    def do_dijkstra(self, FF=None, UU=None, cut=None, npath=None, out="graph.dot"):
 #        """ Obtaining the maximum flux path wrapping NetworkX's Dikjstra algorithm.
-#        
+#
 #        Parameters
 #        ----------
 #        FF : list
@@ -886,7 +886,7 @@ class MSM(object):
         #                flux, _FF, _UU)
 #        Jnode_init = Jnode
 #        JpathG = nx.DiGraph(Jpath.transpose())
-#        
+#
 #        # find shortest paths
 #        Jcum = np.zeros((nkeys, nkeys), float)
 #        cum_paths = []
@@ -909,14 +909,14 @@ class MSM(object):
 #                except nx.NetworkXNoPath:
 #                    #print " No path for %g -> %g\n Stopping here"%(i, j)
 #                    pass
-#    
+#
 #            # sort maximum flux paths
 #            try:
 #                shortest_path = sorted(paths, key=itemgetter(2))[0]
 #            except IndexError:
 #                print " No paths"
 #                break
-#        
+#
 #            # calculate contribution to flux
 #            sp = shortest_path[1]
 #            f = self.J[sp[1],sp[0]]
@@ -929,10 +929,10 @@ class MSM(object):
         #                    self.J[sp[j],sp[i]], Jnode_init[sp[i]])
 #                f *= self.J[sp[j],sp[i]]/Jnode_init[sp[i]]
 #                path_fluxes.append(J[sp[j],sp[i]])
-#    
+#
 #            # find bottleneck
 #            ib = np.argmin(path_fluxes)
-#    
+#
 #            # remove flux from edges
 #            for j in range(1,len(sp)):
 #                i = j - 1
@@ -954,23 +954,23 @@ class MSM(object):
 #            if cut is not None:
 #                if flux/self.sum_flux < cut:
 #                    break
-#    
+#
 #            if npath is not None:
 #                if n == npath:
 #                    break
-#    
+#
 #        print "\n Commulative flux: %10.4e"%tot_flux
 #        print " Fraction: %10.4e"%(tot_flux/self.sum_flux)
 ##        visual_lib.write_dot(Jcum, nodeweight=self.peqK, \
         ##                        rank=pfold, out=out)
-#    
+#
 #        return cum_paths
 #
-#        
+#
     def sensitivity(self, FF=None, UU=None, dot=False):
         """ Sensitivity analysis of the states in the network.
 
-        We use the procedure described by De Sancho, Kubas, 
+        We use the procedure described by De Sancho, Kubas,
         Blumberger and Best [1]_.
 
         Parameters
@@ -993,7 +993,7 @@ class MSM(object):
 
         Notes
         -----
-        .. [1] D. De Sancho, A. Kubas, P.-H. Wang, J. Blumberger, R. B. 
+        .. [1] D. De Sancho, A. Kubas, P.-H. Wang, J. Blumberger, R. B.
         Best "Identification of mutational hot spots for substrate diffusion:
         Application to myoglobin", J. Chem. Theory Comput. (2015).
 
@@ -1002,12 +1002,12 @@ class MSM(object):
         K = self.rate
         peqK = self.peqK
 
-        # calculate pfold 
+        # calculate pfold
         self.do_pfold(FF=FF, UU=UU)
         pfold = self.pfold
         sum_flux = self.sum_flux
         kf = self.kf
- 
+
         if isinstance(FF, list):
             _FF = [self.keep_keys.index(x) for x in FF]
         else:
@@ -1036,7 +1036,7 @@ class MSM(object):
         self.d_lnkf = d_lnkf/sum_flux
 
     def propagateK(self, p0=None, init=None, time=None):
-        """ Propagation of rate matrix using matrix exponential 
+        """ Propagation of rate matrix using matrix exponential
 
         Parameters
         ----------
@@ -1055,7 +1055,7 @@ class MSM(object):
             Population of all states as a function of time - normalized.
 
         """
-        # defining times for relaxation 
+        # defining times for relaxation
         try:
             assert(time is None)
             tmin = self.lagt
@@ -1086,7 +1086,7 @@ class MSM(object):
         # check normalization and size
         if len(pini) != nkeep:
             print ("    initial population vector and state space have different sizes")
-            print ("    stopping here") 
+            print ("    stopping here")
             return
         else:
             sum_pini = np.sum(pini)
@@ -1124,7 +1124,7 @@ class MSM(object):
             Filename with initial population.
         init : string
             State(s) where the population is initialized.
-        time : list, int 
+        time : list, int
             User defined range of temperatures for propagating the dynamics.
 
         Returns
@@ -1138,13 +1138,13 @@ class MSM(object):
         -----
         There is probably just one essential difference between propagateT
         and propagateK. We are obtaining the time evolution of the population
-        towards the equilibrium distribution. Using K, we can obtain the 
-        population at any given time (P(t) = exp(Kt)P0), while here we are 
-        limited to powers of the transition matrix (hence, 
+        towards the equilibrium distribution. Using K, we can obtain the
+        population at any given time (P(t) = exp(Kt)P0), while here we are
+        limited to powers of the transition matrix (hence,
         P(nt) = [T(t)**n]*P0).
 
         """
-        # defining times for relaxation 
+        # defining times for relaxation
         try:
             assert(time is None)
             tmin = self.lagt
@@ -1175,7 +1175,7 @@ class MSM(object):
         # check normalization and size
         if len(pini) != nkeep:
             print ("    initial population vector and state space have different sizes")
-            print ("    stopping here") 
+            print ("    stopping here")
             return
         else:
             sum_pini = np.sum(pini)
@@ -1216,14 +1216,14 @@ class MSM(object):
         ----------
         mode : int, list
            Index(es) for sorted autocorrelation functions.
-        time : list, int 
+        time : list, int
             User defined range of temperatures for ACF.
 
         Returns
         -------
         corr : array
            The mode(s) autocorrelation function.
-        
+
         Notes
         -----
         .. [1] N.-V. Buchete and G. Hummer, "Coarse master equations for
