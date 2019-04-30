@@ -18,7 +18,6 @@ class FEWSM(msm.MSM):
     ----------
     keys : dict
         A dictionary containing the clusters formed.
-
     parent : class
         Instance of the MSM class that we aim to cluster.
 
@@ -30,7 +29,6 @@ class FEWSM(msm.MSM):
         ----------
         parent : class
             Instance of the MSM class that we aim to cluster.
-
         N : int
             The desired number of clusters.
 
@@ -46,7 +44,6 @@ class FEWSM(msm.MSM):
         ----------
         N : int
             Number of clusters.
-
         method : str
             The method used for clustering.
 
