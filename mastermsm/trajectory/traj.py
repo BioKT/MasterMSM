@@ -5,6 +5,7 @@ This file is part of the MasterMSM package.
 import os
 import mdtraj as md
 from ..trajectory import traj_lib
+
 def _load_mdtraj(self, top=None, traj=None):
     """ Loads trajectories using mdtraj.
 
@@ -81,7 +82,8 @@ class TimeSeries(object):
         else:
             # An MD trajectory is provided
             self.file_name = traj
-            self.mdt = _load_mdtraj(top=top, traj=traj)
+            mdt = _load_mdtraj(top=top, traj=traj)
+            self.mdt = mdt
             self.dt = self.mdt.timestep
 
     def _read_distraj(self, distraj=None, dt=None):
@@ -146,7 +148,6 @@ class TimeSeries(object):
         if method == "rama":
             phi = md.compute_phi(self.mdt)
             psi = md.compute_psi(self.mdt)
-            res = [x for x in self.mdt.topology.residues]
             self.distraj = traj_lib.discrete_rama(phi, psi, states=states)
         elif method == "ramagrid":
             phi = md.compute_phi(self.mdt)
