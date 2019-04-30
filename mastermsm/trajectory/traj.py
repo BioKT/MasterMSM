@@ -5,6 +5,24 @@ This file is part of the MasterMSM package.
 import os
 import mdtraj as md
 from ..trajectory import traj_lib
+def _load_mdtraj(self, top=None, traj=None):
+    """ Loads trajectories using mdtraj.
+
+    Parameters
+    ----------
+    top: str
+        The topology file, may be a PDB or GRO file.
+
+    traj : str
+        A list with the trajectory filenames to be read.
+
+    Returns
+    -------
+    mdtrajs : list
+        A list of mdtraj Trajectory objects.
+
+    """
+    return md.load(traj, top=top)
 
 class TimeSeries(object):
     """
@@ -63,7 +81,7 @@ class TimeSeries(object):
         else:
             # An MD trajectory is provided
             self.file_name = traj
-            self.mdt = self._load_mdtraj(top=top, traj=traj)
+            self.mdt = _load_mdtraj(top=top, traj=traj)
             self.dt = self.mdt.timestep
 
     def _read_distraj(self, distraj=None, dt=None):
@@ -100,24 +118,7 @@ class TimeSeries(object):
                 cstates = [x.split()[0] for x in raw]
                 return cstates, 1.
 
-    def _load_mdtraj(self, top=None, traj=None):
-        """ Loads trajectories using mdtraj.
 
-        Parameters
-        ----------
-        top: str
-            The topology file, may be a PDB or GRO file.
-
-        traj : str
-            A list with the trajectory filenames to be read.
-
-        Returns
-        -------
-        mdtrajs : list
-            A list of mdtraj Trajectory objects.
-
-        """
-        return md.load(traj, top=top)
 
     def discretize(self, method="rama", states=None, nbins=20):
         """ Discretize the simulation data.
