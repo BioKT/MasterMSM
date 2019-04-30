@@ -1,4 +1,3 @@
-
 MasterMSM examples
 ==================
 Here are a set of examples where you can learn some of the fundamentals of
@@ -12,4 +11,3 @@ Contents
 * alanine_octapeptide
 * brownian_dynamics_1D
 * brownian_dynamics_2D
-
