@@ -3,7 +3,7 @@ This file is part of the MasterMSM package.
 
 """
 
-import sys,copy,itertools,random,math
+import sys, copy, itertools
 import numpy as np
 from scipy import linalg as scipyla
 
@@ -96,7 +96,7 @@ def beta(imc,mcsteps):
     # inverse temperature for MCSA
     x = imc - 1
     a = 4./mcsteps
-    temp = (1 + (math.exp(-a*x)-1.)/(1.-math.exp(-a*mcsteps))) # MCSA temperature
+    temp = (1 + (np.exp(-a*x)-1.)/(1.- np.exp(-a*mcsteps))) # MCSA temperature
     try:
         beta = 1./temp
     except ZeroDivisionError:
@@ -109,7 +109,7 @@ def metropolis(delta):
     else:
         accept = False
         p = min(1.0,np.exp(-delta))
-        rand = random.random()
+        rand = np.random.random()
         if (rand < p): 
             accept = True
         return accept
