@@ -26,16 +26,12 @@ class SuperMSM(object):
 
     Attributes
     ----------
-
     data : list
         A list of instances of the TimeSeries class
-
     keys : list of str
         Names of states.
-
     msms : dict
         A dictionary containing MSMs for different lag times.
-
     sym : bool
         Whether we want to enforce symmetrization.
        
@@ -47,11 +43,9 @@ class SuperMSM(object):
         ----------
         trajs : list
             A list of TimeSeries objects from the trajectory module
-
         file_keys : str
             A file from which the states are read. If not defined
             keys are automatically generated from the time series.
-
         sym : bool
             Tells MSM whether to symmetrize count matrices or not.
 
@@ -117,7 +111,6 @@ class SuperMSM(object):
         -----------
         lagt : float
             The lag time.
-
         sliding : bool
             Whether a sliding window is used in counts.
 
@@ -133,16 +126,12 @@ class SuperMSM(object):
         -----------
         N : int
             The number of modes for which we are building the MSM.
-
         sliding : bool
             Whether a sliding window should be used or not.
-
         error : bool
             Whether to include errors or not.
-
         time : array
             The range of times that must be used.
-
         save : bool, str
             Whether we want to save to file.
 
@@ -177,10 +166,8 @@ class SuperMSM(object):
         -----------
         init : str
             The states from which the relaxation should be simulated.
-
         sliding : bool
             Whether a sliding window is used to count transitions.
-
         error : bool
             Whether errors are calculated.
 
@@ -268,7 +255,6 @@ class SuperMSM(object):
         ----------
         evecs : bool
             Whether we want the left eigenvectors of the rate matrix.
-
         error : bool
             Whether to include errors or not.
 
@@ -339,13 +325,10 @@ class MSM(object):
     ----------
     keys : list of str
         Names of states.
-
     count : np array
         Transition count matrix.
-
     keep_states : list of str
         Names of states after removing not strongly connected sets.
-
     sym : bool
         Whether we want to enforce symmetrization.
 
@@ -357,13 +340,10 @@ class MSM(object):
         ----------
         data : list
             Set of trajectories used for the construction.
-
         keys : list of str
             Set of states in the model.
-
         lag : float
             Lag time for building the MSM.
-
         sym : bool
             Whether we want to enforce symmetrization.
 
@@ -420,14 +400,11 @@ class MSM(object):
         ----------
         evecs : bool
             Whether we want the left eigenvectors of the rate matrix.
-
         method : str
             Which method one wants to use. Acceptable values are 'Taylor'
             and 'MLPB'.
-
         init : array
             Rate matrix to start optimization from.
-
         report : bool
             Whether to report the results from MC in MLPB.
 
@@ -479,7 +456,6 @@ class MSM(object):
         ----------
         sliding : bool
             Whether a sliding window is used in counts.
-
         nproc : int
             Number of processors to be used.
 
@@ -550,7 +526,6 @@ class MSM(object):
         -------
         keep_states : list
             Indexes of states from the largest strongly connected set.
-
         keep_keys : list
             Keys for the largest strongly connected set.
 
@@ -582,13 +557,10 @@ class MSM(object):
         -------
         tauK : numpy array
             Relaxation times from K.
-
         peqK : numpy array
             Equilibrium probabilities from K.
-
         rvecsK : numpy array, optional
             Right eigenvectors of K, sorted.
-
         lvecsK : numpy array, optional
             Left eigenvectors of K, sorted.
 
@@ -639,13 +611,10 @@ class MSM(object):
         -------
         tauT : numpy array
             Relaxation times from T.
-
         peqT : numpy array
             Equilibrium probabilities from T.
-
         rvecsT : numpy array, optional
             Right eigenvectors of T, sorted.
-
         lvecsT : numpy array, optional
             Left eigenvectors of T, sorted.
 
@@ -700,7 +669,6 @@ class MSM(object):
         ----------
         nboots : int
             Number of bootstrap samples
-
         nproc : int
             Number of processors to use
 
@@ -776,7 +744,6 @@ class MSM(object):
         ----------
         FF : list
             Folded states.
-
         UU : list
             Unfolded states.
         dot : string
@@ -1010,7 +977,6 @@ class MSM(object):
         ----------
         FF : list
             Folded states.
-
         UU : list
             Unfolded states.
 
@@ -1018,13 +984,10 @@ class MSM(object):
         -------
         dJ : list
             Derivative of flux.
-
         d_peq : list
             Derivative of equilibrium populations.
-
         d_kf : list
             Derivative of global rate.
-
         kf : float
             Global rate.
 
@@ -1079,10 +1042,8 @@ class MSM(object):
         ----------
         p0 : string
             Filename with initial population.
-
         init : string
             State(s) where the population is initialized.
-
         time : list, array
             User defined range of temperatures for propagating the dynamics.
 
@@ -1090,7 +1051,6 @@ class MSM(object):
         -------
         popul : array
             Population of all states as a function of time.
-
         pnorm : array
             Population of all states as a function of time - normalized.
 
@@ -1162,10 +1122,8 @@ class MSM(object):
         ----------
         p0 : string
             Filename with initial population.
-
         init : string
             State(s) where the population is initialized.
-
         time : list, int 
             User defined range of temperatures for propagating the dynamics.
 
@@ -1173,7 +1131,6 @@ class MSM(object):
         -------
         popul : array
             Population of all states as a function of time.
-
         pnorm : array
             Population of all states as a function of time - normalized.
 
@@ -1259,7 +1216,6 @@ class MSM(object):
         ----------
         mode : int, list
            Index(es) for sorted autocorrelation functions.
-
         time : list, int 
             User defined range of temperatures for ACF.
 
