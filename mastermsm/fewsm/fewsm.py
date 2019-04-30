@@ -1,11 +1,11 @@
-""" 
+"""
 This file is part of the MasterMSM package.
 
 """
 
 import copy
 #import random
-from ..msm import msm 
+from ..msm import msm
 from ..trajectory import traj
 #import msm_lib
 from ..fewsm import fewsm_lib
@@ -40,8 +40,8 @@ class FEWSM(msm.MSM):
         self.macros = self.eigen_group(N=self.N, method=method)
 
     def eigen_group(self, N=2, method="robust"):
-        """ Splits microstates into macrostates 
-        
+        """ Splits microstates into macrostates
+
         Parameters
         ----------
         N : int
@@ -111,7 +111,7 @@ class FEWSM(msm.MSM):
             mt = traj.TimeSeries(distraj=mt_states, dt=data.dt)
             print (mt)
             mappedtraj.append(mt)
-        self.mappedtraj = mappedtraj 
+        self.mappedtraj = mappedtraj
         #super().__init__(mappedtraj, keys=range(self.N), lagt=self.parent.lagt)
 
     def metastability(self):
@@ -120,7 +120,7 @@ class FEWSM(msm.MSM):
 
         Returns
         -------
-        float 
+        float
             Metastability
 
         """
@@ -128,7 +128,7 @@ class FEWSM(msm.MSM):
 
 #    def optim(self, nsteps=1, nwrite=None, fout="mc.dat"):
 #        """ MC optimization using the metastability Q as energy.
-#        
+#
 #        Parameters
 #        ----------
 #        nsteps : int
@@ -151,7 +151,7 @@ class FEWSM(msm.MSM):
 #        nmac = self.N
 #        nmic = len(self.parent.keep_keys)
 #        mcsteps = len(self.count)*nsteps*nmic # mc steps per block
-#        mcsteps_max = nmic*20000 # maximum number of mc steps 
+#        mcsteps_max = nmic*20000 # maximum number of mc steps
 #        print self.count
 #        print self.trans
 #        q =  self.metastability()
@@ -163,7 +163,7 @@ class FEWSM(msm.MSM):
 #        nmc = 0 # number of mc blocks
 #        reject = 0
 #        while cont:
-#            imc = 0 
+#            imc = 0
 #            out.write ("%6i %12.10f %10.6e\n"%(imc + nmc*mcsteps,q,1))
 #            while imc < mcsteps:
 #                # try ramdom insertion of a microstate in a macrostate
@@ -205,7 +205,7 @@ class FEWSM(msm.MSM):
 #
 #                    out.write ("%6i %12.10e %10.6e\n"%(imc + nmc*mcsteps,q,1./fewsm_lib.beta(imc,mcsteps)))
 #                    imc +=1
-#                cont = False    
+#                cont = False
 #        print " final :", q
 #        print " best :", q_opt
 #        print " acceptance:",1.-float(reject)/mcsteps
@@ -215,7 +215,7 @@ class FEWSM(msm.MSM):
 #        self.do_trans()
 #
 #    def write_mapping(self):
-#        """ 
+#        """
 #        Prints files with the mapping between states and clusters
 #
 #        """
