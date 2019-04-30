@@ -1054,7 +1054,7 @@ class MSM(object):
         else:
             _UU = [self.keep_keys.index(UU)]
 
-        pu = np.sum([peqK[x] for x in range(nkeep) if pfold[x] < 0.5]) 
+        pu = np.sum([peqK[x] for x in range(nkeep) if pfold[x] < 0.5])
         dJ = []
         d_pu = []
         d_lnkf = []
