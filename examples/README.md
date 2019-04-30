@@ -7,7 +7,7 @@ on simple biomolecules.
 
 Contents
 --------
-* alanine_dipeptide
-* alanine_octapeptide
-* brownian_dynamics_1D
-* brownian_dynamics_2D
+*   alanine_dipeptide
+*   alanine_octapeptide
+*   brownian_dynamics_1D
+*   brownian_dynamics_2D
