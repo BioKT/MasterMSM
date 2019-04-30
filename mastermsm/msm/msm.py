@@ -3,12 +3,8 @@ This file is part of the MasterMSM package.
 
 """
 import warnings
-#import sys
 import math
 from functools import reduce, cmp_to_key
-#import copy
-#import operator
-#import pickle
 import itertools
 import numpy as np
 import networkx as nx
@@ -16,7 +12,6 @@ import scipy.linalg as spla
 import matplotlib.pyplot as plt
 import multiprocessing as mp
 from ..msm import msm_lib
-#from operator import itemgetter
 
 class SuperMSM(object):
     """
