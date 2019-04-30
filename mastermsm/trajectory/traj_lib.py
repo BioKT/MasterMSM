@@ -1,4 +1,4 @@
-""" 
+"""
 This file is part of the MasterMSM package.
 
 """
@@ -46,7 +46,7 @@ def discrete_rama(phi, psi, seq=None, bounds=None, states=['A', 'E', 'L']):
             TBA_bounds['E'] = [ -180., -40., 125.,165. ]
         if 'L' in states:
             TBA_bounds['L'] = [ 50., 100., -40.,70.0 ]
-    
+
     res_idx = 0
     if len(phi[0]) != len(psi[0]):
         print (" Different number of phi and psi dihedrals")
@@ -57,7 +57,7 @@ def discrete_rama(phi, psi, seq=None, bounds=None, states=['A', 'E', 'L']):
     prev_s_string = ""
     ndih = len(phi[0])
     for f,y in zip(phi[1],psi[1]):
-        s_string = [] 
+        s_string = []
         for n in range(ndih):
             s, phipsi = _state(f[n]*180/math.pi, y[n]*180/math.pi, TBA_bounds)
         #if s == "O" and len(prev_s_string) > 0:
@@ -71,10 +71,10 @@ def discrete_rama(phi, psi, seq=None, bounds=None, states=['A', 'E', 'L']):
         cstates.append(''.join(s_string))
         prev_s_string = s_string
         res_idx += 1
-    return cstates 
+    return cstates
 
 def discrete_ramagrid(phi, psi, nbins):
-    """ Finely partition the Ramachandran map into a grid of states. 
+    """ Finely partition the Ramachandran map into a grid of states.
 
     Parameters
    ----------
@@ -99,7 +99,7 @@ def discrete_ramagrid(phi, psi, nbins):
     for f, y in zip(phi[1], psi[1]):
         s = _stategrid(f, y, nbins)
         cstates.append(s)
-    return cstates 
+    return cstates
 #stats_out = open(stats_file,"w")
 #cum = 0
 #for s in stats_list:
