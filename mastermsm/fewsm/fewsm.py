@@ -91,7 +91,6 @@ class FEWSM(msm.MSM):
         """
         print ("\n Mapping trajectory onto macrostates...")
         mappedtraj = []
-        keep_states = self.parent.keep_states
         keep_keys = self.parent.keep_keys
         mt_states = []
         for data in self.parent.data:
@@ -106,7 +105,6 @@ class FEWSM(msm.MSM):
                     except IndexError:
                         pass
             mt = traj.TimeSeries(distraj=mt_states, dt=data.dt)
-            print (mt)
             mappedtraj.append(mt)
         self.mappedtraj = mappedtraj
         #super().__init__(mappedtraj, keys=range(self.N), lagt=self.parent.lagt)

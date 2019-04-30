@@ -16,7 +16,8 @@ def map_micro2macro(cmic, mac, states):
         for j in range(m):
             if i == j:
                 cmac[j,i] = reduce(lambda x, y: x + y, \
-                    [cmic[states[x],states[y]] for (x,y) in itertools.product(mac[j],mac[i])])
+                    [cmic[states[x],states[y]] for (x,y) in \
+                    itertools.product(mac[j],mac[i])])
             else:
                 cmac[j,i] = reduce(lambda x, y: x + y, \
                     [cmic[states[x],states[y]] for (x,y) in itertools.product(mac[j],mac[i])])
@@ -56,7 +57,7 @@ def split_sign(macro, lvec):
     # update old macrostate
     for i in elems:
         macro_new[isplit].remove(i)
-    return macro_new,vals
+    return macro_new, vals
 
 def split_sigma(macro, lvec):
     """ split based on distribution """
@@ -85,7 +86,7 @@ def split_sigma(macro, lvec):
     for i in elems:
         macro_new[isplit].remove(i)
     macro = copy.deepcopy(macro_new)
-    return macro,vals
+    return macro, vals
 
 def metastability(T):
     return np.sum(np.diag(T))
