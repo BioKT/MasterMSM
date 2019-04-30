@@ -56,7 +56,7 @@ class FEWSM(msm.MSM):
 
         # generate eigenvectors in case the MSM does not have them
         if not hasattr(self.parent, 'lvecsT'):
-            tauT, peqT, self.parent.rvecsT, self.parent.lvecsT = \
+            self.parent.tauT, self.parent.peqT, self.parent.rvecsT, self.parent.lvecsT = \
                    self.parent.calc_eigsT(evecs=True)
         lvecs = self.parent.lvecsT
 
@@ -67,7 +67,7 @@ class FEWSM(msm.MSM):
         macros[0] = list(range(len(keep_states)))
         for n in range(1, N):
             if method is "robust":
-                macro_new, vals = fewsm_lib.split_sigma(macros, lvecs[:,n])
+                macro_new, _ = fewsm_lib.split_sigma(macros, lvecs[:,n])
             elif method is "sign":
                 macro_new, vals = fewsm_lib.split_sign(macros, lvecs[:,n])
             macros = copy.deepcopy(macro_new)
@@ -99,11 +99,7 @@ class FEWSM(msm.MSM):
                     mt_states.append([k for k, v in self.macros.items() \
                            if keep_keys.index(s) in v][0])
                 except ValueError:
-                    #print " not in keep_keys"
-                    try:
-                        prev = mt_states[-1]
-                    except IndexError:
-                        pass
+                    print " not in keep_keys"
             mt = traj.TimeSeries(distraj=mt_states, dt=data.dt)
             mappedtraj.append(mt)
         self.mappedtraj = mappedtraj
