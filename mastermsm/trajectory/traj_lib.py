@@ -59,7 +59,7 @@ def discrete_rama(phi, psi, seq=None, bounds=None, states=['A', 'E', 'L']):
     for f,y in zip(phi[1],psi[1]):
         s_string = []
         for n in range(ndih):
-            s, phipsi = _state(f[n]*180/math.pi, y[n]*180/math.pi, TBA_bounds)
+            s, _ = _state(f[n]*180/math.pi, y[n]*180/math.pi, TBA_bounds)
         #if s == "O" and len(prev_s_string) > 0:
             if s == "O":
                 try:
@@ -100,6 +100,7 @@ def discrete_ramagrid(phi, psi, nbins):
         s = _stategrid(f, y, nbins)
         cstates.append(s)
     return cstates
+
 #stats_out = open(stats_file,"w")
 #cum = 0
 #for s in stats_list:
