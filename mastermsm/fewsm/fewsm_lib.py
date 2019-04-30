@@ -1,13 +1,11 @@
-""" 
+"""
 This file is part of the MasterMSM package.
 
 """
-
 import sys, copy, itertools
 import numpy as np
-from scipy import linalg as scipyla
 
-"""useful functions for clustering"""
+""" Useful functions for clustering"""
 
 def map_micro2macro(cmic, mac, states):
     # maps microstates into macrostates and returns count matrix
@@ -28,7 +26,7 @@ def test_sign(v):
     """check whether positive and negative signs are present in vector"""
     test = False
     if any(v > 0.) and  any(v<0):
-        test = True 
+        test = True
     return test
 
 def split_sign(macro, lvec):
@@ -37,7 +35,7 @@ def split_sign(macro, lvec):
     nt = len(macro)
     spread = []
     vals = lvec
-    for k, v in macro.iteritems():
+    for k, v in macro.items():
         # check that there are positive and negative values in evec
         if test_sign(vals[v]):
             #spread.append(np.sum(vals**2))
@@ -56,7 +54,7 @@ def split_sign(macro, lvec):
     macro_new = copy.deepcopy(macro)
     macro_new[nt] = elems
     # update old macrostate
-    for i in elems: 
+    for i in elems:
         macro_new[isplit].remove(i)
     return macro_new,vals
 
@@ -75,7 +73,7 @@ def split_sigma(macro, lvec):
     keep = []
     val_max =  np.max(lvec[macro[isplit]])
     val_min =  np.min(lvec[macro[isplit]])
-    vals = (lvec[macro[isplit]] - val_min)/(val_max - val_min)  
+    vals = (lvec[macro[isplit]] - val_min)/(val_max - val_min)
     for i in filter(lambda x: vals[x] < 0.5,range(len(macro[isplit]))):
         elems.append(macro[isplit][i])
     for i in filter(lambda x: vals[x] >= 0.5,range(len(macro[isplit]))):
@@ -84,7 +82,7 @@ def split_sigma(macro, lvec):
     macro_new[nt] = elems
     #print macro_new
     # update old macrostate
-    for i in elems: 
+    for i in elems:
         macro_new[isplit].remove(i)
     macro = copy.deepcopy(macro_new)
     return macro,vals
@@ -104,12 +102,12 @@ def beta(imc,mcsteps):
     return beta
 
 def metropolis(delta):
-    if delta < 0: 
+    if delta < 0:
         return True
     else:
         accept = False
         p = min(1.0,np.exp(-delta))
         rand = np.random.random()
-        if (rand < p): 
+        if (rand < p):
             accept = True
         return accept
