@@ -432,7 +432,7 @@ class MSM(object):
                 rate_init =  msm_lib.calc_rate(nkeep, self.trans, self.lagt)
             self.rate, ml, beta = msm_lib.calc_mlrate(nkeep, self.count, self.lagt, rate_init)
             if report:
-                fig, ax = plt.subplots(2,1, sharex=True)
+                _, ax = plt.subplots(2,1, sharex=True)
                 ax[0].plot(ml)
                 ax[0].plot(np.ones(len(ml))*ml[0], '--')
                 ax[0].set_ylabel('-ln($L$)')
@@ -581,7 +581,7 @@ class MSM(object):
             tauK.append(-1./lamK)
 
         # equilibrium probabilities
-        ieqK, eK = elistK[0]
+        ieqK, _ = elistK[0]
         peqK_sum = reduce(lambda x, y: x + y, map(lambda x: rvecsK[x,ieqK],
             range(nkeep)))
         peqK = rvecsK[:,ieqK]/peqK_sum
@@ -639,7 +639,7 @@ class MSM(object):
             tauT.append(-self.lagt/np.log(lamT))
 
         # equilibrium probabilities
-        ieqT, eT = elistT[0]
+        ieqT, _ = elistT[0]
         peqT_sum = reduce(lambda x,y: x + y, map(lambda x: rvecsT[x,ieqT],
             range(nkeep)))
         peqT = rvecsT[:,ieqT]/peqT_sum
@@ -1153,7 +1153,6 @@ class MSM(object):
             time = 10**logt
         except:
             time = np.array(time)
-        ltime = len(time)
         nkeep = len(self.keep_states)
         if p0 is not None:
             try:
@@ -1237,7 +1236,6 @@ class MSM(object):
         trajs = [x.distraj for x in self.data]
 
         acf_ave = {}
-        dt = self.data[0].dt
         for m in modes:
             x2 = []
             acf_cum = []

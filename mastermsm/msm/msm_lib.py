@@ -66,7 +66,7 @@ def calc_eigsK(rate, evecs=False):
                 ieqK = iiK
 
     # equilibrium probabilities
-    ieqK, eK = elistK[0]
+    ieqK, _ = elistK[0]
     peqK_sum = reduce(lambda x, y: x + y, map(lambda x: rvecsK[x,ieqK],
         range(nkeys)))
     peqK = rvecsK[:,ieqK]/peqK_sum
@@ -627,8 +627,6 @@ def rand_rate(nkeep, count):
                 if (count[i,j] !=0)  and (count[j,i] != 0):
                     rand_rate[j,i] = np.exp(np.random.randn()*-3)
         rand_rate[i,i] = -np.sum(rand_rate[:,i] )
-    peq = np.random.random()
-
     return rand_rate
 
 def calc_mlrate(nkeep, count, lagt, rate_init):
@@ -740,8 +738,6 @@ def mc_move(nkeep, rate, peq):
     nparam = nkeep*(nkeep - 1)/2 + nkeep - 1
     npeq = nkeep - 1
 
-    #print rate, peq
-    nstep = 0
     while True:
         i = np.random.randint(0, nparam)
         #print i
@@ -845,7 +841,6 @@ def likelihood(nkeep, rate, count, lagt):
         phiL[:,i] = evectsym[:,i]/evectsym[:,ieq]
 
     # calculate propagators
-    ntrans = np.sum(count)
     prop = np.zeros((nkeep, nkeep), float)
     for i in range(nkeep):
         for j in range(nkeep):
