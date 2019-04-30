@@ -33,7 +33,6 @@ def calc_eigsK(rate, evecs=False):
     -----------
     rate : array
         The rate matrix to use.
-
     evecs : bool
         Whether we want the eigenvectors of the rate matrix.
 
@@ -41,13 +40,10 @@ def calc_eigsK(rate, evecs=False):
     -------
     tauK : numpy array
         Relaxation times from K.
-
     peqK : numpy array
         Equilibrium probabilities from K.
-
     rvecsK : numpy array, optional
         Right eigenvectors of K, sorted.
-
     lvecsK : numpy array, optional
         Left eigenvectors of K, sorted.
 
@@ -95,14 +91,12 @@ def esort(ei, ej):
     Parameters
     ----------
     ei : float
-
     ej : float
 
     Returns
     -------
     bool :
         Whether the first value is larger than the second.
-
     Note
     ----
     Contributed by R. B. Best
@@ -181,7 +175,6 @@ def mat_mul_v(m, v):
     ----------
     m : np.array
         The matrix.
-
     v : np.array
         The vector.
 
@@ -291,7 +284,6 @@ def run_commit(states, K, peq, FF, UU):
 
     FF : list
         Definitely folded states.
-
     UU : list
         Definitely unfolded states.
 
@@ -299,13 +291,10 @@ def run_commit(states, K, peq, FF, UU):
     -------
     J : np.array
         Reactive flux matrix.
-
     pfold : np.array
         Values of the committor.
-        
     sum_flux : float
         Sum of reactive fluxes.
-    
     kf : float
         Folding rate from flux over population relationship.
 
@@ -468,7 +457,6 @@ def traj_split(data=None, lagt=None, fdboots=None):
     ----------
     data : list
         Set of trajectories used for building the MSM.
-
     lagt : float
         Lag time for building the MSM.
 
@@ -592,10 +580,8 @@ def calc_rate(nkeep, trans, lagt):
     ----------
     nkeep : int
         Number of states in transition matrix.
-
     trans: np.array
         Transition matrix.
-
     lagt : float
         The lag time.      
 
@@ -657,10 +643,8 @@ def calc_mlrate(nkeep, count, lagt, rate_init):
     ----------
     nkeep : int
         Number of states in transition matrix.
-
     count : np.array
         Transition matrix.
-
     lagt : float
         The lag time.      
 
@@ -750,10 +734,8 @@ def mc_move(nkeep, rate, peq):
     ----------
     nkeep : int
         The number of states.
-
     rate : array
         The rate matrix obeying detailed balance.
-
     peq : array
         The equilibrium probability
     
@@ -804,10 +786,8 @@ def detailed_balance(nkeep, rate, peq):
     ----------
     nkeep : int
         The number of states.
-
     rate : array
         The rate matrix obeying detailed balance.
-
     peq : array
         The equilibrium probability
 
@@ -828,10 +808,8 @@ def likelihood(nkeep, rate, count, lagt):
     ----------
     nkeep : int
         Number of states in transition matrix.
-
     count : np.array
         Transition matrix.
-
     lagt : float
         The lag time.      
 
@@ -894,7 +872,6 @@ def partial_rate(K, elem):
     ----------
     K : np.array
         The rate matrix.
-
     elem : int
         Integer corresponding to which we calculate the
         partial derivative.
@@ -982,9 +959,6 @@ def partial_pfold(states, K, d_K, FF, UU, elem):
 
 def partial_flux(states,peq,K,pfold,d_peq,d_K,d_pfold,target):
     """ calculates derivative of reactive flux.
-
-    Parameters
-    ----------
 
     """
     # flux matrix and reactive flux
