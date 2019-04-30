@@ -63,13 +63,12 @@ class FEWSM(msm.MSM):
         # split in desired number of macrostates
         macros = {}
         keep_states = self.parent.keep_states
-        keep_keys = self.parent.keep_keys
         macros[0] = list(range(len(keep_states)))
         for n in range(1, N):
             if method is "robust":
                 macro_new, _ = fewsm_lib.split_sigma(macros, lvecs[:,n])
             elif method is "sign":
-                macro_new, vals = fewsm_lib.split_sign(macros, lvecs[:,n])
+                macro_new, _ = fewsm_lib.split_sign(macros, lvecs[:,n])
             macros = copy.deepcopy(macro_new)
         print ("\n Initial membership of microstates to macrostates:")
         if len(self.parent.keep_keys) < 100:
