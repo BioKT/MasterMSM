@@ -6,7 +6,6 @@ class TestMDtraj(unittest.TestCase):
     def setUp(self):
         self.traj = md.load('trajectory/tests/data/protein_only.xtc', \
                 top='trajectory/tests/data/alaTB.gro')
-        pass
 
     def test_traj(self):
         assert self.traj.n_atoms == 19
