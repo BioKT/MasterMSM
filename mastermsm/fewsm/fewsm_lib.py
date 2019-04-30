@@ -2,14 +2,13 @@
 This file is part of the MasterMSM package.
 
 """
-import sys, copy, itertools
+import copy, itertools
 import numpy as np
 
 """ Useful functions for clustering"""
 
 def map_micro2macro(cmic, mac, states):
-    # maps microstates into macrostates and returns count matrix
-    n = len(cmic)
+    """ maps microstates into macrostates """
     m = len(mac)
     cmac = np.zeros((m, m), int)
     for i in range(m):
@@ -20,7 +19,8 @@ def map_micro2macro(cmic, mac, states):
                     itertools.product(mac[j],mac[i])])
             else:
                 cmac[j,i] = reduce(lambda x, y: x + y, \
-                    [cmic[states[x],states[y]] for (x,y) in itertools.product(mac[j],mac[i])])
+                    [cmic[states[x],states[y]] for (x,y) in \
+                    itertools.product(mac[j],mac[i])])
     return cmac
 
 def test_sign(v):
@@ -36,7 +36,7 @@ def split_sign(macro, lvec):
     nt = len(macro)
     spread = []
     vals = lvec
-    for k, v in macro.items():
+    for _, v in macro.items():
         # check that there are positive and negative values in evec
         if test_sign(vals[v]):
             #spread.append(np.sum(vals**2))
