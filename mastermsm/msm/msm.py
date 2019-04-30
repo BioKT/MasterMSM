@@ -125,15 +125,12 @@ class SuperMSM(object):
         self.msms[lagt] = MSM(self.data, keys=self.keys, lagt=lagt, sym=self.sym)
         self.msms[lagt].do_count(sliding=sliding)
         
-    def convergence_test(self, plot=True, save=None, N=1, sliding=True, \
+    def convergence_test(self, save=None, N=1, sliding=True, \
             error=True, time=None, out=None):
         """ Carry out convergence test for relaxation times.
 
         Parameters
         -----------
-        plot : bool
-            Whether the lag time dependence of the relaxation times should be plotted.
-
         N : int
             The number of modes for which we are building the MSM.
 
@@ -171,36 +168,7 @@ class SuperMSM(object):
                 if not hasattr(self.msms[lagt], 'tau_ave') and error:
                     self.msms[lagt].boots(nboots=50)
 
-#        if plot:
-#            fig, ax = plt.subplots(facecolor='white', dpi=300)
-#            for n in range(N):
-#                data = [self.msms[x].tauT[n] for x in lagtimes]
-#                if not error:
-#                    ax.plot(lagtimes, data, 'o-', label=n)
-#                else:
-#                    ebar = [self.msms[x].tau_std[n] for x in lagtimes]
-#                    ax.errorbar(lagtimes, data, yerr=ebar, fmt='o', label=n)
-#            ax.set_xlabel(r'Time', fontsize=16)
-#            ax.set_ylabel(r'$\tau$', fontsize=16)
-#            ax.legend()
-#            if out is not None:
-#                plt.savefig(out, dpi=300, format='png')
-#
-#            fig, ax = plt.subplots(facecolor='white')
-#            for n in range(N):
-#                data = [self.msms[x].tauT[n] for x in lagtimes]
-#                if not error:
-#                    ax.plot(lagtimes, data, 'o-', label=n)
-#                else:
-#                    ebar = [self.msms[x].tau_std[n] for x in lagtimes]
-#                    ax.errorbar(lagtimes, data, yerr=ebar, fmt='o', label=n)
-#            ax.set_xscale('log')
-#            ax.set_xlabel(r'Time', fontsize=16)
-#            ax.set_ylabel(r'$\tau$', fontsize=16)
-#            ax.legend()
-#            plt.show()
-#
-    def ck_test(self, init=None, sliding=True, error=True, plot=True, out=None, time=None):
+    def ck_test(self, init=None, sliding=True, error=True, out=None, time=None):
         """ Carry out Chapman-Kolmogorov test.
 
         We follow the procedure described by Prinz et al.[1]_
@@ -215,9 +183,6 @@ class SuperMSM(object):
 
         error : bool
             Whether errors are calculated.
-
-        plot : bool
-            Whether the result should be plotted.
 
         Notes
         -----
@@ -293,29 +258,6 @@ class SuperMSM(object):
                         itertools.product(init_states,init_states)])
                 epMD.append(np.sqrt(lagt/self.dt*num/den))
         pMD = np.array(pMD)
-
-        # plotting
-        if plot:
-            fig, ax = plt.subplots(facecolor='white', dpi=300)
-            # plot MD probabilities first
-            if not error:
-                ax.plot(pMD[:,0],pMD[:,1],'o')
-            else:
-                ax.errorbar(pMD[:,0],pMD[:,1],yerr=epMD, fmt='o')
-            # plot MSM probabilities second
-            n = 0
-            for pM in pMSM:
-                ax.plot(pM[0], pM[1], label=lagtimes[n])
-                n +=1
-            ax.set_xlabel(r'Time', fontsize=16)
-            ax.set_ylabel(r'P(t)', fontsize=16)
-            ax.set_xlim(lagtimes[0],lagtimes_md[-1]*1.2)
-            ax.set_ylim(0,1)
-            ax.set_xscale('log')
-            ax.legend()
-            if out is not None:
-                plt.savefig(out, dpi=300, format='png')
-            plt.show()
 
     def do_lbrate(self, evecs=False, error=False):
         """ Calculates the rate matrix using the lifetime based method.
@@ -745,7 +687,7 @@ class MSM(object):
                 lvecsT_sorted[:,i] = lvecsT[:,iiT]
             return tauT, peqT, rvecsT_sorted, lvecsT_sorted
 
-    def boots(self, nboots=100, nproc=None, plot=False, sliding=True):
+    def boots(self, nboots=100, nproc=None, sliding=True):
         """ Bootstrap the simulation data to calculate errors.
 
         We generate count matrices with the same number of counts
