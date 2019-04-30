@@ -2,9 +2,7 @@
 This file is part of the MasterMSM package.
 
 """
-import os
 import warnings
-
 #import sys
 import math
 from functools import reduce, cmp_to_key
@@ -197,7 +195,6 @@ class SuperMSM(object):
                 self.msms[lagt] = MSM(self.data, self.keys, lagt)
                 self.msms[lagt].do_count(sliding=sliding)
                 self.msms[lagt].do_trans()
-            nkeysl = len(self.msms[lagt].keys)
 
             # propagate transition matrix
             lagtimes_exp = np.logspace(np.log10(lagt), np.log10(np.max(lagtimes)*10), num=50)
@@ -691,7 +688,6 @@ class MSM(object):
         pool.join()
         tauT_boots = [x[0] for x in result]
         peqT_boots = [x[1] for x in result]
-        trans_boots = [x[2] for x in result]
         keep_keys_boots = [x[3] for x in result]
 
         self.peq_ave, self.peq_std = msm_lib.peq_averages(peqT_boots, keep_keys_boots, self.keys)
@@ -1064,7 +1060,6 @@ class MSM(object):
             time = 10**logt
         except:
             time = np.array(time)
-        ltime = len(time)
         nkeep = len(self.keep_states)
         if p0 is not None:
             try:
