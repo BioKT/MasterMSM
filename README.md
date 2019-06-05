@@ -4,12 +4,21 @@
 
 MasterMSM
 =========
-MasterMSM is a Python package for building master equation / Markov state models.
+MasterMSM is a Python package for generating Markov state models (MSMs)
+from molecular dynamics trajectories. We use a formulation based on 
+the chemical master equation. This package will allow you to:
+
+* Create Markov state / master equation models from biomolecular simulations.
+* Discretize trajectory data using dihedral angle based methods useful
+  for small peptides.
+* Calculate rate matrices using a variety of methods.
+* Obtain committors and reactive fluxes.
+* Carry out sensitivity analysis of networks.
 You can read the documentation [here](https://mastermsm.readthedocs.io).
 
 Contributors
 ------------
-This code has been written by David De Sancho.
+This code has been written by David De Sancho with help from Anne Aguirre.
 
 Installation
 ------------
