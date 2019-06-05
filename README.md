@@ -14,6 +14,7 @@ the chemical master equation. This package will allow you to:
 * Calculate rate matrices using a variety of methods.
 * Obtain committors and reactive fluxes.
 * Carry out sensitivity analysis of networks.
+
 You can read the documentation [here](https://mastermsm.readthedocs.io).
 
 Contributors
