@@ -924,7 +924,7 @@ def partial_pfold(states, K, d_K, FF, UU, elem):
         sumd = 0.
         for i in FF:
             summ += K[i][j]
-            sumd+= d_K[i][j]
+            sumd += d_K[i][j]
         b[j_ind] = -summ
         db[j_ind] = -sumd
         for i_ind in range(NI):
@@ -948,7 +948,7 @@ def partial_pfold(states, K, d_K, FF, UU, elem):
             dpfold[i] = x[ii]
     return dpfold
 
-def partial_flux(states,peq,K,pfold,d_peq,d_K,d_pfold,target):
+def partial_flux(states, peq, K, pfold, d_peq, d_K, d_pfold, target):
     """ calculates derivative of reactive flux.
 
     """

@@ -1024,7 +1024,7 @@ class MSM(object):
         self.kf = kf
         self.d_pu = d_pu
         self.dJ = dJ
-        self.d_lnkf = d_lnkf/sum_flux
+        self.d_lnkf = d_lnkf/kf
 
     def propagateK(self, p0=None, init=None, time=None):
         """ Propagation of rate matrix using matrix exponential
