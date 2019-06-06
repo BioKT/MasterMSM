@@ -231,12 +231,13 @@ class SuperMSM(object):
                 print (" den", den)
                 sys.exit()
 
-            if error:
-                num = pMD[-1][1]-pMD[-1][1]**2
-                den = np.sum([self.msms[lagt].count[j,i] for (i,j) in \
-                        itertools.product(init_states,init_states)])
-                epMD.append(np.sqrt(lagt/self.dt*num/den))
+            num = pMD[-1][1]-pMD[-1][1]**2
+            den = np.sum([self.msms[lagt].count[j,i] for (i,j) in \
+                    itertools.product(init_states,init_states)])
+            epMD.append(np.sqrt(lagt/self.dt*num/den))
         pMD = np.array(pMD)
+        epMD = np.array(epMD)
+        return pMSM, pMD, epMD
 
     def do_lbrate(self, evecs=False, error=False):
         """ Calculates the rate matrix using the lifetime based method.
@@ -1238,7 +1239,7 @@ class MSM(object):
                         pass
                 x2.extend([x**2 for x in projected])
                 acf = np.correlate(projected, projected, mode='full')
-                acf_half = acf[acf.size / 2:]
+                acf_half = acf[int(acf.size / 2):]
                 acf_cum.append(acf_half)
             lmin = np.min([len(x) for x in acf_cum])
 
