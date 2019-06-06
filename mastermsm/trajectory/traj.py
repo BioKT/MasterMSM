@@ -6,7 +6,7 @@ import os
 import mdtraj as md
 from ..trajectory import traj_lib
 
-def _load_mdtraj(self, top=None, traj=None):
+def _load_mdtraj(top=None, traj=None):
     """ Loads trajectories using mdtraj.
 
     Parameters
