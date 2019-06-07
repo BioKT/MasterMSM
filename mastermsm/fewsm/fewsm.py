@@ -98,7 +98,7 @@ class FEWSM(msm.MSM):
                     mt_states.append([k for k, v in self.macros.items() \
                            if keep_keys.index(s) in v][0])
                 except ValueError:
-                    print " not in keep_keys"
+                    print (" not in keep_keys")
             mt = traj.TimeSeries(distraj=mt_states, dt=data.dt)
             mappedtraj.append(mt)
         self.mappedtraj = mappedtraj
