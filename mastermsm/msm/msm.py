@@ -430,7 +430,7 @@ class MSM(object):
                 ax[0].plot(np.ones(len(ml))*ml[0], '--')
                 ax[0].set_ylabel('-ln($L$)')
                 ax[1].plot(beta)
-                ax[1].set_ylim(0,1.05)
+                #ax[1].set_ylim(0,1.05)
                 ax[1].set_xlim(0,len(ml))
                 ax[1].set_xlabel('MC steps x n$_{freq}$')
                 ax[1].set_ylabel(r'1/$\beta$')

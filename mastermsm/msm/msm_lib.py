@@ -666,11 +666,13 @@ def calc_mlrate(nkeep, count, lagt, rate_init):
     ml_cum = [ml_prev]
     temp_cum = [1.]
     nstep = 0
-    nsteps = len(p_prev)**2
-    k = -5./nsteps
-    nfreq = 100
+    nsteps = 1000*nkeep**2
+    k = -3./nsteps
+    nfreq = 10
     ncycle = 0
     accept = 0
+    rate_best = rate_prev
+    ml_best = ml_prev
     while True:
         # random choice of MC move
         rate, p = mc_move(nkeep, rate_prev, p_prev)
@@ -686,10 +688,12 @@ def calc_mlrate(nkeep, count, lagt, rate_init):
             p_prev = p
             ml_prev = ml
             accept +=1
+            if ml < ml_best:
+                ml_best = ml
+                rate_best = rate
         else:
             delta_ml = ml - ml_prev
-            beta = (1 - np.exp(k*nsteps))/(np.exp(k*nstep) - np.exp(k*nsteps)) if ncycle > 2 else 1.
-#            beta = 1
+            beta = (1 - np.exp(k*nsteps))/(np.exp(k*nstep) - np.exp(k*nsteps)) if ncycle > 0 else 1
             weight = np.exp(-beta*delta_ml)
             if np.random.random() < weight:
                 #print " ACCEPT BOLTZMANN\n"
@@ -708,7 +712,9 @@ def calc_mlrate(nkeep, count, lagt, rate_init):
             accept = 0
             print (rate_prev)
             print ("   L old =", ml_ref,"; L new:", ml_prev)
-            if ml_cum[-1] < ml_ref or ncycle < 2:
+            improvement = (ml_ref - ml_cum[-1])/ml_ref
+            print ("   improvement :%g"%improvement)
+            if improvement > 0.001 or ncycle < 3:
                 nstep = 0
                 ml_ref = np.mean(ml_cum[-nsteps:])
             else:
@@ -717,7 +723,7 @@ def calc_mlrate(nkeep, count, lagt, rate_init):
             ml_cum.append(ml_prev)
             temp_cum.append(1./beta)
 
-    return rate, ml_cum, temp_cum
+    return rate_best, ml_cum, temp_cum
 
 def mc_move(nkeep, rate, peq):
     """ Make MC move in either rate or equilibrium probability.
