@@ -30,3 +30,16 @@ Installation
 External libraries
 ------------------
     mdtraj : https://mdtraj.org
+
+Citation
+--------
+```
+@article{mastermsm,
+author = "David De Sancho and Anne Aguirre",
+title = "{MasterMSM: A Package for Constructing Master Equation    Models of Molecular Dynamics}",
+year = "2019",
+month = "6",
+url = "https://chemrxiv.org/articles/MasterMSM_A_Package_for_Constructing_Master_Equation_Models_of_Molecular_Dynamics/8234147",
+doi = "10.26434/chemrxiv.8234147.v1"
+}
+```
