@@ -9,4 +9,4 @@ pages :
         - ['discretize.md', 'User guide', 'Discretizing the data']
         - ['trajectory.md', 'User guide', 'Parsing trajectories']
         - ['msm.md', 'User guide', 'Constructing the MSM']
-        - ['pcca.md', 'User guide', 'Clustering the MSM']
+        - ['fewsm.md', 'User guide', 'Clustering the MSM']
