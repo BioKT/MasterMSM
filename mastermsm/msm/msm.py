@@ -135,7 +135,7 @@ class SuperMSM(object):
         try:
             assert(time is None)
             lagtimes = self.dt*np.array([1] + range(10,100,10))
-        except:
+        except AssertionError:
             lagtimes = np.array(time)
 
         # create MSMs at multiple lag times

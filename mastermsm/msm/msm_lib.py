@@ -837,7 +837,6 @@ def likelihood(nkeep, rate, count, lagt):
 
     # equilibrium population
     ieq = indx_eig[0]
-    peq = evectsym[:,ieq]**2
 
     # calculate left and right eigenvectors
     phiR = np.zeros((nkeep, nkeep))
