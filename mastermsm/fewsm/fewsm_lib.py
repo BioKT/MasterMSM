@@ -5,8 +5,6 @@ This file is part of the MasterMSM package.
 import copy, itertools
 import numpy as np
 
-""" Useful functions for clustering"""
-
 def map_micro2macro(cmic, mac, states):
     """ maps microstates into macrostates """
     m = len(mac)
