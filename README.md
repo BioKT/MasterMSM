@@ -8,12 +8,16 @@ MasterMSM is a Python package for generating Markov state models (MSMs)
 from molecular dynamics trajectories. We use a formulation based on 
 the chemical master equation. This package will allow you to:
 
-* Create Markov state / master equation models from biomolecular simulations.
-* Discretize trajectory data using dihedral angle based methods useful
-  for small peptides.
-* Calculate rate matrices using a variety of methods.
-* Obtain committors and reactive fluxes.
-* Carry out sensitivity analysis of networks.
+*   Create Markov state / master equation models from biomolecular simulations.
+
+*   Discretize trajectory data using dihedral angle based methods useful 
+for small peptides.
+
+*   Calculate rate matrices using a variety of methods.
+
+*   Obtain committors and reactive fluxes.
+
+*   Carry out sensitivity analysis of networks.
 
 You can read the documentation [here](https://mastermsm.readthedocs.io).
 
@@ -33,13 +37,11 @@ External libraries
 
 Citation
 --------
-```
-@article{mastermsm,
-author = "David De Sancho and Anne Aguirre",
-title = "{MasterMSM: A Package for Constructing Master Equation    Models of Molecular Dynamics}",
-year = "2019",
-month = "6",
-url = "https://chemrxiv.org/articles/MasterMSM_A_Package_for_Constructing_Master_Equation_Models_of_Molecular_Dynamics/8234147",
-doi = "10.26434/chemrxiv.8234147.v1"
-}
-```
+    @article{mastermsm,
+    author = "David De Sancho and Anne Aguirre",
+    title = "{MasterMSM: A Package for Constructing Master Equation    Models of Molecular Dynamics}",
+    year = "2019",
+    month = "6",
+    url = "https://chemrxiv.org/articles/MasterMSM_A_Package_for_Constructing_Master_Equation_Models_of_Molecular_Dynamics/8234147",
+    doi = "10.26434/chemrxiv.8234147.v1"
+    }
