@@ -7,7 +7,6 @@ on simple biomolecules.
 
 Contents
 --------
-*   alanine_dipeptide
-*   alanine_octapeptide
-*   brownian_dynamics_1D
-*   brownian_dynamics_2D
+* brownian_dynamics_1D: example corresponding to a one-dimensional two-state model.
+* brownian_dynamics_2D: analogous case but now in two dimensions.
+* alanine_pentapeptide: example with true MD simulation data, generated with the Gromacs package. 
