@@ -8,7 +8,7 @@ objects that are constructed. First, there are trajectories, which
 result in objects of the ``TimeSeries`` class; second, there are dynamical
 models, which come in the form of instances of the ``MSM`` class; finally,
 dynamical models can be postprocessed into simple, few-state models, which
-we generate as ``PCCA`` class objects.
+we generate as ``FEWSM`` class objects.
 
 Trajectory module
 -----------------
@@ -50,4 +50,3 @@ of the MasterMSM package. They are based on data derived from either model syste
 or from molecular dynamics simulations of some simple (albeit realistic) biomolecules.
 You can find the notebooks in the following 
 `link <https://github.com/daviddesancho/MasterMSM/tree/develop/examples>`_.
-

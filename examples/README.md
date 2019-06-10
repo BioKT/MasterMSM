@@ -8,4 +8,9 @@ on simple biomolecules.
 Contents
 --------
 * brownian_dynamics_1D: example corresponding to a one-dimensional two-state model.
+<<<<<<< HEAD
+=======
+* brownian_dynamics_2D: analogous case but now in two dimensions.
+* alanine_pentapeptide: example with true MD simulation data for the simplest peptide model, generated with the Gromacs package. 
+>>>>>>> develop
 * alanine_pentapeptide: example with true MD simulation data, generated with the Gromacs package. 
