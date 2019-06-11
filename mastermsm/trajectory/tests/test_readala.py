@@ -1,5 +1,6 @@
 import unittest
 import mdtraj as md
+import numpy as np
 from mastermsm.trajectory import traj_lib
 from mastermsm.trajectory import traj
 import matplotlib.pyplot as plt
@@ -74,6 +75,10 @@ class TestMDtraj(unittest.TestCase):
     def setUp(self):
         self.traj = md.load('trajectory/tests/data/protein_only.xtc', \
                 top='trajectory/tests/data/alaTB.gro')
+        self.topfn = 'trajectory/tests/data/alaTB.gro'
+        self.trajfn = 'trajectory/tests/data/protein_only.xtc'
+        self.tr = traj.TimeSeries(top='trajectory/tests/data/alaTB.gro', \
+                                  traj=['trajectory/tests/data/protein_only.xtc'])
 
     def test_traj(self):
         assert self.traj is not None
@@ -81,6 +86,47 @@ class TestMDtraj(unittest.TestCase):
         assert self.traj.timestep == 1.0
         assert self.traj.n_residues == 3
         assert self.traj.n_frames == 10003
+
+    def test_load_mdtraj(self):
+        mdtraj = traj._load_mdtraj(top=self.topfn, traj=self.trajfn)
+        assert mdtraj is not None
+        assert mdtraj.__module__ == 'mdtraj.core.trajectory'
+        assert hasattr(mdtraj, '__class__')
+    def test_timeseries_init(self):
+        assert self.tr is not None
+        assert self.tr.mdt is not None
+        assert hasattr(self.tr.mdt, '__class__')
+        assert self.tr.mdt.__module__ == 'mdtraj.core.trajectory'
+        assert self.tr.discretize is not None
+
+    def test_ts_discretize(self):
+        self.tr.discretize('rama', states=['A', 'E', 'L'])
+        assert self.tr.distraj is not None
+
+    def test_ts_find_keys(self):
+        assert self.tr.find_keys is not None
+        assert hasattr(self.tr, 'find_keys')
+    #   test excluding state O (unassigned)
+        self.tr.distraj = ['O']*50000
+        for i in range(len(self.tr.distraj)):
+            self.tr.distraj[i] = np.random.choice(['A', 'E', 'L', 'O'])
+
+        self.tr.find_keys()
+        keys = self.tr.keys
+        assert (len(set(keys)) == len(keys))
+        for key in keys:
+            assert (key in ['A', 'E', 'L'] and len(keys) == 3)
+    #   test excluding state in alpha-h
+        self.tr.distraj = ['O'] * 50000
+        for i in range(len(self.tr.distraj)):
+            self.tr.distraj[i] = np.random.choice(['A', 'E', 'L', 'O'])
+
+        self.tr.find_keys(exclude=['A'])
+        keys = self.tr.keys
+        assert (len(set(keys)) == len(keys))
+        for key in keys:
+            assert (key in ['E', 'L', 'O'] and len(keys) == 3)
+
 
 
 class UseMDtraj(unittest.TestCase):
@@ -90,6 +136,11 @@ class UseMDtraj(unittest.TestCase):
 
     def test_atributes(self):
         assert self.tr.mdt is not None
+        assert self.tr.mdt.n_atoms == 19
+        assert self.tr.mdt.n_frames == 10003
+        assert self.tr.mdt.n_residues == 3
+        assert self.tr.discretize is not None
+        assert callable(self.tr.discretize) is True
 
 
 #    def test_discretize(self):
