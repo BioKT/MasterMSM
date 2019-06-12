@@ -1,8 +1,8 @@
 import unittest
 import mdtraj as md
 import numpy as np
-from mastermsm.trajectory import traj_lib
-from mastermsm.trajectory import traj
+from mastermsm.trajectory import traj_lib, traj
+from mastermsm.msm import msm, msm_lib
 import os
 import matplotlib.pyplot as plt
 class TestMDTrajLib(unittest.TestCase):
@@ -187,7 +187,28 @@ class UseMDtraj(unittest.TestCase):
 
 #    def test_discretize(self):
 #        assert self.tr.n_traj == 1
-#class TestMSMLib(unittest.TestCase):
-
+class TestMSM(unittest.TestCase):
+    def setUp(self):
+        self.tr = traj.TimeSeries(top='trajectory/tests/data/alaTB.gro', \
+                traj=['trajectory/tests/data/protein_only.xtc'])
+        self.tr.discretize('rama', states=['A', 'E', 'O'])
+        self.tr.find_keys()
+    def test_init(self):
+        self.msm = msm.SuperMSM([self.tr])
+        assert self.msm is not None
+        assert hasattr(self.msm, 'data')
+        assert self.msm.data == [self.tr]
+        assert self.msm.dt == 1.0
+        print(self.msm.data)
+    def test_merge_trajs(self):
+    #   create fake trajectory to merge
+        traj2 = traj.TimeSeries(distraj=['L','L','L','A'], dt = 2.0)
+        traj2.keys = ['L','A']
+        self.merge_msm = msm.SuperMSM([self.tr, traj2])
+        assert sorted(self.merge_msm.keys) == ['A','E','L']
+        assert isinstance(self.merge_msm.data[1] , traj.TimeSeries)
+        for tr in self.merge_msm.data:
+            print(tr.dt)
+        assert self.merge_msm.dt == 1.0
 if __name__ == "__main__":
     unittest.main()
