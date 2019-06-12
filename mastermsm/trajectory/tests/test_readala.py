@@ -3,6 +3,7 @@ import mdtraj as md
 import numpy as np
 from mastermsm.trajectory import traj_lib
 from mastermsm.trajectory import traj
+import os
 import matplotlib.pyplot as plt
 class TestMDTrajLib(unittest.TestCase):
     def setUp(self):
@@ -92,6 +93,40 @@ class TestMDtraj(unittest.TestCase):
         assert mdtraj is not None
         assert mdtraj.__module__ == 'mdtraj.core.trajectory'
         assert hasattr(mdtraj, '__class__')
+
+    def test_read_distraj(self):
+        assert self.tr._read_distraj is not None
+        assert callable(self.tr._read_distraj) is True
+    #   read distraj from temp file
+        content = "0.0 A\n" \
+                  "1.0 E\n" \
+                  "2.0 L\n" \
+                  "3.0 O"
+        fn = 'temp.txt'
+        fd = open(fn, 'w+')
+
+        try:
+            fd.write(content)
+            fd.seek(0)
+            cstates, dt = self.tr._read_distraj(distraj=fd.name)
+            assert isinstance(cstates, list)
+            assert len(cstates) == len(content.split('\n'))
+            assert dt == 1.0
+
+        finally:
+            fd.close()
+            os.remove(fd.name)
+    #   read distraj from array and custom timestamp
+        distraj_arr = content.split('\n')
+        cstates, dt = self.tr._read_distraj(distraj=distraj_arr, dt=2.0)
+        assert isinstance(cstates, list)
+        assert len(cstates) == len(content.split('\n'))
+        assert dt == 2.0
+    #   read empty 'discrete' trajectory
+        cstates, dt = self.tr._read_distraj(distraj=[])
+        assert len(cstates) == 0
+        assert dt == 1.0
+
     def test_timeseries_init(self):
         assert self.tr is not None
         assert self.tr.mdt is not None
@@ -102,10 +137,12 @@ class TestMDtraj(unittest.TestCase):
     def test_ts_discretize(self):
         self.tr.discretize('rama', states=['A', 'E', 'L'])
         assert self.tr.distraj is not None
+        unique_states = sorted(set(self.tr.distraj))
+        assert unique_states == ['A', 'E', 'L', 'O']
 
     def test_ts_find_keys(self):
         assert self.tr.find_keys is not None
-        assert hasattr(self.tr, 'find_keys')
+        assert hasattr(self.tr, 'find_keys') is True
     #   test excluding state O (unassigned)
         self.tr.distraj = ['O']*50000
         for i in range(len(self.tr.distraj)):
@@ -116,6 +153,7 @@ class TestMDtraj(unittest.TestCase):
         assert (len(set(keys)) == len(keys))
         for key in keys:
             assert (key in ['A', 'E', 'L'] and len(keys) == 3)
+        del self.tr.distraj
     #   test excluding state in alpha-h
         self.tr.distraj = ['O'] * 50000
         for i in range(len(self.tr.distraj)):
@@ -124,9 +162,13 @@ class TestMDtraj(unittest.TestCase):
         self.tr.find_keys(exclude=['A'])
         keys = self.tr.keys
         assert (len(set(keys)) == len(keys))
+        assert len(keys) == 3
         for key in keys:
-            assert (key in ['E', 'L', 'O'] and len(keys) == 3)
+            assert (key in ['E', 'L', 'O'])
 
+    def test_gc(self):
+        self.tr.gc()
+        assert hasattr(self.tr, 'mdt') is False
 
 
 class UseMDtraj(unittest.TestCase):
@@ -145,6 +187,7 @@ class UseMDtraj(unittest.TestCase):
 
 #    def test_discretize(self):
 #        assert self.tr.n_traj == 1
+#class TestMSMLib(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
