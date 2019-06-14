@@ -187,28 +187,118 @@ class UseMDtraj(unittest.TestCase):
 
 #    def test_discretize(self):
 #        assert self.tr.n_traj == 1
+class TestMSMLib(unittest.TestCase):
+    def test_esort(self):
+        assert hasattr(msm_lib, 'esort')
+        assert callable(msm_lib.esort)
+        assert msm_lib.esort([0,float(1)], [1,float(2)]) == 1
+        assert msm_lib.esort([0,float(100)], [1,float(2)]) == -1
+        assert msm_lib.esort([100,float(1)], [1,float(1)]) == 0
+
+    def test_mat_mul_v(self):
+        assert hasattr(msm_lib,'mat_mul_v')
+        assert callable(msm_lib.mat_mul_v)
+        matrix = np.array([
+            [1, 2, 3],
+            [4, 5, 6]
+        ])
+        vector = np.array(
+            [1, 0, 1]
+        )
+        assert msm_lib.mat_mul_v(matrix, vector) ==  [4, 10]
+        matrix = np.array([
+            [-5, -4, 2],
+            [1, 6, -3],
+            [3, 5.5, -4]
+        ])
+        vector = np.array(
+            [1, 2, -3]
+        )
+        assert msm_lib.mat_mul_v(matrix, vector) == [-19, 22, 26]
+
+    def test_rand_rate(self):
+        testT = np.array([
+            [10, 2, 1],
+            [1, 1, 1],
+            [0, 1, 0]
+        ])
+        random1 = msm_lib.rand_rate(nkeep= 3, count= testT)
+        random2 = msm_lib.rand_rate(nkeep= 3, count= testT)
+        assert  random1.shape == (3, 3)
+        assert (random1 == random2).all() == False
+
+    def test_traj_split(self):
+        traj1 = traj.TimeSeries(distraj=[1, 2, 3], dt=1.)
+        traj2 = traj.TimeSeries(distraj=[3, 2, 1], dt=2.)
+        trajs = [traj1, traj2]
+        filepath = msm_lib.traj_split(data=trajs, lagt=10)
+        assert isinstance(filepath, str)
+        assert os.path.exists(filepath)
+        os.remove(filepath)  # clean temp file
+
+    def calc_trans(self):
+        testT = msm_lib.calc_trans(nkeep=10)
+        assert isinstance(testT, np.ndarray)
+        assert testT.shape == (10,10)
+
+    def test_calc_rate(self):
+        testT = np.array([
+            [1, 2, 3],
+            [0, 0, 0],
+            [10, 10, 10]
+
+        ])
+        rate = msm_lib.calc_rate(nkeep=3, trans=testT, lagt=10)
+        assert isinstance(rate, np.ndarray)
+        assert rate.shape == (3, 3)
+
+    def test_calc_lifetime(self):
+        distraj = [1, 1, 1, 2]
+        dt = 1.
+        keys = [1, 2]
+        data = [distraj, dt, keys]
+        life = msm_lib.calc_lifetime(data)
+        print(life)
+        assert 1 == 1
+        assert isinstance(life, dict)
+
 class TestMSM(unittest.TestCase):
     def setUp(self):
         self.tr = traj.TimeSeries(top='trajectory/tests/data/alaTB.gro', \
                 traj=['trajectory/tests/data/protein_only.xtc'])
         self.tr.discretize('rama', states=['A', 'E', 'O'])
         self.tr.find_keys()
+
     def test_init(self):
         self.msm = msm.SuperMSM([self.tr])
         assert self.msm is not None
         assert hasattr(self.msm, 'data')
         assert self.msm.data == [self.tr]
         assert self.msm.dt == 1.0
-        print(self.msm.data)
+
     def test_merge_trajs(self):
     #   create fake trajectory to merge
-        traj2 = traj.TimeSeries(distraj=['L','L','L','A'], dt = 2.0)
+        traj2 = traj.TimeSeries(distraj=['L', 'L', 'L', 'A'], dt = 2.0)
         traj2.keys = ['L','A']
         self.merge_msm = msm.SuperMSM([self.tr, traj2])
         assert sorted(self.merge_msm.keys) == ['A','E','L']
+        assert len(self.merge_msm.data) == 2
         assert isinstance(self.merge_msm.data[1] , traj.TimeSeries)
-        for tr in self.merge_msm.data:
-            print(tr.dt)
-        assert self.merge_msm.dt == 1.0
+        assert self.merge_msm.dt == 2.0
+
+    def test_output(self):
+        self.msm = msm.SuperMSM([self.tr])
+        self.msm._out()
+
+    def test_do_msm(self):
+        self.msm = msm.SuperMSM([self.tr])
+        self.msm.do_msm(lagt=1)
+        assert isinstance(self.msm.msms[1], msm.MSM)
+        assert self.msm.msms[1].lagt == 1
+
+    def test_msm(self):
+        data = self.tr
+        keys = ['A', 'E']
+
 if __name__ == "__main__":
     unittest.main()
