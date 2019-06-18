@@ -3,6 +3,7 @@ import mdtraj as md
 import numpy as np
 from mastermsm.trajectory import traj_lib, traj
 from mastermsm.msm import msm, msm_lib
+from mastermsm.fewsm import fewsm, fewsm_lib
 import os
 import matplotlib.pyplot as plt
 class TestMDTrajLib(unittest.TestCase):
@@ -258,7 +259,6 @@ class TestMSMLib(unittest.TestCase):
         keys = [1, 2]
         data = [distraj, dt, keys]
         life = msm_lib.calc_lifetime(data)
-        print(life)
         assert 1 == 1
         assert isinstance(life, dict)
 
@@ -268,9 +268,9 @@ class TestMSM(unittest.TestCase):
                 traj=['trajectory/tests/data/protein_only.xtc'])
         self.tr.discretize('rama', states=['A', 'E', 'O'])
         self.tr.find_keys()
+        self.msm = msm.SuperMSM([self.tr])
 
     def test_init(self):
-        self.msm = msm.SuperMSM([self.tr])
         assert self.msm is not None
         assert hasattr(self.msm, 'data')
         assert self.msm.data == [self.tr]
@@ -287,11 +287,11 @@ class TestMSM(unittest.TestCase):
         assert self.merge_msm.dt == 2.0
 
     def test_output(self):
-        self.msm = msm.SuperMSM([self.tr])
+
         self.msm._out()
 
     def test_do_msm(self):
-        self.msm = msm.SuperMSM([self.tr])
+
         self.msm.do_msm(lagt=1)
         assert isinstance(self.msm.msms[1], msm.MSM)
         assert self.msm.msms[1].lagt == 1
@@ -299,6 +299,70 @@ class TestMSM(unittest.TestCase):
     def test_msm(self):
         data = self.tr
         keys = ['A', 'E']
+
+    def test_convergence(self):
+        lagtimes = np.array(range(10,100,10))
+        self.msm.convergence_test(time=lagtimes)
+        for lagt in lagtimes:
+            assert hasattr(self.msm.msms[lagt], 'tau_ave')
+            assert hasattr(self.msm.msms[lagt], 'tau_std')
+            assert hasattr(self.msm.msms[lagt], 'peq_ave')
+            assert hasattr(self.msm.msms[lagt], 'peq_std')
+
+    def test_do_boots(self):
+        self.msm.do_msm(10)
+        self.msm.msms[10].boots()
+
+        assert hasattr(self.msm.msms[10], 'tau_ave')
+        assert hasattr(self.msm.msms[10], 'tau_std')
+        assert hasattr(self.msm.msms[10], 'peq_ave')
+        assert hasattr(self.msm.msms[10], 'peq_std')
+
+    def test_do_pfold(self):
+        states = [
+            ['A'],
+            ['E']
+        ]
+        for lagt in [1,10,100]:
+            self.msm.do_msm(lagt)
+            self.msm.msms[lagt].boots()
+            self.msm.msms[lagt].do_trans()
+            self.msm.msms[lagt].do_rate()
+
+            self.msm.msms[lagt].do_pfold(FF=states[0], UU=states[1])
+            assert hasattr(self.msm.msms[lagt], 'pfold')
+            assert hasattr(self.msm.msms[lagt], 'J')
+            assert hasattr(self.msm.msms[lagt], 'sum_flux')
+            assert hasattr(self.msm.msms[lagt], 'kf')
+            assert isinstance(self.msm.msms[lagt].kf, np.float64)
+            assert len(self.msm.msms[lagt].J) == len(states)
+
+
+class TestFewSM(unittest.TestCase):
+
+    def setUp(self):
+        self.tr = traj.TimeSeries(top='trajectory/tests/data/alaTB.gro', \
+                                  traj=['trajectory/tests/data/protein_only.xtc'])
+        self.tr.discretize('rama', states=['A', 'E'])
+        self.tr.find_keys()
+        self.msm = msm.SuperMSM([self.tr])
+        self.msm.do_msm(10)
+        self.msm.msms[10].do_trans()
+
+    def test_attributes(self):
+        self.fewsm = fewsm.FEWSM(parent=self.msm.msms[10])
+        assert self.fewsm.macros is not None
+        assert len(self.fewsm.macros) == 2
+    def test_map_trajectory(self):
+        self.fewsm = fewsm.FEWSM(parent=self.msm.msms[10])
+        self.fewsm.map_trajectory()
+        self.mapped = self.fewsm.mappedtraj[0]
+        assert self.mapped is not None
+        assert isinstance(self.mapped, traj.TimeSeries)
+        assert hasattr(self.mapped, 'dt')
+        assert hasattr(self.mapped, 'distraj')
+        assert len(set(self.mapped.distraj)) == 2
+        assert sorted(set(self.mapped.distraj)) == [0, 1]
 
 if __name__ == "__main__":
     unittest.main()
