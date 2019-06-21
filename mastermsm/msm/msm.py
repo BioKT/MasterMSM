@@ -83,7 +83,7 @@ class SuperMSM(object):
             The maximum value of the time-step within the trajectories.
 
         """
-        return np.min([x.dt for x in self.data])
+        return np.max([x.dt for x in self.data])
 
     def _out(self):
         """
