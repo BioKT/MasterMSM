@@ -49,7 +49,7 @@ class TestMDTrajLib(unittest.TestCase):
         bounds['E'] = [-180., -40., 125., 165.]
         bounds['L'] = [50., 100., -40., 70.0]
 
-        for ind, val in enumerate(phi):
+        for ind in enumerate(phi):
             result = traj_lib._state(phi[ind], psi[ind], bounds)
             state = result[0]
             self.assertEqual(state, states_test[ind], 'expected state %s but got %s'%(state,states_test[ind]))
@@ -305,10 +305,6 @@ class TestMSM(unittest.TestCase):
         self.msm.do_msm(lagt=1)
         self.assertIsInstance(self.msm.msms[1], msm.MSM)
         self.assertEqual(self.msm.msms[1].lagt, 1)
-
-    def test_msm(self):
-        data = self.tr
-        keys = ['A', 'E']
 
     def test_convergence(self):
         lagtimes = np.array(range(10,100,10))
