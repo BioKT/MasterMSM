@@ -7,7 +7,8 @@ import mdtraj as md
 from ..trajectory import traj_lib
 
 def _load_mdtraj(top=None, traj=None):
-    """ Loads trajectories using mdtraj.
+    """
+    Loads trajectories using mdtraj.
 
     Parameters
     ----------
@@ -29,30 +30,29 @@ class TimeSeries(object):
     """
     A class to read and discretize simulation trajectories.
     When simulation trajectories are provided, frames are read
-    and discretized using mdtraj. Alternatively, a discrete
+    and discretized using mdtraj [1]_. Alternatively, a discrete
     trajectory can be provided.
 
     Attributes
     ----------
     mdt :
         An mdtraj Trajectory object.
+
     file_name : str
         The name of the trajectory file.
+
     distraj : list
         The assigned trajectory.
+
     dt : float
         The time step
-
-    Note
-    ----
-    Further documentation on mdtraj can be found in [1]_.
 
     References
     ----------
     .. [1] McGibbon, RT., Beauchamp, KA., Harrigan, MP., Klein, C.,
-    Swails, JM., Hernandez, CX., Schwantes, CR., Wang, LP., Lane,
-    TJ. and Pande, VS." MDTraj: A Modern Open Library for the Analysis of
-    Molecular Dynamics Trajectories", Biophys. J. (2015).
+        Swails, JM., Hernandez, CX., Schwantes, CR., Wang, LP., Lane,
+        TJ. and Pande, VS." MDTraj: A Modern Open Library for the Analysis
+        of Molecular Dynamics Trajectories", Biophys. J. (2015).
 
     """
     def __init__(self, top=None, traj=None, method=None, dt=None, distraj=None):
@@ -86,17 +86,18 @@ class TimeSeries(object):
             self.dt = self.mdt.timestep
 
     def _read_distraj(self, distraj=None, dt=None):
-        """ Loads discrete trajectories directly.
+        """ 
+        Loads discrete trajectories directly.
 
-            Parameters
-            ----------
-            distraj : str, list
-                File or list with discrete trajectory.
-
-            Returns
-            -------
-            mdtrajs : list
-                A list of mdtraj Trajectory objects.
+        Parameters
+        ----------
+        distraj : str, list
+            File or list with discrete trajectory.
+        
+        Returns
+        -------
+        mdtrajs : list
+           A list of mdtraj Trajectory objects.
 
        """
         if isinstance(distraj, list):
@@ -122,7 +123,8 @@ class TimeSeries(object):
 
 
     def discretize(self, method="rama", states=None, nbins=20):
-        """ Discretize the simulation data.
+        """
+        Discretize the simulation data.
 
         Parameters
         ----------
@@ -154,7 +156,8 @@ class TimeSeries(object):
             self.distraj = traj_lib.discrete_ramagrid(phi, psi, nbins)
 
     def find_keys(self, exclude=['O']):
-        """ Finds out the discrete states in the trajectory
+        """
+        Finds out the discrete states in the trajectory
 
         Parameters
         ----------
@@ -169,7 +172,8 @@ class TimeSeries(object):
         self.keys = keys
 
     def gc(self):
-        """ Gets rid of the mdtraj attribute
+        """ 
+        Gets rid of the mdtraj attribute
 
         """
         delattr (self, "mdt")
