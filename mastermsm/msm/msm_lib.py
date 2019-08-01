@@ -25,7 +25,8 @@ beta = 1./(8.314e-3*300)
 #    return diff
 
 def calc_eigsK(rate, evecs=False):
-    """ Calculate eigenvalues and eigenvectors of rate matrix K
+    """ 
+    Calculate eigenvalues and eigenvectors of rate matrix K
 
     Parameters
     -----------
@@ -89,15 +90,14 @@ def esort(ei, ej):
     Parameters
     ----------
     ei : float
+        Eigenvalue i
     ej : float
+        Eigenvalue j
 
     Returns
     -------
     bool :
         Whether the first value is larger than the second.
-    Note
-    ----
-    Contributed by R. B. Best
 
     """
     _, eval_i = ei
@@ -273,13 +273,10 @@ def run_commit(states, K, peq, FF, UU):
     ----------
     states : list
         States in the MSM.
-
     K : np.array
         Rate matrix.
-
     peq : np.array
         Equilibrium distribution.
-
     FF : list
         Definitely folded states.
     UU : list
@@ -890,7 +887,7 @@ def partial_rate(K, elem):
     return d_K
 
 def partial_peq(peq, elem):
-    """ calculate derivative of equilibrium distribution
+    """ Calculates derivative of equilibrium distribution
 
     Parameters
     ----------
@@ -908,12 +905,7 @@ def partial_peq(peq, elem):
     return d_peq
 
 def partial_pfold(states, K, d_K, FF, UU, elem):
-    """ Calculates derivative of pfold.
-
-    Parameters
-    ----------
-
-    """
+    """ Calculates derivative of pfold """
     nstates = len(states)
     # define end-states
     I = list(filter(lambda x: x not in UU+FF, range(nstates)))
@@ -954,9 +946,7 @@ def partial_pfold(states, K, d_K, FF, UU, elem):
     return dpfold
 
 def partial_flux(states, peq, K, pfold, d_peq, d_K, d_pfold, target):
-    """ calculates derivative of reactive flux.
-
-    """
+    """ Calculates derivative of reactive flux """
     # flux matrix and reactive flux
     nstates = len(states)
     sum_d_flux = 0
@@ -971,14 +961,39 @@ def partial_flux(states, peq, K, pfold, d_peq, d_K, d_pfold, target):
     return sum_d_flux
 
 def propagate_worker(x):
-    """ propagate dynamics using rate matrix exponential"""
+    """ Propagate dynamics using rate matrix exponential
+    
+    Parameters
+    ----------
+    x : list
+        Contains K, the time and the initial population
+
+    Returns
+    -------
+    popul : np.array
+        The propagated population
+    
+    """
     rate, t, pini = x
     expkt = spla.expm(rate*t)
     popul = mat_mul_v(expkt, pini)
     return popul
 
 def propagateT_worker(x):
-    """ propagate dynamics using power of transition matrix"""
+    """ Propagate dynamics using power of transition matrix 
+    
+    Parameters
+    ----------
+    x : list
+        Contains T, the power and initial population
+
+
+    Returns
+    -------
+    popul : np.array
+        The propagated population
+
+    """
     trans, power, pini = x
     trans_pow = np.linalg.matrix_power(trans,power)
     popul = mat_mul_v(trans_pow, pini)
@@ -1069,10 +1084,8 @@ def peq_averages(peq_boots, keep_keys_boots, keys):
     ----------
     peq_boots : list
         List of Peq arrays
-
     keep_keys_boots : list
         List of key lists
-
     keys : list
         List of keys
 
@@ -1080,7 +1093,6 @@ def peq_averages(peq_boots, keep_keys_boots, keys):
     -------
     peq_ave : array
         Peq averages
-
     peq_std : array
         Peq std
 
@@ -1119,7 +1131,6 @@ def tau_averages(tau_boots, keys):
     -------
     tau_ave : array
         Tau averages
-
     tau_std : array
         Tau std
 
@@ -1145,10 +1156,8 @@ def matrix_ave(mat_boots, keep_keys_boots, keys):
     ----------
     mat_boots : list
         List of matrix arrays
-
     keep_keys_boots : list
         List of key lists
-
     keys : list
         List of keys
 
@@ -1156,7 +1165,6 @@ def matrix_ave(mat_boots, keep_keys_boots, keys):
     -------
     mat_ave : array
         Matrix averages
-
     mat_std : array
         Matrix std
 

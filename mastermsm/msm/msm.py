@@ -14,8 +14,7 @@ import multiprocessing as mp
 from ..msm import msm_lib
 
 class SuperMSM(object):
-    """
-    A class for constructing the MSM
+    """ A class for constructing the MSM
 
     Attributes
     ----------
@@ -59,8 +58,7 @@ class SuperMSM(object):
         self.msms = {}
 
     def _merge_trajs(self):
-        """
-        Merge all trajectories into a consistent set.
+        """ Merge all trajectories into a consistent set.
 
         Returns
         -------
@@ -74,8 +72,7 @@ class SuperMSM(object):
         return new_keys
 
     def _max_dt(self):
-        """
-        Find maximum dt in trajectories.
+        """ Find maximum dt in trajectories.
 
         Returns
         -------
@@ -86,10 +83,7 @@ class SuperMSM(object):
         return np.max([x.dt for x in self.data])
 
     def _out(self):
-        """
-        Output description to user.
-
-        """
+        """ Output description to user """
         try:
             print ("\n Building MSM from \n", [x.file_name for x in self.data])
         except AttributeError:
@@ -97,8 +91,7 @@ class SuperMSM(object):
         print ("     # states: %g"%(len(self.keys)))
 
     def do_msm(self, lagt, sliding=True):
-        """
-        Construct MSM for specific value of lag time.
+        """ Construct MSM for specific value of lag time.
 
         Parameters
         -----------
@@ -328,7 +321,6 @@ class MSM(object):
     """
     def __init__(self, data=None, keys=None, lagt=None, sym=False):
         """
-
         Parameters
         ----------
         data : list
@@ -406,10 +398,8 @@ class MSM(object):
         .. [1] D. De Sancho, J. Mittal and R. B. Best, "Folding kinetics
             and unfolded state dynamics of the GB1 hairpin from molecular
             simulation", J. Chem. Theory Comput. (2013).
-
         .. [2] N.-V. Buchete and G. Hummer, "Coarse master equations for
             peptide folding dynamics", J. Phys. Chem. B (2008).
-
 
         """
         #print "\n    Calculating rate matrix ..."
@@ -729,8 +719,10 @@ class MSM(object):
 #
 #
     def do_pfold(self, FF=None, UU=None, dot=False):
-        """ Wrapper to calculate reactive fluxes and committors using the
-        Berzhkovskii-Hummer-Szabo method, J Chem Phys (2009)
+        """ Wrapper to calculate reactive fluxes and committors
+        
+        
+        We use the Berzhkovskii-Hummer-Szabo method, J. Chem. Phys. (2009)
 
         Parameters
         ----------
@@ -960,7 +952,8 @@ class MSM(object):
 #
 #
     def sensitivity(self, FF=None, UU=None, dot=False):
-        """ Sensitivity analysis of the states in the network.
+        """ 
+        Sensitivity analysis of the states in the network.
 
         We use the procedure described by De Sancho, Kubas,
         Blumberger and Best [1]_.
@@ -1125,7 +1118,7 @@ class MSM(object):
         pnorm : array
             Population of all states as a function of time - normalized.
 
-        References
+        Notes
         -----
         There is probably just one essential difference between propagateT
         and propagateK. We are obtaining the time evolution of the population
