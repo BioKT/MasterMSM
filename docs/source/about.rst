@@ -8,8 +8,8 @@ volume
 * `An Introduction to Markov State Models and Their Application to Long Timescale Molecular Simulation <http://dx.doi.org/10.1007/978-94-007-7606-7>`_, edited by Pande, Bowman and Noe (Springer, 2014). 
 
 The MasterMSM library brings a different flavour of MSMs, based on the methods 
-introduced by Buchete and Hummer 
+introduced by N. V. Buchete and G. Hummer 
 (`J. Phys. Chem. B, 2008 <http://dx.doi.org/10.1021/jp0761665>`_).
-The main difference relies in that instead of using transition matrices we focus in
-rate matrices, which determine the time evolution of the system as described by
-the chemical master equation.
+The central difference relies in that instead of using transition matrices we focus
+in rate matrices, which determine the time evolution of the system as described 
+by the chemical master equation.
