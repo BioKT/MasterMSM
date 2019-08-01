@@ -7,14 +7,12 @@ import mdtraj as md
 from ..trajectory import traj_lib
 
 def _load_mdtraj(top=None, traj=None):
-    """
-    Loads trajectories using mdtraj.
+    """ Loads trajectories using mdtraj.
 
     Parameters
     ----------
     top: str
         The topology file, may be a PDB or GRO file.
-
     traj : str
         A list with the trajectory filenames to be read.
 
@@ -27,8 +25,7 @@ def _load_mdtraj(top=None, traj=None):
     return md.load(traj, top=top)
 
 class TimeSeries(object):
-    """
-    A class to read and discretize simulation trajectories.
+    """ A class to read and discretize simulation trajectories.
     When simulation trajectories are provided, frames are read
     and discretized using mdtraj [1]_. Alternatively, a discrete
     trajectory can be provided.
@@ -37,13 +34,10 @@ class TimeSeries(object):
     ----------
     mdt :
         An mdtraj Trajectory object.
-
     file_name : str
         The name of the trajectory file.
-
     distraj : list
         The assigned trajectory.
-
     dt : float
         The time step
 
@@ -61,16 +55,12 @@ class TimeSeries(object):
         ----------
         distraj : string
             The discrete state trajectory file.
-
         dt : float
             The time step.
-
         top : string
             The topology file, may be a PDB or GRO file.
-
         traj : string
             The trajectory filenames to be read.
-
         method : string
             The method for discretizing the data.
 
@@ -86,8 +76,7 @@ class TimeSeries(object):
             self.dt = self.mdt.timestep
 
     def _read_distraj(self, distraj=None, dt=None):
-        """ 
-        Loads discrete trajectories directly.
+        """ Loads discrete trajectories directly.
 
         Parameters
         ----------
@@ -123,19 +112,16 @@ class TimeSeries(object):
 
 
     def discretize(self, method="rama", states=None, nbins=20):
-        """
-        Discretize the simulation data.
+        """ Discretize the simulation data.
 
         Parameters
         ----------
         method : str
             A method for doing the clustering. Options are
             "rama", "ramagrid"...
-
         states : list
             A list of states to be considered in the discretization.
             Only for method "rama".
-
         nbins : int
             Number of bins in the grid. Only for "ramagrid".
 
@@ -145,7 +131,6 @@ class TimeSeries(object):
             A list with the set of discrete states visited.
 
         """
-
         if method == "rama":
             phi = md.compute_phi(self.mdt)
             psi = md.compute_psi(self.mdt)
@@ -156,8 +141,7 @@ class TimeSeries(object):
             self.distraj = traj_lib.discrete_ramagrid(phi, psi, nbins)
 
     def find_keys(self, exclude=['O']):
-        """
-        Finds out the discrete states in the trajectory
+        """ Finds out the discrete states in the trajectory
 
         Parameters
         ----------

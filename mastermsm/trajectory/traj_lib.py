@@ -6,23 +6,18 @@ import sys
 import math
 
 def discrete_rama(phi, psi, seq=None, bounds=None, states=['A', 'E', 'L']):
-    """ 
-    Assign a set of phi, psi angles to coarse states.
+    """ Assign a set of phi, psi angles to coarse states.
 
     Parameters
    ----------
     phi : list
         A list of Phi Ramachandran angles.
-
     psi : list
         A list of Psi Ramachandran angles.
-
     seq : list
         Sequence of states.
-
     bounds : list of lists
         Alternative bounds for transition based assignment.
-
     states : list
         The states that will be used in the assignment.
 
@@ -36,7 +31,6 @@ def discrete_rama(phi, psi, seq=None, bounds=None, states=['A', 'E', 'L']):
     Here we follow Buchete and Hummer for the assignment procedure [1]_ .
 
     .. [1] N. V. Buchete and G. Hummer, "Coarse master equations for peptide folding dynamics", J. Phys. Chem. B. (2008).
-
 
     """
     if bounds is None:
@@ -81,10 +75,8 @@ def discrete_ramagrid(phi, psi, nbins):
    ----------
     phi : list
         A list of Phi Ramachandran angles.
-
     psi : list
         A list of Psi Ramachandran angles.
-
     nbins : int
         The number of bins in the grid in each dimension.
 
@@ -143,17 +135,14 @@ def _inbounds(bounds,phi, psi):
 
 
 def _state(phi,psi,bounds):
-    """
-    Finds coarse state for a pair of phi-psi dihedrals
+    """ Finds coarse state for a pair of phi-psi dihedrals
 
     Parameters
     ----------
     phi : float
         Phi dihedral angle
-
     psi : float
         Psi dihedral angle
-
     bounds : dict
         Dictionary containing list of states and their respective bounds
 
@@ -203,10 +192,8 @@ def _stategrid(phi, psi, nbins):
     ----------
     phi : float
         Phi dihedral angle
-
     psi : float
         Psi dihedral angle
-
     nbins : int
         Number of bins in each dimension of the grid
 
