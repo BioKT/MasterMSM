@@ -51,8 +51,7 @@ class TimeSeries(object):
     ----------
     .. [1] McGibbon, RT., Beauchamp, KA., Harrigan, MP., Klein, C.,
     Swails, JM., Hernandez, CX., Schwantes, CR., Wang, LP., Lane,
-    TJ. and Pande, VS."
-    MDTraj: A Modern Open Library for the Analysis of
+    TJ. and Pande, VS." MDTraj: A Modern Open Library for the Analysis of
     Molecular Dynamics Trajectories", Biophys. J. (2015).
 
     """
