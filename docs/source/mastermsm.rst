@@ -7,8 +7,8 @@ Subpackages
 .. toctree::
 
     mastermsm.msm
-    mastermsm.fewsm
     mastermsm.trajectory
+    mastermsm.fewsm
 
 Module contents
 ---------------

@@ -1,6 +1,6 @@
 .. _documentation:
 
-Documentation
+Modules
 =============
 MasterMSM is a Python package that is divided in three main subpackages. 
 This way of structuring the code derives from the three main types of 
@@ -29,7 +29,7 @@ MSM module
 .. currentmodule:: mastermsm
 
 .. autosummary::
-    :toctree: modules 
+    :toctree:
 
     msm 
 
@@ -39,7 +39,7 @@ FEWSM module
 .. currentmodule:: mastermsm
 
 .. autosummary::
-    :toctree: 
+    :toctree:
 
     fewsm
     
@@ -49,4 +49,4 @@ We have put together a few simple Python notebooks to help you learn the basics
 of the MasterMSM package. They are based on data derived from either model systems
 or from molecular dynamics simulations of some simple (albeit realistic) biomolecules.
 You can find the notebooks in the following 
-`link <https://github.com/daviddesancho/MasterMSM/tree/develop/examples>`_.
+`link <https://github.com/daviddesancho/MasterMSM/tree/master/examples>`_.

@@ -18,12 +18,11 @@ the chemical master equation. This package will allow you to:
 * Obtain committors and reactive fluxes.
 * Carry out sensitivity analysis of networks.
 
-Development and Installation 
-----------------------------
-The MasterMSM code is hosted in Github at 
-`https://github.com/daviddesancho/MasterMSM <https://github.com/daviddesancho/MasterMSM>`_.
-Active development of the MasterMSM code takes place using the git version control
-system.
+We have written a `paper <http://dx.doi.org/10.26434/chemrxiv.8234147>`_ 
+on MasterMSM that briefly describes some of the code capabilities. 
+The MasterMSM code is hosted in `Github <https://github.com/daviddesancho/MasterMSM>`_.
+Active development of the MasterMSM code takes place using the git version 
+control system.
 
 .. toctree::
    :maxdepth:  3
