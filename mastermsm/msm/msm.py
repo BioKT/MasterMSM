@@ -164,10 +164,10 @@ class SuperMSM(object):
         error : bool
             Whether errors are calculated.
 
-        Notes
+        References
         -----
         .. [1] J.-H. Prinz et al, "Markov models of molecular kinetics: Generation
-        and validation", J. Chem. Phys. (2011).
+            and validation", J. Chem. Phys. (2011).
 
         """
         nkeys = len(self.keys)
@@ -251,10 +251,10 @@ class SuperMSM(object):
         error : bool
             Whether to include errors or not.
 
-        Notes
+        References
         -----
         .. [1] N.-V. Buchete and G. Hummer, "Coarse master equations for
-        peptide folding dynamics", J. Phys. Chem. B (2008).
+            peptide folding dynamics", J. Phys. Chem. B (2008).
 
         """
         nkeys = len(self.keys)
@@ -401,14 +401,14 @@ class MSM(object):
         report : bool
             Whether to report the results from MC in MLPB.
 
-        Notes
+        References
         -----
         .. [1] D. De Sancho, J. Mittal and R. B. Best, "Folding kinetics
-        and unfolded state dynamics of the GB1 hairpin from molecular
-        simulation", J. Chem. Theory Comput. (2013).
+            and unfolded state dynamics of the GB1 hairpin from molecular
+            simulation", J. Chem. Theory Comput. (2013).
 
         .. [2] N.-V. Buchete and G. Hummer, "Coarse master equations for
-        peptide folding dynamics", J. Phys. Chem. B (2008).
+            peptide folding dynamics", J. Phys. Chem. B (2008).
 
 
         """
@@ -522,12 +522,12 @@ class MSM(object):
         keep_keys : list
             Keys for the largest strongly connected set.
 
-        Notes
+        References
         -----
         We use the Tarjan algorithm as implemented in NetworkX. [1]_
 
         .. [1] R. Tarjan, "Depth-first search and linear graph algorithms",
-        SIAM Journal of Computing (1972).
+            SIAM Journal of Computing (1972).
 
         """
         D = nx.DiGraph(self.count)
@@ -983,7 +983,7 @@ class MSM(object):
         kf : float
             Global rate.
 
-        Notes
+        References
         -----
         .. [1] D. De Sancho, A. Kubas, P.-H. Wang, J. Blumberger, R. B.
         Best "Identification of mutational hot spots for substrate diffusion:
@@ -1125,7 +1125,7 @@ class MSM(object):
         pnorm : array
             Population of all states as a function of time - normalized.
 
-        Notes
+        References
         -----
         There is probably just one essential difference between propagateT
         and propagateK. We are obtaining the time evolution of the population
@@ -1214,10 +1214,10 @@ class MSM(object):
         corr : array
            The mode(s) autocorrelation function.
 
-        Notes
-        -----
+        References
+        ----------
         .. [1] N.-V. Buchete and G. Hummer, "Coarse master equations for
-        peptide folding dynamics", J. Phys. Chem. B (2008).
+            peptide folding dynamics", J. Phys. Chem. B (2008).
 
         """
         if not modes:
