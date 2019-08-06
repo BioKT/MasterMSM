@@ -58,6 +58,7 @@ class TestMDTrajLib(unittest.TestCase):
         self.assertLess(traj_lib._stategrid(-180, 0, 20),400)
         self.assertEqual(traj_lib._stategrid(0, 0, 20), 210)
         self.assertEqual(traj_lib._stategrid(-180, 0, 100), 2186)
+
     def test_discreterama(self):
         mdt_test = self.tr.mdt
 
@@ -71,6 +72,7 @@ class TestMDTrajLib(unittest.TestCase):
         unique_st = set(discrete)
         for state in unique_st:
             self.assertIn(state, ['O', 'A', 'E', 'L'])
+
     def test_discreteramagrid(self):
         mdt_test = self.tr.mdt
 
