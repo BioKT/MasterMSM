@@ -198,8 +198,6 @@ class UseMDtraj(unittest.TestCase):
         self.assertIs(callable(self.tr.discretize), True)
 
 
-#    def test_discretize(self):
-#        assert self.tr.n_traj == 1
 class TestMSMLib(unittest.TestCase):
     def test_esort(self):
         self.assertTrue(hasattr(msm_lib, 'esort'))

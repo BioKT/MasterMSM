@@ -3,6 +3,7 @@ import mdtraj as md
 import numpy as np
 from mastermsm.trajectory import traj_lib, traj
 from mastermsm.msm import msm, msm_lib
+from test.download_data import download_test_data
 import os, pickle
 
 # thermal energy (kJ/mol)
@@ -290,71 +291,128 @@ class TestMSMLib(unittest.TestCase):
 
 
 
-# class TestMSM(unittest.TestCase):
-#     def setUp(self):
-#         self.tr = traj.TimeSeries(top='test/data/alaTB.gro', \
-#                 traj=['test/data/protein_only.xtc'])
-#         self.tr.discretize('rama', states=['A', 'E', 'O'])
-#         self.tr.find_keys()
-#         self.msm = msm.SuperMSM([self.tr])
-#
-#     def test_init(self):
-#         self.assertIsNotNone(self.msm)
-#         self.assertTrue( hasattr(self.msm, 'data'))
-#         self.assertEqual(self.msm.data, [self.tr])
-#         self.assertEqual(self.msm.dt, 1.0)
-#
-#     def test_merge_trajs(self):
-#     #   create fake trajectory to merge
-#         traj2 = traj.TimeSeries(distraj=['L', 'L', 'L', 'A'], dt = 2.0)
-#         traj2.keys = ['L','A']
-#         self.merge_msm = msm.SuperMSM([self.tr, traj2])
-#         self.assertEqual(sorted(self.merge_msm.keys), ['A','E','L'])
-#         self.assertEqual(len(self.merge_msm.data), 2)
-#         self.assertIsInstance(self.merge_msm.data[1] , traj.TimeSeries)
-#         self.assertEqual(self.merge_msm.dt, 2.0)
-#
-#
-#     def test_do_msm(self):
-#
-#         self.msm.do_msm(lagt=1)
-#         self.assertIsInstance(self.msm.msms[1], msm.MSM)
-#         self.assertEqual(self.msm.msms[1].lagt, 1)
-#
-#     def test_convergence(self):
-#         lagtimes = np.array(range(10,100,10))
-#         self.msm.convergence_test(time=lagtimes)
-#         for lagt in lagtimes:
-#             self.assertTrue(hasattr(self.msm.msms[lagt], 'tau_ave'))
-#             self.assertTrue(hasattr(self.msm.msms[lagt], 'tau_std'))
-#             self.assertTrue(hasattr(self.msm.msms[lagt], 'peq_ave'))
-#             self.assertTrue(hasattr(self.msm.msms[lagt], 'peq_std'))
-#
-#     def test_do_boots(self):
-#         self.msm.do_msm(10)
-#         self.msm.msms[10].boots()
-#
-#         self.assertTrue(hasattr(self.msm.msms[10], 'tau_ave'))
-#         self.assertTrue(hasattr(self.msm.msms[10], 'tau_std'))
-#         self.assertTrue(hasattr(self.msm.msms[10], 'peq_ave'))
-#         self.assertTrue(hasattr(self.msm.msms[10], 'peq_std'))
-#
-#     def test_do_pfold(self):
-#         states = [
-#             ['A'],
-#             ['E']
-#         ]
-#         for lagt in [1,10,100]:
-#             self.msm.do_msm(lagt)
-#             self.msm.msms[lagt].boots()
-#             self.msm.msms[lagt].do_trans()
-#             self.msm.msms[lagt].do_rate()
-#
-#             self.msm.msms[lagt].do_pfold(FF=states[0], UU=states[1])
-#             self.assertTrue(hasattr(self.msm.msms[lagt], 'pfold'))
-#             self.assertTrue(hasattr(self.msm.msms[lagt], 'J'))
-#             self.assertTrue(hasattr(self.msm.msms[lagt], 'sum_flux'))
-#             self.assertTrue(hasattr(self.msm.msms[lagt], 'kf'))
-#             self.assertIsInstance(self.msm.msms[lagt].kf, np.float64)
-#             self.assertEqual(len(self.msm.msms[lagt].J), len(states))
-#
+class TestSuperMSM(unittest.TestCase):
+    def setUp(self):
+        self.tr = traj.TimeSeries(top='test/data/alaTB.gro', \
+                traj=['test/data/protein_only.xtc'])
+        self.tr.discretize('rama', states=['A', 'E', 'O'])
+        self.tr.find_keys()
+        self.msm = msm.SuperMSM([self.tr])
+
+    def test_init(self):
+        self.assertIsNotNone(self.msm)
+        self.assertTrue( hasattr(self.msm, 'data'))
+        self.assertEqual(self.msm.data, [self.tr])
+        self.assertEqual(self.msm.dt, 1.0)
+
+    def test_merge_trajs(self):
+    #   create fake trajectory to merge
+        traj2 = traj.TimeSeries(distraj=['L', 'L', 'L', 'A'], dt = 2.0)
+        traj2.keys = ['L','A']
+        self.merge_msm = msm.SuperMSM([self.tr, traj2])
+        self.assertEqual(sorted(self.merge_msm.keys), ['A','E','L'])
+        self.assertEqual(len(self.merge_msm.data), 2)
+        self.assertIsInstance(self.merge_msm.data[1] , traj.TimeSeries)
+        self.assertEqual(self.merge_msm.dt, 2.0)
+
+
+    def test_do_msm(self):
+
+        self.msm.do_msm(lagt=1)
+        self.assertIsInstance(self.msm.msms[1], msm.MSM)
+        self.assertEqual(self.msm.msms[1].lagt, 1)
+
+    def test_convergence(self):
+        lagtimes = np.array(range(10,100,10))
+        self.msm.convergence_test(time=lagtimes)
+        for lagt in lagtimes:
+            self.assertTrue(hasattr(self.msm.msms[lagt], 'tau_ave'))
+            self.assertTrue(hasattr(self.msm.msms[lagt], 'tau_std'))
+            self.assertTrue(hasattr(self.msm.msms[lagt], 'peq_ave'))
+            self.assertTrue(hasattr(self.msm.msms[lagt], 'peq_std'))
+
+    def test_do_boots(self):
+        self.msm.do_msm(10)
+        self.msm.msms[10].boots()
+
+        self.assertTrue(hasattr(self.msm.msms[10], 'tau_ave'))
+        self.assertTrue(hasattr(self.msm.msms[10], 'tau_std'))
+        self.assertTrue(hasattr(self.msm.msms[10], 'peq_ave'))
+        self.assertTrue(hasattr(self.msm.msms[10], 'peq_std'))
+
+    def test_do_pfold(self):
+        states = [
+            ['A'],
+            ['E']
+        ]
+        for lagt in [1,10,100]:
+            self.msm.do_msm(lagt)
+            self.msm.msms[lagt].boots()
+            self.msm.msms[lagt].do_trans()
+            self.msm.msms[lagt].do_rate()
+
+            self.msm.msms[lagt].do_pfold(FF=states[0], UU=states[1])
+            self.assertTrue(hasattr(self.msm.msms[lagt], 'pfold'))
+            self.assertTrue(hasattr(self.msm.msms[lagt], 'J'))
+            self.assertTrue(hasattr(self.msm.msms[lagt], 'sum_flux'))
+            self.assertTrue(hasattr(self.msm.msms[lagt], 'kf'))
+            self.assertIsInstance(self.msm.msms[lagt].kf, np.float64)
+            self.assertEqual(len(self.msm.msms[lagt].J), len(states))
+
+
+class TestMSM(unittest.TestCase):
+    def setUp(self):
+        download_test_data()
+        self.nstates = np.random.randint(2,100)
+        distraj_1 = list(np.random.randint(1,self.nstates+1, size=(1,1000)))
+        traj_1 = traj.TimeSeries(distraj= distraj_1, dt=1.)
+        distraj_2 = list(np.random.randint(1,self.nstates+1, size=(1,1000)))
+        traj_2 = traj.TimeSeries(distraj= distraj_2, dt=2.)
+        self.data = np.array([
+            traj_1,
+            traj_2
+        ])
+        self.lagt = 10
+        self.keys = [i for i in range(1,self.nstates+1)]
+        msm_obj = msm.MSM(data=self.data, lagt=self.lagt, keys=self.keys, sym=True)
+        self.msm = msm_obj
+
+
+    def test_init(self):
+        self.msm_empty = msm.MSM()
+        self.assertIsNotNone(self.msm_empty)
+        self.assertIsNone(self.msm_empty.data)
+        self.assertIsNone(self.msm_empty.lagt)
+        self.assertIsNone(self.msm_empty.keys)
+        self.assertFalse(self.msm_empty.sym)
+
+        self.assertIsNotNone(self.msm)
+        self.assertIsNotNone(self.msm.data)
+        self.assertIsNotNone(self.msm.keys)
+        self.assertIsNotNone(self.msm.lagt)
+        self.assertTrue(self.msm.sym)
+        self.assertTrue(np.array_equal(self.data, self.msm.data))
+        self.assertEqual(self.msm.lagt, self.lagt)
+        self.assertTrue(np.array_equal(self.keys, self.msm.keys))
+
+    def test_do_count(self):
+        self.msm.do_count()
+        self.assertIsNotNone(self.msm.keep_states)
+        self.assertIsNotNone(self.msm.keep_keys)
+
+    def test_do_trans(self):
+        self.msm.do_count()
+        print(self.msm.keep_states)
+        #self.msm.do_trans(evecs=True)
+        #self.assertIsNotNone(self.msm.tauT)
+
+
+
+
+
+
+
+
+
+
+
