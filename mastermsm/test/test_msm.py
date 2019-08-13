@@ -293,6 +293,7 @@ class TestMSMLib(unittest.TestCase):
 
 class TestSuperMSM(unittest.TestCase):
     def setUp(self):
+        download_test_data()
         self.tr = traj.TimeSeries(top='test/data/alaTB.gro', \
                 traj=['test/data/protein_only.xtc'])
         self.tr.discretize('rama', states=['A', 'E', 'O'])
@@ -304,17 +305,27 @@ class TestSuperMSM(unittest.TestCase):
         self.assertTrue( hasattr(self.msm, 'data'))
         self.assertEqual(self.msm.data, [self.tr])
         self.assertEqual(self.msm.dt, 1.0)
+        # testing with more than one trajectory
+        self.msm = msm.SuperMSM([self.tr, self.tr])
+        self.assertEqual(len(self.msm.data), 2)
+
 
     def test_merge_trajs(self):
     #   create fake trajectory to merge
         traj2 = traj.TimeSeries(distraj=['L', 'L', 'L', 'A'], dt = 2.0)
         traj2.keys = ['L','A']
-        self.merge_msm = msm.SuperMSM([self.tr, traj2])
-        self.assertEqual(sorted(self.merge_msm.keys), ['A','E','L'])
-        self.assertEqual(len(self.merge_msm.data), 2)
-        self.assertIsInstance(self.merge_msm.data[1] , traj.TimeSeries)
-        self.assertEqual(self.merge_msm.dt, 2.0)
+        old_keys = self.msm.keys
+        self.msm.data = [self.tr, traj2]
+        new_keys = self.msm._merge_trajs()
+        self.assertEqual(len(new_keys), len(old_keys) + 1)
+        self.assertEqual(sorted(new_keys), ['A', 'E', 'L'])
 
+    def test_max_dt(self):
+        traj2 = traj.TimeSeries(distraj=['L', 'L', 'L', 'A'], dt=2.0)
+        old_dt = self.msm.dt
+        self.msm.data = [self.tr, traj2]
+        new_dt = self.msm._max_dt()
+        self.assertEqual(new_dt, 2.0)
 
     def test_do_msm(self):
 
@@ -340,6 +351,21 @@ class TestSuperMSM(unittest.TestCase):
         self.assertTrue(hasattr(self.msm.msms[10], 'peq_ave'))
         self.assertTrue(hasattr(self.msm.msms[10], 'peq_std'))
 
+    def test_ck_test(self):
+        init = ['A']
+        time = np.array(range(50,210,25))
+        pMSM, pMD, epMD = self.msm.ck_test(init=init, time=time)
+        self.assertIsNotNone(pMSM)
+        self.assertIsNotNone(pMD)
+        self.assertIsNotNone(epMD)
+        self.assertEqual(len(pMSM), len(time))
+        self.assertEqual(len(epMD), 10)
+
+        self.assertIsInstance(pMSM, list)
+        self.assertIsInstance(pMSM[0], tuple)
+        self.assertIsInstance(pMD, np.ndarray)
+        self.assertIsInstance(epMD, np.ndarray)
+
     def test_do_pfold(self):
         states = [
             ['A'],
@@ -359,14 +385,26 @@ class TestSuperMSM(unittest.TestCase):
             self.assertIsInstance(self.msm.msms[lagt].kf, np.float64)
             self.assertEqual(len(self.msm.msms[lagt].J), len(states))
 
+    def test_lb_rate(self):
+        self.msm.do_lbrate()
+        print(dir(self.msm))
+        self.assertIsNotNone(self.msm.tauK)
+        self.assertIsNotNone(self.msm.peqK)
+        self.assertIsNotNone(self.msm.rvecsK)
+        self.assertIsNotNone(self.msm.lvecsK)
+        print(self.msm.tauK, self.msm.rvecsK)
+        self.assertEqual(len(self.msm.tauK), len(self.msm.keys) - 1)
+        self.assertEqual(self.msm.rvecsK.shape, (len(self.msm.keys), len(self.msm.keys)))
+
+
 
 class TestMSM(unittest.TestCase):
     def setUp(self):
         download_test_data()
         self.nstates = np.random.randint(2,100)
-        distraj_1 = list(np.random.randint(1,self.nstates+1, size=(1,1000)))
+        distraj_1 = np.random.randint(1,self.nstates+1, size=1000).tolist()
         traj_1 = traj.TimeSeries(distraj= distraj_1, dt=1.)
-        distraj_2 = list(np.random.randint(1,self.nstates+1, size=(1,1000)))
+        distraj_2 = np.random.randint(1,self.nstates+1, size=1000).tolist()
         traj_2 = traj.TimeSeries(distraj= distraj_2, dt=2.)
         self.data = np.array([
             traj_1,
@@ -400,17 +438,148 @@ class TestMSM(unittest.TestCase):
         self.assertIsNotNone(self.msm.keep_states)
         self.assertIsNotNone(self.msm.keep_keys)
 
+    def test_calc_count_multi(self):
+        count = self.msm.calc_count_multi()
+        self.assertIsNotNone(count)
+        self.assertIsInstance(count, np.ndarray)
+        self.assertEqual(count.shape, (self.nstates, self.nstates))
+
+    def test_check_connect(self):
+        self.msm.do_count()
+        keep_states, keep_keys = self.msm.check_connect()
+        self.assertEqual(len(keep_keys), len(keep_states))
+        self.assertEqual(self.msm.keep_keys, self.keys)
+
     def test_do_trans(self):
         self.msm.do_count()
-        print(self.msm.keep_states)
-        #self.msm.do_trans(evecs=True)
-        #self.assertIsNotNone(self.msm.tauT)
+        self.msm.do_trans(evecs=False)
+        self.assertIsNotNone(self.msm.tauT)
+        self.assertIsNotNone(self.msm.trans)
+        self.assertIsNotNone(self.msm.peqT)
+        self.assertFalse(hasattr(self.msm, "rvecsT"))
+        self.assertFalse(hasattr(self.msm, "lvecsT"))
+        self.assertEqual(len(self.msm.tauT), self.nstates - 1)
+        self.assertEqual(len(self.msm.peqT), self.nstates)
+        self.assertEqual(self.msm.trans.shape, (self.nstates, self.nstates))
+        self.msm.do_trans(evecs=True)
+        self.assertTrue(hasattr(self.msm, "rvecsT"))
+        self.assertTrue(hasattr(self.msm, "lvecsT"))
+        self.assertEqual(len(self.msm.rvecsT), self.nstates)
+        self.assertEqual(len(self.msm.lvecsT), self.nstates)
 
+    def test_do_rate(self):
+        self.msm.do_count()
+        self.msm.do_trans()
+        self.msm.do_rate(evecs=False)
+        self.assertIsNotNone(self.msm.rate)
+        self.assertIsNotNone(self.msm.tauK)
+        self.assertIsNotNone(self.msm.peqK)
+        self.assertEqual(len(self.msm.tauK), self.nstates - 1)
+        self.assertEqual(len(self.msm.peqK), self.nstates)
+        self.msm.do_rate(evecs=True)
+        self.assertIsNotNone(self.msm.rvecsK)
+        self.assertIsNotNone(self.msm.lvecsK)
 
+    def test_calc_eigsT(self):
+        self.msm.do_count()
+        self.msm.do_trans()
+        tauT, peqT, rvecsT_sorted, lvecsT_sorted = self.msm.calc_eigsT(evecs=True)
+        self.assertIsNotNone(tauT)
+        self.assertIsNotNone(peqT)
+        self.assertEqual(len(tauT), self.nstates - 1)
+        self.assertEqual(len(peqT), self.nstates)
+        self.assertIsNotNone(rvecsT_sorted)
+        self.assertIsNotNone(lvecsT_sorted)
 
+    def test_calc_eigsK(self):
+        self.msm.do_count()
+        self.msm.do_trans()
+        tauK, peqK, rvecsK_sorted, lvecsK_sorted = self.msm.calc_eigsT(evecs=True)
+        self.assertIsNotNone(tauK)
+        self.assertIsNotNone(peqK)
+        self.assertEqual(len(tauK), self.nstates - 1)
+        self.assertEqual(len(peqK), self.nstates)
+        self.assertIsNotNone(rvecsK_sorted)
+        self.assertIsNotNone(lvecsK_sorted)
 
+    def test_boots(self):
+        self.msm.do_count()
+        self.msm.do_trans()
+        self.msm.boots()
+        self.assertIsNotNone(self.msm.tau_ave)
+        self.assertIsNotNone(self.msm.tau_std)
+        self.assertIsNotNone(self.msm.peq_ave)
+        self.assertIsNotNone(self.msm.peq_std)
+        self.assertEqual(len(self.msm.tau_ave), self.nstates - 1)
+        self.assertEqual(len(self.msm.tau_std), self.nstates - 1)
+        self.assertEqual(len(self.msm.peq_std), self.nstates)
+        self.assertEqual(len(self.msm.peq_ave), self.nstates)
 
+    def test_sensitivity(self):
+        self.msm.do_count()
+        self.msm.do_trans()
+        self.msm.do_rate()
+        FF = np.random.randint(1, self.nstates + 1, size = np.random.randint(1, np.ceil(self.nstates / 3))).tolist()
+        UU = np.random.randint(1, self.nstates + 1, size = np.random.randint(1, np.ceil(self.nstates / 3))).tolist()
+        self.msm.sensitivity(FF=FF, UU=UU)
+        self.assertIsNotNone(self.msm.kf)
+        self.assertIsNotNone(self.msm.d_pu)
+        self.assertIsNotNone(self.msm.d_lnkf)
+        self.assertIsNotNone(self.msm.dJ)
+        self.assertIsInstance(self.msm.kf, float)
+        self.assertEqual(len(self.msm.d_pu), self.nstates)
+        self.assertEqual(len(self.msm.d_lnkf), self.nstates)
+        self.assertEqual(len(self.msm.dJ),self.nstates)
+        self.assertIsInstance(self.msm.d_pu[0], float)
+        self.assertIsInstance(self.msm.dJ[0], float)
+        self.assertIsInstance(self.msm.d_lnkf[0], float)
 
+    def test_propagateK(self):
+        # p0_fn = "p0.txt"
+        # new_file = open(p0_fn, "w")
+        random_p0 = np.random.rand(self.nstates)
+        # random_pini = np.random.randint(1, self.nstates + 1, size = 2)
+        # new_file.write(np.array2string(random_p0))
+        # new_file.close()
+        self.msm.do_count()
+        self.msm.do_trans()
+        self.msm.do_rate()
+        time, popul = self.msm.propagateK(p0=random_p0)
+        self.assertIsNotNone(time)
+        self.assertIsInstance(time, np.ndarray)
+        self.assertIsInstance(popul, list)
+        self.assertEqual(len(time), 20)
+        self.assertEqual(len(popul), 20)
+        self.assertEqual(len(popul[0]), self.nstates)
+
+        for ind, t in enumerate(time):
+            if ind != 0:
+                self.assertGreater(t, time[ind - 1])
+
+    def test_propagateT(self):
+        random_p0 = np.random.rand(self.nstates)
+        self.msm.do_count()
+        self.msm.do_trans()
+        self.msm.do_rate()
+        tcum, popul = self.msm.propagateT(p0=random_p0)
+        self.assertIsNotNone(tcum)
+        self.assertIsInstance(tcum, list)
+        self.assertIsInstance(popul, list)
+        self.assertEqual(len(tcum), 20)
+        self.assertEqual(len(popul), 20)
+        self.assertEqual(len(popul[0]), self.nstates)
+
+    def test_acf_mode(self):
+        self.msm.do_count()
+        self.msm.do_trans(evecs=True)
+        self.msm.do_rate()
+        acf_ave = self.msm.acf_mode()
+        print("acf", acf_ave, len(acf_ave), self.nstates)
+        self.assertIsInstance(acf_ave, dict)
+        self.assertEqual(len(acf_ave.keys()), len(self.msm.keep_keys) - 1)
+        modes = [key for key in acf_ave.keys()]
+
+        self.assertIsInstance(acf_ave[modes[0]][0], float)
 
 
 
