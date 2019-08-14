@@ -9,5 +9,5 @@ def download_test_data():
     if os.path.exists(cpath+"/test/data") is False:
         os.mkdir(cpath+"/test/data")
     for fname in [gro,xtc]:
-        if os.path.isfile(cpath+"/%s"%gro) is False:
+        if os.path.isfile(cpath+"/%s"%fname) is False:
             urlretrieve(base_url+fname, fname)

@@ -3,11 +3,13 @@ import mdtraj as md
 import numpy as np
 from mastermsm.trajectory import traj_lib, traj
 from mastermsm.msm import msm, msm_lib
+from test.download_data import download_test_data
 import os
 
 
 class TestMDTrajLib(unittest.TestCase):
     def setUp(self):
+        download_test_data()
         self.tr = traj.TimeSeries(top='test/data/alaTB.gro', \
                                   traj=['test/data/protein_only.xtc'])
 
@@ -86,6 +88,7 @@ class TestMDTrajLib(unittest.TestCase):
 
 class TestMDtraj(unittest.TestCase):
     def setUp(self):
+        download_test_data()
         self.traj = md.load('test/data/protein_only.xtc', \
                 top='test/data/alaTB.gro')
         self.topfn = 'test/data/alaTB.gro'
@@ -186,6 +189,7 @@ class TestMDtraj(unittest.TestCase):
 
 class UseMDtraj(unittest.TestCase):
     def setUp(self):
+        download_test_data()
         self.tr = traj.TimeSeries(top='test/data/alaTB.gro', \
                 traj=['test/data/protein_only.xtc'])
 
