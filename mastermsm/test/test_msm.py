@@ -387,12 +387,10 @@ class TestSuperMSM(unittest.TestCase):
 
     def test_lb_rate(self):
         self.msm.do_lbrate()
-        print(dir(self.msm))
         self.assertIsNotNone(self.msm.tauK)
         self.assertIsNotNone(self.msm.peqK)
         self.assertIsNotNone(self.msm.rvecsK)
         self.assertIsNotNone(self.msm.lvecsK)
-        print(self.msm.tauK, self.msm.rvecsK)
         self.assertEqual(len(self.msm.tauK), len(self.msm.keys) - 1)
         self.assertEqual(self.msm.rvecsK.shape, (len(self.msm.keys), len(self.msm.keys)))
 
@@ -574,7 +572,6 @@ class TestMSM(unittest.TestCase):
         self.msm.do_trans(evecs=True)
         self.msm.do_rate()
         acf_ave = self.msm.acf_mode()
-        print("acf", acf_ave, len(acf_ave), self.nstates)
         self.assertIsInstance(acf_ave, dict)
         self.assertEqual(len(acf_ave.keys()), len(self.msm.keep_keys) - 1)
         modes = [key for key in acf_ave.keys()]
