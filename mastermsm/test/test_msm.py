@@ -399,7 +399,7 @@ class TestSuperMSM(unittest.TestCase):
 class TestMSM(unittest.TestCase):
     def setUp(self):
         download_test_data()
-        self.nstates = np.random.randint(2,100)
+        self.nstates = np.random.randint(3,100)
         distraj_1 = np.random.randint(1,self.nstates+1, size=1000).tolist()
         traj_1 = traj.TimeSeries(distraj= distraj_1, dt=1.)
         distraj_2 = np.random.randint(1,self.nstates+1, size=1000).tolist()
@@ -517,8 +517,9 @@ class TestMSM(unittest.TestCase):
         self.msm.do_count()
         self.msm.do_trans()
         self.msm.do_rate()
-        FF = np.random.randint(1, self.nstates + 1, size = np.random.randint(1, np.ceil(self.nstates / 3))).tolist()
-        UU = np.random.randint(1, self.nstates + 1, size = np.random.randint(1, np.ceil(self.nstates / 3))).tolist()
+        FF = [np.random.randint(1, self.nstates + 1)]
+
+        UU = [np.random.randint(1, self.nstates + 1)]
         self.msm.sensitivity(FF=FF, UU=UU)
         self.assertIsNotNone(self.msm.kf)
         self.assertIsNotNone(self.msm.d_pu)
