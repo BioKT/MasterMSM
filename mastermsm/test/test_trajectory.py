@@ -3,14 +3,15 @@ import mdtraj as md
 import numpy as np
 from mastermsm.trajectory import traj_lib, traj
 from mastermsm.msm import msm, msm_lib
-from mastermsm.fewsm import fewsm
+from test.download_data import download_test_data
 import os
 
 
 class TestMDTrajLib(unittest.TestCase):
     def setUp(self):
-        self.tr = traj.TimeSeries(top='trajectory/tests/data/alaTB.gro', \
-                                  traj=['trajectory/tests/data/protein_only.xtc'])
+        download_test_data()
+        self.tr = traj.TimeSeries(top='test/data/alaTB.gro', \
+                                  traj=['test/data/protein_only.xtc'])
 
     def test_inrange(self):
         self.inrange = traj_lib._inrange(2, 1, 3)
@@ -49,7 +50,7 @@ class TestMDTrajLib(unittest.TestCase):
         bounds['E'] = [-180., -40., 125., 165.]
         bounds['L'] = [50., 100., -40., 70.0]
 
-        for ind in enumerate(phi):
+        for ind in range(len(phi)):
             result = traj_lib._state(phi[ind], psi[ind], bounds)
             state = result[0]
             self.assertEqual(state, states_test[ind], 'expected state %s but got %s'%(state,states_test[ind]))
@@ -59,6 +60,7 @@ class TestMDTrajLib(unittest.TestCase):
         self.assertLess(traj_lib._stategrid(-180, 0, 20),400)
         self.assertEqual(traj_lib._stategrid(0, 0, 20), 210)
         self.assertEqual(traj_lib._stategrid(-180, 0, 100), 2186)
+
     def test_discreterama(self):
         mdt_test = self.tr.mdt
 
@@ -72,6 +74,7 @@ class TestMDTrajLib(unittest.TestCase):
         unique_st = set(discrete)
         for state in unique_st:
             self.assertIn(state, ['O', 'A', 'E', 'L'])
+
     def test_discreteramagrid(self):
         mdt_test = self.tr.mdt
 
@@ -85,12 +88,13 @@ class TestMDTrajLib(unittest.TestCase):
 
 class TestMDtraj(unittest.TestCase):
     def setUp(self):
-        self.traj = md.load('trajectory/tests/data/protein_only.xtc', \
-                top='trajectory/tests/data/alaTB.gro')
-        self.topfn = 'trajectory/tests/data/alaTB.gro'
-        self.trajfn = 'trajectory/tests/data/protein_only.xtc'
-        self.tr = traj.TimeSeries(top='trajectory/tests/data/alaTB.gro', \
-                                  traj=['trajectory/tests/data/protein_only.xtc'])
+        download_test_data()
+        self.traj = md.load('test/data/protein_only.xtc', \
+                top='test/data/alaTB.gro')
+        self.topfn = 'test/data/alaTB.gro'
+        self.trajfn = 'test/data/protein_only.xtc'
+        self.tr = traj.TimeSeries(top='test/data/alaTB.gro', \
+                                  traj=['test/data/protein_only.xtc'])
 
     def test_traj(self):
         self.assertIsNotNone(self.traj)
@@ -185,8 +189,9 @@ class TestMDtraj(unittest.TestCase):
 
 class UseMDtraj(unittest.TestCase):
     def setUp(self):
-        self.tr = traj.TimeSeries(top='trajectory/tests/data/alaTB.gro', \
-                traj=['trajectory/tests/data/protein_only.xtc'])
+        download_test_data()
+        self.tr = traj.TimeSeries(top='test/data/alaTB.gro', \
+                traj=['test/data/protein_only.xtc'])
 
     def test_atributes(self):
         self.assertIsNotNone(self.tr.mdt)
@@ -197,8 +202,6 @@ class UseMDtraj(unittest.TestCase):
         self.assertIs(callable(self.tr.discretize), True)
 
 
-#    def test_discretize(self):
-#        assert self.tr.n_traj == 1
 class TestMSMLib(unittest.TestCase):
     def test_esort(self):
         self.assertTrue(hasattr(msm_lib, 'esort'))
@@ -274,101 +277,3 @@ class TestMSMLib(unittest.TestCase):
         data = [distraj, dt, keys]
         self.life = msm_lib.calc_lifetime(data)
         self.assertIsInstance(self.life, dict)
-
-class TestMSM(unittest.TestCase):
-    def setUp(self):
-        self.tr = traj.TimeSeries(top='trajectory/tests/data/alaTB.gro', \
-                traj=['trajectory/tests/data/protein_only.xtc'])
-        self.tr.discretize('rama', states=['A', 'E', 'O'])
-        self.tr.find_keys()
-        self.msm = msm.SuperMSM([self.tr])
-
-    def test_init(self):
-        self.assertIsNotNone(self.msm)
-        self.assertTrue( hasattr(self.msm, 'data'))
-        self.assertEqual(self.msm.data, [self.tr])
-        self.assertEqual(self.msm.dt, 1.0)
-
-    def test_merge_trajs(self):
-    #   create fake trajectory to merge
-        traj2 = traj.TimeSeries(distraj=['L', 'L', 'L', 'A'], dt = 2.0)
-        traj2.keys = ['L','A']
-        self.merge_msm = msm.SuperMSM([self.tr, traj2])
-        self.assertEqual(sorted(self.merge_msm.keys), ['A','E','L'])
-        self.assertEqual(len(self.merge_msm.data), 2)
-        self.assertIsInstance(self.merge_msm.data[1] , traj.TimeSeries)
-        self.assertEqual(self.merge_msm.dt, 2.0)
-
-
-    def test_do_msm(self):
-
-        self.msm.do_msm(lagt=1)
-        self.assertIsInstance(self.msm.msms[1], msm.MSM)
-        self.assertEqual(self.msm.msms[1].lagt, 1)
-
-    def test_convergence(self):
-        lagtimes = np.array(range(10,100,10))
-        self.msm.convergence_test(time=lagtimes)
-        for lagt in lagtimes:
-            self.assertTrue(hasattr(self.msm.msms[lagt], 'tau_ave'))
-            self.assertTrue(hasattr(self.msm.msms[lagt], 'tau_std'))
-            self.assertTrue(hasattr(self.msm.msms[lagt], 'peq_ave'))
-            self.assertTrue(hasattr(self.msm.msms[lagt], 'peq_std'))
-
-    def test_do_boots(self):
-        self.msm.do_msm(10)
-        self.msm.msms[10].boots()
-
-        self.assertTrue(hasattr(self.msm.msms[10], 'tau_ave'))
-        self.assertTrue(hasattr(self.msm.msms[10], 'tau_std'))
-        self.assertTrue(hasattr(self.msm.msms[10], 'peq_ave'))
-        self.assertTrue(hasattr(self.msm.msms[10], 'peq_std'))
-
-    def test_do_pfold(self):
-        states = [
-            ['A'],
-            ['E']
-        ]
-        for lagt in [1,10,100]:
-            self.msm.do_msm(lagt)
-            self.msm.msms[lagt].boots()
-            self.msm.msms[lagt].do_trans()
-            self.msm.msms[lagt].do_rate()
-
-            self.msm.msms[lagt].do_pfold(FF=states[0], UU=states[1])
-            self.assertTrue(hasattr(self.msm.msms[lagt], 'pfold'))
-            self.assertTrue(hasattr(self.msm.msms[lagt], 'J'))
-            self.assertTrue(hasattr(self.msm.msms[lagt], 'sum_flux'))
-            self.assertTrue(hasattr(self.msm.msms[lagt], 'kf'))
-            self.assertIsInstance(self.msm.msms[lagt].kf, np.float64)
-            self.assertEqual(len(self.msm.msms[lagt].J), len(states))
-
-
-class TestFewSM(unittest.TestCase):
-
-    def setUp(self):
-        self.tr = traj.TimeSeries(top='trajectory/tests/data/alaTB.gro', \
-                                  traj=['trajectory/tests/data/protein_only.xtc'])
-        self.tr.discretize('rama', states=['A', 'E'])
-        self.tr.find_keys()
-        self.msm = msm.SuperMSM([self.tr])
-        self.msm.do_msm(10)
-        self.msm.msms[10].do_trans()
-
-    def test_attributes(self):
-        self.fewsm = fewsm.FEWSM(parent=self.msm.msms[10])
-        self.assertIsNotNone(self.fewsm.macros)
-        self.assertEqual(len(self.fewsm.macros), 2)
-    def test_map_trajectory(self):
-        self.fewsm = fewsm.FEWSM(parent=self.msm.msms[10])
-        self.fewsm.map_trajectory()
-        self.mapped = self.fewsm.mappedtraj[0]
-        self.assertIsNotNone(self.mapped)
-        self.assertIsInstance(self.mapped, traj.TimeSeries)
-        self.assertTrue(hasattr(self.mapped, 'dt'))
-        self.assertTrue(hasattr(self.mapped, 'distraj'))
-        self.assertEqual(len(set(self.mapped.distraj)), 2)
-        self.assertEqual(sorted(set(self.mapped.distraj)), [0, 1])
-
-if __name__ == "__main__":
-    unittest.main()
