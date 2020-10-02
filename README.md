@@ -42,6 +42,7 @@ Citation
     title = "{MasterMSM: A Package for Constructing Master Equation    Models of Molecular Dynamics}",
     year = "2019",
     month = "6",
-    url = "https://chemrxiv.org/articles/MasterMSM_A_Package_for_Constructing_Master_Equation_Models_of_Molecular_Dynamics/8234147",
-    doi = "10.26434/chemrxiv.8234147.v1"
+    journal = "J. Chem. Inf. Model."
+    url = "https://doi.org/10.1021/acs.jcim.9b00468",
+    doi = "10.1021/acs.jcim.9b00468"
     }
