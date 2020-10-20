@@ -148,6 +148,9 @@ class TimeSeries(object):
             psi = md.compute_psi(self.mdt)
             self.distraj = traj_lib.discrete_hdbscan(phi, psi, mcs, ms)
 
+        return phi, psi
+
+
     def find_keys(self, exclude=['O']):
         """ Finds out the discrete states in the trajectory
 
