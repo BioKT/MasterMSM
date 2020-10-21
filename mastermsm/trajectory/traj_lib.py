@@ -228,7 +228,6 @@ def discrete_hdbscan(phi, psi, mcs, ms):
             min_samples for HDBSCAN
 
     """
-    #borrar esto:
     if len(phi[0]) != len(psi[0]): sys.exit()
     ndih = len(phi[0])
     phis, psis = [], []
@@ -238,14 +237,8 @@ def discrete_hdbscan(phi, psi, mcs, ms):
             psis.append(y[n]*180/math.pi)
     
     data = np.column_stack((range(len(phis)),phis,psis))
-    #X = data[:,[1,2]]
     X = StandardScaler().fit_transform(data[:,[1,2]])
-    #from sklearn.metrics.pairwise import pairwise_distances
-    #dist_mat = pairwise_distances(X)
-    #hb = hdbscan.HDBSCAN(metric='precomputed')
-    #hb.fit(dist_mat)
-    hb = hdbscan.HDBSCAN(min_cluster_size = mcs, min_samples = ms).fit(X)
-    #hb = hdbscan.HDBSCAN(min_cluster_size = mcs, min_samples = ms).fit_predict(X)
+    hb = hdbscan.HDBSCAN(min_cluster_size = mcs, min_samples = ms).fit(X)#fit_predict(X)
 
     labels = hb.labels_
     #n_micro_clusters = len(set(labels)) - (1 if -1 in labels else 0)
@@ -256,22 +249,22 @@ def discrete_hdbscan(phi, psi, mcs, ms):
         if hb.probabilities_[i] < 0.1:
             labels[i] = -1
 
-    #import matplotlib.pyplot as plt
-    #colors = ['royalblue', 'maroon', 'forestgreen', 'mediumorchid', \
-    #'tan', 'deeppink', 'olive', 'goldenrod', 'lightcyan', 'lightgray']
-    #vectorizer = np.vectorize(lambda x: colors[x % len(colors)])
-    #plt.scatter(X[:,0],X[:,1], c=vectorizer(labels))
-    #plt.savefig('alaTB_hdbscan.png')
-    #hb.condensed_tree_.plot()
-    #plt.savefig('tree.png')
+    # plot clusters and corresponding tree
+    import matplotlib.pyplot as plt
+    colors = ['royalblue', 'maroon', 'forestgreen', 'mediumorchid', \
+    'tan', 'deeppink', 'olive', 'goldenrod', 'lightcyan', 'lightgray']
+    vectorizer = np.vectorize(lambda x: colors[x % len(colors)])
+    plt.scatter(X[:,0],X[:,1], c=vectorizer(labels))
+    plt.savefig('alaTB_hdbscan.png')
+    hb.condensed_tree_.plot()
+    plt.savefig('tree.png')
 
-    # remove noise from microstate trajectory
+    # remove noise from microstate trajectory and apply TBA (Buchete JPCB 2008)
     i = 0
     last = labels[i]
     while last == -1:
         i += 1
         last = labels[i]
-    #print(last) #solo pa check ahora
     for i, x_i in enumerate(labels):
         if x_i == -1:
             labels[i] = last
