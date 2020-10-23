@@ -111,7 +111,7 @@ class TimeSeries(object):
 
 
 
-    def discretize(self, method="rama", states=None, nbins=20):
+    def discretize(self, method="rama", states=None, nbins=20, mcs=185, ms=185):
         """ Discretize the simulation data.
 
         Parameters
@@ -124,6 +124,10 @@ class TimeSeries(object):
             Only for method "rama".
         nbins : int
             Number of bins in the grid. Only for "ramagrid".
+        mcs : int
+            min_cluster_size for HDBSCAN
+        ms : int
+            min_samples for HDBSCAN
 
         Returns
         -------
@@ -139,6 +143,13 @@ class TimeSeries(object):
             phi = md.compute_phi(self.mdt)
             psi = md.compute_psi(self.mdt)
             self.distraj = traj_lib.discrete_ramagrid(phi, psi, nbins)
+        elif method == "hdbscan":
+            phi = md.compute_phi(self.mdt)
+            psi = md.compute_psi(self.mdt)
+            self.distraj = traj_lib.discrete_hdbscan(phi, psi, mcs, ms)
+
+        return phi, psi
+
 
     def find_keys(self, exclude=['O']):
         """ Finds out the discrete states in the trajectory
