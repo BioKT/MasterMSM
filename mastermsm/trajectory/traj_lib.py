@@ -249,15 +249,15 @@ def discrete_hdbscan(phi, psi, mcs, ms):
         if hb.probabilities_[i] < 0.1:
             labels[i] = -1
 
-    # plot clusters and corresponding tree
-    import matplotlib.pyplot as plt
-    colors = ['royalblue', 'maroon', 'forestgreen', 'mediumorchid', \
-    'tan', 'deeppink', 'olive', 'goldenrod', 'lightcyan', 'lightgray']
-    vectorizer = np.vectorize(lambda x: colors[x % len(colors)])
-    plt.scatter(X[:,0],X[:,1], c=vectorizer(labels))
-    plt.savefig('alaTB_hdbscan.png')
-    hb.condensed_tree_.plot()
-    plt.savefig('tree.png')
+    ## plot clusters and corresponding tree
+    #import matplotlib.pyplot as plt
+    #colors = ['royalblue', 'maroon', 'forestgreen', 'mediumorchid', \
+    #'tan', 'deeppink', 'olive', 'goldenrod', 'lightcyan', 'lightgray']
+    #vectorizer = np.vectorize(lambda x: colors[x % len(colors)])
+    #plt.scatter(X[:,0],X[:,1], c=vectorizer(labels))
+    #plt.savefig('alaTB_hdbscan.png')
+    #hb.condensed_tree_.plot()
+    #plt.savefig('tree.png')
 
     # remove noise from microstate trajectory and apply TBA (Buchete JPCB 2008)
     i = 0
