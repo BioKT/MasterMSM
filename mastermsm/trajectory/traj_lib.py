@@ -212,7 +212,7 @@ def _stategrid(phi, psi, nbins):
     ibin = int(0.5*nbins*(phi/math.pi + 1.)) + int(0.5*nbins*(psi/math.pi + 1))*nbins
     return ibin
 
-def discrete_hdbscan(phi, psi, mcs, ms):
+def discrete_hdbscan(phi, psi, mcs=None, ms=None):
     """ Assign a set of phi, psi angles to coarse states by
         using the HDBSCAN algorithm
 
@@ -228,16 +228,21 @@ def discrete_hdbscan(phi, psi, mcs, ms):
             min_samples for HDBSCAN
 
     """
-    if len(phi[0]) != len(psi[0]): sys.exit()
+    if len(phi[0]) != len(psi[0]): 
+        sys.exit()
+        
     ndih = len(phi[0])
     phis, psis = [], []
-    for f,y in zip(phi[1],psi[1]):
+    for f, y in zip(phi[1],psi[1]):
         for n in range(ndih):
-            phis.append(f[n]*180/math.pi)
-            psis.append(y[n]*180/math.pi)
+            phis.append(f[n])
+            psis.append(y[n])
     
     data = np.column_stack((range(len(phis)),phis,psis))
     X = StandardScaler().fit_transform(data[:,[1,2]])
+    if not mcs:
+        mcs = 10
+        ms = mcs
     hb = hdbscan.HDBSCAN(min_cluster_size = mcs, min_samples = ms).fit(X)#fit_predict(X)
 
     labels = hb.labels_
@@ -249,15 +254,15 @@ def discrete_hdbscan(phi, psi, mcs, ms):
         if hb.probabilities_[i] < 0.1:
             labels[i] = -1
 
-    # plot clusters and corresponding tree
-    import matplotlib.pyplot as plt
-    colors = ['royalblue', 'maroon', 'forestgreen', 'mediumorchid', \
-    'tan', 'deeppink', 'olive', 'goldenrod', 'lightcyan', 'lightgray']
-    vectorizer = np.vectorize(lambda x: colors[x % len(colors)])
-    plt.scatter(X[:,0],X[:,1], c=vectorizer(labels))
-    plt.savefig('alaTB_hdbscan.png')
-    hb.condensed_tree_.plot()
-    plt.savefig('tree.png')
+    ## plot clusters and corresponding tree
+    #import matplotlib.pyplot as plt
+    #colors = ['royalblue', 'maroon', 'forestgreen', 'mediumorchid', \
+    #'tan', 'deeppink', 'olive', 'goldenrod', 'lightcyan', 'lightgray']
+    #vectorizer = np.vectorize(lambda x: colors[x % len(colors)])
+    #plt.scatter(X[:,0],X[:,1], c=vectorizer(labels))
+    #plt.savefig('alaTB_hdbscan.png')
+    #hb.condensed_tree_.plot()
+    #plt.savefig('tree.png')
 
     # remove noise from microstate trajectory and apply TBA (Buchete JPCB 2008)
     i = 0
