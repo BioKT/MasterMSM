@@ -3,6 +3,7 @@ This file is part of the MasterMSM package.
 
 """
 import os
+import numpy as np
 import mdtraj as md
 from ..trajectory import traj_lib
 
@@ -23,6 +24,58 @@ def _load_mdtraj(top=None, traj=None):
 
     """
     return md.load(traj, top=top)
+
+class MultiTimeSeries(object):
+    """ A class for generating multiple TimeSeries objects in
+    a consistent way. In principle this is only needed when
+    the clustering is not established a priori.
+
+    """
+    def __init__(self, top=None, trajs=None, dt=None):
+        """
+        Parameters
+        ----------
+        dt : float
+            The time step.
+        top : string
+            The topology file, may be a PDB or GRO file.
+        trajs : list 
+            A list of trajectory filenames to be read.
+
+        """
+        self.file_list = trajs
+        self.traj_list = []
+        for traj in self.file_list:
+            tr = TimeSeries(top=top, traj=traj)
+            self.traj_list.append(tr)
+    
+    def joint_discretize(self):
+        """
+        Analyze jointly torsion angles from all trajectories.
+
+        Produces a fake trajectory comprising a concatenated set
+        to recover the labels from HDBSCAN.
+
+        """
+        phi_cum = []
+        psi_cum = []
+        for tr in self.traj_list:
+            phi = md.compute_phi(tr.mdt)
+            psi = md.compute_psi(tr.mdt)
+            phi_cum.append(phi[1])
+            psi_cum.append(psi[1])
+        phi_cum = np.vstack(phi_cum)
+        psi_cum = np.vstack(psi_cum)  
+        phi_fake = [phi[0], phi_cum]
+        psi_fake = [psi[0], psi_cum]
+
+        labels = traj_lib.discrete_hdbscan(phi_fake, psi_fake)
+
+        i = 0
+        for tr in self.traj_list:
+            ltraj = tr.mdt.n_frames
+            tr.distraj = labels[i:i+ltraj]
+            i +=ltraj
 
 class TimeSeries(object):
     """ A class to read and discretize simulation trajectories.
@@ -108,8 +161,6 @@ class TimeSeries(object):
             except IndexError:
                 cstates = [x.split()[0] for x in raw]
                 return cstates, 1.
-
-
 
     def discretize(self, method="rama", states=None, nbins=20, mcs=185, ms=185):
         """ Discretize the simulation data.
