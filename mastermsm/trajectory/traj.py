@@ -49,7 +49,7 @@ class MultiTimeSeries(object):
             tr = TimeSeries(top=top, traj=traj)
             self.traj_list.append(tr)
     
-    def joint_discretize(self):
+    def joint_discretize(self, mcs=None, ms=None):
         """
         Analyze jointly torsion angles from all trajectories.
 
@@ -69,12 +69,12 @@ class MultiTimeSeries(object):
         phi_fake = [phi[0], phi_cum]
         psi_fake = [psi[0], psi_cum]
 
-        labels = traj_lib.discrete_hdbscan(phi_fake, psi_fake)
+        labels = traj_lib.discrete_hdbscan(phi_fake, psi_fake, mcs=mcs, ms=ms)
 
         i = 0
         for tr in self.traj_list:
             ltraj = tr.mdt.n_frames
-            tr.distraj = labels[i:i+ltraj]
+            tr.distraj = list(labels[i:i+ltraj]) #labels[i:i+ltraj]
             i +=ltraj
 
 class TimeSeries(object):
