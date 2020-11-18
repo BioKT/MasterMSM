@@ -243,11 +243,19 @@ def discrete_hdbscan(phi, psi, mcs=None, ms=None):
     if not mcs:
         mcs = 10
         ms = mcs
-    hb = hdbscan.HDBSCAN(min_cluster_size = mcs, min_samples = ms).fit(X)#fit_predict(X)
-
-    labels = hb.labels_
-    #n_micro_clusters = len(set(labels)) - (1 if -1 in labels else 0)
-    #n_noise = list(labels).count(-1)
+    
+    while True:
+        hb = hdbscan.HDBSCAN(min_cluster_size = mcs, min_samples = ms).fit(X)#fit_predict(X)
+        labels = hb.labels_
+        n_micro_clusters = len(set(labels)) - (1 if -1 in labels else 0)
+        if n_micro_clusters > 0:
+            print("HDBSCAN mcs value set to %g"%mcs)
+            break
+        elif mcs < 200:
+            mcs += 10
+        else:
+            sys.exit("Cannot found any valid HDBSCAN mcs value")
+        #n_noise = list(labels).count(-1)
 
     # remove from clusters points with small (<0.1) probability
     for i, x_i in enumerate(labels):
