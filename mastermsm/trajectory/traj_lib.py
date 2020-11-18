@@ -212,7 +212,7 @@ def _stategrid(phi, psi, nbins):
     ibin = int(0.5*nbins*(phi/math.pi + 1.)) + int(0.5*nbins*(psi/math.pi + 1))*nbins
     return ibin
 
-def discrete_hdbscan(phi, psi, mcs=None, ms=None):
+def discrete_hdbscan(phi, psi, mcs, ms):
     """ Assign a set of phi, psi angles to coarse states by
         using the HDBSCAN algorithm
 
@@ -228,49 +228,36 @@ def discrete_hdbscan(phi, psi, mcs=None, ms=None):
             min_samples for HDBSCAN
 
     """
-    if len(phi[0]) != len(psi[0]): 
-        sys.exit()
-        
+    if len(phi[0]) != len(psi[0]): sys.exit()
     ndih = len(phi[0])
     phis, psis = [], []
-    for f, y in zip(phi[1],psi[1]):
+    for f,y in zip(phi[1],psi[1]):
         for n in range(ndih):
-            phis.append(f[n])
-            psis.append(y[n])
+            phis.append(f[n]*180/math.pi)
+            psis.append(y[n]*180/math.pi)
     
     data = np.column_stack((range(len(phis)),phis,psis))
     X = StandardScaler().fit_transform(data[:,[1,2]])
-    if not mcs:
-        mcs = 10
-        ms = mcs
-    
-    while True:
-        hb = hdbscan.HDBSCAN(min_cluster_size = mcs, min_samples = ms).fit(X)#fit_predict(X)
-        labels = hb.labels_
-        n_micro_clusters = len(set(labels)) - (1 if -1 in labels else 0)
-        if n_micro_clusters > 0:
-            print("HDBSCAN mcs value set to %g"%mcs)
-            break
-        elif mcs < 200:
-            mcs += 10
-        else:
-            sys.exit("Cannot found any valid HDBSCAN mcs value")
-        #n_noise = list(labels).count(-1)
+    hb = hdbscan.HDBSCAN(min_cluster_size = mcs, min_samples = ms).fit(X)#fit_predict(X)
+
+    labels = hb.labels_
+    #n_micro_clusters = len(set(labels)) - (1 if -1 in labels else 0)
+    #n_noise = list(labels).count(-1)
 
     # remove from clusters points with small (<0.1) probability
     for i, x_i in enumerate(labels):
         if hb.probabilities_[i] < 0.1:
             labels[i] = -1
 
-    ## plot clusters and corresponding tree
-    #import matplotlib.pyplot as plt
-    #colors = ['royalblue', 'maroon', 'forestgreen', 'mediumorchid', \
-    #'tan', 'deeppink', 'olive', 'goldenrod', 'lightcyan', 'lightgray']
-    #vectorizer = np.vectorize(lambda x: colors[x % len(colors)])
-    #plt.scatter(X[:,0],X[:,1], c=vectorizer(labels))
-    #plt.savefig('alaTB_hdbscan.png')
-    #hb.condensed_tree_.plot()
-    #plt.savefig('tree.png')
+    # plot clusters and corresponding tree
+    import matplotlib.pyplot as plt
+    colors = ['royalblue', 'maroon', 'forestgreen', 'mediumorchid', \
+    'tan', 'deeppink', 'olive', 'goldenrod', 'lightcyan', 'lightgray']
+    vectorizer = np.vectorize(lambda x: colors[x % len(colors)])
+    plt.scatter(X[:,0],X[:,1], c=vectorizer(labels))
+    plt.savefig('alaTB_hdbscan.png')
+    hb.condensed_tree_.plot()
+    plt.savefig('tree.png')
 
     # remove noise from microstate trajectory and apply TBA (Buchete JPCB 2008)
     i = 0
