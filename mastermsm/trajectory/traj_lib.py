@@ -7,6 +7,7 @@ import math
 import hdbscan
 import numpy as np
 from sklearn.preprocessing import StandardScaler
+import mdtraj as md
 
 def discrete_rama(phi, psi, seq=None, bounds=None, states=['A', 'E', 'L']):
     """ Assign a set of phi, psi angles to coarse states.
@@ -135,7 +136,6 @@ def _inbounds(bounds,phi, psi):
             if _inrange( phi,bounds[12],bounds[13]) and _inrange( psi,bounds[14],bounds[15]):
                     return 1
     return 0
-
 
 def _state(phi,psi,bounds):
     """ Finds coarse state for a pair of phi-psi dihedrals
@@ -285,3 +285,47 @@ def discrete_hdbscan(phi, psi, mcs=None, ms=None):
             last = x_i
 
     return labels
+
+def discrete_contacts(mdt):
+    """
+    Discretize based on contacts
+
+    Parameters
+    ----------
+    mdt : object
+        mdtraj trajectory
+
+    Returns
+    -------
+    labels : list
+        Indexes corresponding to the clustering
+
+    """
+    dists = md.compute_contacts(mdt, contacts='all', periodic=True)
+
+    X = StandardScaler().fit_transform(dists[0])
+    hdb = hdbscan.HDBSCAN(min_cluster_size=int(np.sqrt(len(X))))
+    hdb.fit(X)
+
+    # In case not enough states are produced, exit
+    if (len(np.unique(hdb.labels_))<=2):
+        raise Exception("Cannot generate clusters from contacts")
+
+    dtraj = _filter_states(hdb.labels_)
+    return dtraj
+
+def _filter_states(states):
+    """
+    Filters to remove not-assigned frames when using dbscan or hdbscan
+    
+    """
+    fs = []
+    for s in states:
+        if s >= 0:
+                fs.append(s)
+        else:
+            try:
+                fs.append(fs[-1])
+            except IndexError:
+                pass
+    return fs
