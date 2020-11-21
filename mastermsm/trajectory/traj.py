@@ -31,7 +31,7 @@ class MultiTimeSeries(object):
     the clustering is not established a priori.
 
     """
-    def __init__(self, top=None, trajs=None, dt=None):
+    def __init__(self, top=None, trajs=None, dt=None, stride=None):
         """
         Parameters
         ----------
@@ -46,7 +46,7 @@ class MultiTimeSeries(object):
         self.file_list = trajs
         self.traj_list = []
         for traj in self.file_list:
-            tr = TimeSeries(top=top, traj=traj)
+            tr = TimeSeries(top=top, traj=traj, stride=stride)
             self.traj_list.append(tr)
     
     def joint_discretize(self, mcs=None, ms=None, dPCA=False):
@@ -100,6 +100,7 @@ class TimeSeries(object):
         The assigned trajectory.
     dt : float
         The time step
+    
 
     References
     ----------
@@ -109,7 +110,8 @@ class TimeSeries(object):
         of Molecular Dynamics Trajectories", Biophys. J. (2015).
 
     """
-    def __init__(self, top=None, traj=None, method=None, dt=None, distraj=None):
+    def __init__(self, top=None, traj=None, method=None, dt=None, \
+            distraj=None, stride=None):
         """
         Parameters
         ----------
@@ -123,6 +125,8 @@ class TimeSeries(object):
             The trajectory filenames to be read.
         method : string
             The method for discretizing the data.
+        stride : int
+            Only read every stride-th frame
 
         """
         if distraj is not None:
@@ -131,7 +135,7 @@ class TimeSeries(object):
         else:
             # An MD trajectory is provided
             self.file_name = traj
-            mdt = _load_mdtraj(top=top, traj=traj)
+            mdt = _load_mdtraj(top=top, traj=traj, stride=stride)
             self.mdt = mdt
             self.dt = self.mdt.timestep
 
@@ -169,14 +173,15 @@ class TimeSeries(object):
                 cstates = [x.split()[0] for x in raw]
                 return cstates, 1.
 
-    def discretize(self, method="rama", states=None, nbins=20, mcs=185, ms=185):
+    def discretize(self, method="rama", states=None, nbins=20, mcs=185, \
+            ms=185):
         """ Discretize the simulation data.
 
         Parameters
         ----------
         method : str
             A method for doing the clustering. Options are
-            "rama", "ramagrid"...
+            "rama", "ramagrid", "distances", "contacts"...
         states : list
             A list of states to be considered in the discretization.
             Only for method "rama".
@@ -205,9 +210,8 @@ class TimeSeries(object):
             phi = md.compute_phi(self.mdt)
             psi = md.compute_psi(self.mdt)
             self.distraj = traj_lib.discrete_hdbscan(phi, psi, mcs, ms)
-
-        return phi, psi
-
+        elif method == "contacts":
+            self.distraj = traj_lib.discrete_contacts(self.mdt)
 
     def find_keys(self, exclude=['O']):
         """ Finds out the discrete states in the trajectory
