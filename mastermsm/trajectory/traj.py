@@ -7,7 +7,7 @@ import numpy as np
 import mdtraj as md
 from ..trajectory import traj_lib
 
-def _load_mdtraj(top=None, traj=None):
+def _load_mdtraj(top=None, traj=None, stride=None):
     """ Loads trajectories using mdtraj.
 
     Parameters
@@ -23,7 +23,7 @@ def _load_mdtraj(top=None, traj=None):
         A list of mdtraj Trajectory objects.
 
     """
-    return md.load(traj, top=top)
+    return md.load(traj, top=top, stride=stride)
 
 class MultiTimeSeries(object):
     """ A class for generating multiple TimeSeries objects in
@@ -49,23 +49,39 @@ class MultiTimeSeries(object):
             tr = TimeSeries(top=top, traj=traj, stride=stride)
             self.traj_list.append(tr)
     
-    def joint_discretize(self, mcs=None, ms=None, dPCA=False):
+    def joint_discretize(self, method='hdbscan', mcs=None, ms=None, dPCA=False):
+        """
+        Discretize simultaneously all trajectories.
+
+        """
+        if method=='hdbscan':
+            labels = self.joint_discretize_hdbscan(mcs, ms, dPCA)
+        elif method=='contacts':
+            labels = self.joint_discretize_contacts()
+
+        i = 0
+        for tr in self.traj_list:
+            ltraj = tr.mdt.n_frames
+            tr.distraj = list(labels[i:i+ltraj]) #labels[i:i+ltraj]
+            i +=ltraj
+
+    def joint_discretize_hdbscan(self, mcs, ms, dPCA):
         """
         Analyze jointly torsion angles from all trajectories.
-
+        
         Produces a fake trajectory comprising a concatenated set
         to recover the labels from HDBSCAN.
 
         """
         phi_cum = []
         psi_cum = []
-        for tr in self.traj_list:
+        for t,tr in enumerate(self.traj_list):
             phi = md.compute_phi(tr.mdt)
             psi = md.compute_psi(tr.mdt)
             if dPCA is True:
                 angles = np.column_stack((phi[1], psi[1]))
-                v = traj_lib.dPCA(angles)
-                print(type(v), v[0], len(v[0]), len(v[:,0]))
+                v = traj_lib.dPCA(angles, t)
+                #print(type(v), v[0], len(v[0]), len(phi[1]), len(v[:,0]))
                 phi_cum.append(v[:,0])
                 psi_cum.append(v[:,1])
             else:
@@ -78,11 +94,23 @@ class MultiTimeSeries(object):
 
         labels = traj_lib.discrete_hdbscan(phi_fake, psi_fake, mcs=mcs, ms=ms, dPCA=dPCA)
 
-        i = 0
+        return labels
+
+    def joint_discretize_contacts(self):
+        """
+        Analyze jointly pairwise contacts from all trajectories.
+        
+        Produces a fake trajectory comprising a concatenated set
+        to recover the labels from HDBSCAN.
+
+        """
+        mdt_cum = []
         for tr in self.traj_list:
-            ltraj = tr.mdt.n_frames
-            tr.distraj = list(labels[i:i+ltraj]) #labels[i:i+ltraj]
-            i +=ltraj
+            mdt_cum.append(tr.mdt) #mdt_cum = np.vstack(mdt_cum)
+
+        labels = traj_lib.discrete_contacts(mdt_cum)
+
+        return labels
 
 class TimeSeries(object):
     """ A class to read and discretize simulation trajectories.
