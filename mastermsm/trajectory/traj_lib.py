@@ -7,7 +7,9 @@ import math
 import hdbscan
 import numpy as np
 from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
 import mdtraj as md
+import matplotlib.pyplot as plt
 
 def discrete_rama(phi, psi, seq=None, bounds=None, states=['A', 'E', 'L']):
     """ Assign a set of phi, psi angles to coarse states.
@@ -212,7 +214,7 @@ def _stategrid(phi, psi, nbins):
     ibin = int(0.5*nbins*(phi/math.pi + 1.)) + int(0.5*nbins*(psi/math.pi + 1))*nbins
     return ibin
 
-def discrete_hdbscan(phi, psi, mcs=None, ms=None):
+def discrete_hdbscan(phi, psi, mcs=None, ms=None, dPCA=False):
     """ Assign a set of phi, psi angles to coarse states by
         using the HDBSCAN algorithm
 
@@ -239,15 +241,18 @@ def discrete_hdbscan(phi, psi, mcs=None, ms=None):
             psis.append(y[n])
     
     data = np.column_stack((range(len(phis)),phis,psis))
-    X = StandardScaler().fit_transform(data[:,[1,2]])
+    if dPCA is True:
+        X = data[:,[1,2]]
+    else:
+        X = StandardScaler().fit_transform(data[:,[1,2]])
+
     if not mcs:
         mcs = 10
         ms = mcs
     
     while True:
         hb = hdbscan.HDBSCAN(min_cluster_size = mcs, min_samples = ms).fit(X)#fit_predict(X)
-        labels = hb.labels_
-        n_micro_clusters = len(set(labels)) - (1 if -1 in labels else 0)
+        n_micro_clusters = len(set(hb.labels_)) - (1 if -1 in hb.labels_ else 0)
         if n_micro_clusters > 0:
             print("HDBSCAN mcs value set to %g"%mcs)
             break
@@ -256,11 +261,6 @@ def discrete_hdbscan(phi, psi, mcs=None, ms=None):
         else:
             sys.exit("Cannot found any valid HDBSCAN mcs value")
         #n_noise = list(labels).count(-1)
-
-    # remove from clusters points with small (<0.1) probability
-    for i, x_i in enumerate(labels):
-        if hb.probabilities_[i] < 0.1:
-            labels[i] = -1
 
     ## plot clusters and corresponding tree
     #import matplotlib.pyplot as plt
@@ -272,21 +272,58 @@ def discrete_hdbscan(phi, psi, mcs=None, ms=None):
     #hb.condensed_tree_.plot()
     #plt.savefig('tree.png')
 
-    # remove noise from microstate trajectory and apply TBA (Buchete JPCB 2008)
-    i = 0
-    last = labels[i]
-    while last == -1:
-        i += 1
-        last = labels[i]
-    for i, x_i in enumerate(labels):
-        if x_i == -1:
-            labels[i] = last
-        else:
-            last = x_i
+    # remove noise from microstate trajectory and apply TBA (Buchete et al. JPCB 2008)
+    labels = _filter_states(hb.labels_)
+
+    # remove from clusters points with small (<0.1) probability
+    for i in range(len(labels)):
+        if hb.probabilities_[i] < 0.1:
+            labels[i] = -1
 
     return labels
 
-def discrete_contacts(mdt):
+def dPCA(angles, t):
+    """
+    Compute PCA of dihedral angles
+    A. Altis et al. JCP 244111 (2007)
+
+    """
+    print("ionix:",len(angles[:,1]),len(angles[0]))
+    X = np.zeros(( len(angles[:,1]) , (len(angles[0])+len(angles[0])) ))
+    for i,ang in enumerate(angles):
+        #[X[0][i], X[1][i] = np.cos(ang[i]), np.sin(ang[i]) for i in range(len(ang))]
+        p = 0
+        for phi in ang:
+            X[i][p], X[i][p+1] = np.cos(phi), np.sin(phi)
+            p += 2
+    X_std = StandardScaler().fit_transform(X)
+    sklearn_pca = PCA(n_components=2)
+    X_transf = sklearn_pca.fit_transform(X_std)
+    expl = sklearn_pca.explained_variance_ratio_
+    print("Ratio of variance retrieved by each component:",expl)
+    #graficamos el acumulado de varianza explicada en las nuevas dimensiones
+    plt.figure()
+    plt.plot(np.cumsum(sklearn_pca.explained_variance_ratio_))
+    plt.xlabel('number of components')
+    plt.ylabel('cumulative explained variance')
+    plt.savefig('cum_variance_%g.png'%t)
+
+    #colors = ['royalblue', 'maroon', 'forestgreen', 'mediumorchid', \
+    #'tan', 'deeppink', 'olive', 'goldenrod', 'lightcyan', 'lightgray']
+    #vectorizer = np.vectorize(lambda x: colors[x % len(colors)])
+    counts, ybins, xbins, image = plt.hist2d(X_transf[:,0], X_transf[:,1], \
+                #bins=[np.linspace(-np.pi,np.pi,20), np.linspace(-np.pi,np.pi,30)], \
+                bins=20, cmap='binary_r', alpha=0.2)
+    #plt.contour(np.transpose(counts), extent=[xbins.min(), xbins.max(), \
+    #            ybins.min(), ybins.max()], linewidths=1, colors='gray')
+    countmax = np.amax(counts)
+    counts = np.log(countmax) - np.log(counts)
+    plt.scatter(X_transf[:,0],X_transf[:,1], c=counts)
+    plt.savefig('dpca_%g.png'%t)
+
+    return X_transf
+
+def discrete_contacts(mdt_all):
     """
     Discretize based on contacts
 
@@ -301,9 +338,14 @@ def discrete_contacts(mdt):
         Indexes corresponding to the clustering
 
     """
-    dists = md.compute_contacts(mdt, contacts='all', periodic=True)
 
-    X = StandardScaler().fit_transform(dists[0])
+    dists_all = []
+    for mdt in mdt_all:
+        dists = md.compute_contacts(mdt, contacts='all', periodic=True)
+        for dist in dists[0]:
+            dists_all.append(dist)
+
+    X = StandardScaler().fit_transform(dists_all) #dists[0]
     hdb = hdbscan.HDBSCAN(min_cluster_size=int(np.sqrt(len(X))))
     hdb.fit(X)
 
