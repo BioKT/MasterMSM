@@ -2,6 +2,7 @@
 This file is part of the MasterMSM package.
 
 """
+import h5py
 import sys
 import math
 import hdbscan
@@ -256,7 +257,7 @@ def discrete_hdbscan(phi, psi, mcs=None, ms=None, dPCA=False):
         if n_micro_clusters > 0:
             print("HDBSCAN mcs value set to %g"%mcs)
             break
-        elif mcs < 200:
+        elif mcs < 400:
             mcs += 10
         else:
             sys.exit("Cannot found any valid HDBSCAN mcs value")
@@ -296,29 +297,36 @@ def dPCA(angles, t):
         for phi in ang:
             X[i][p], X[i][p+1] = np.cos(phi), np.sin(phi)
             p += 2
+    # Save cos and sin of dihedral angles along the trajectory
+    h5file = "data/out/%g_traj_angles.h5"%t
+    with h5py.File(h5file, "w") as hf:
+        hf.create_dataset("angles_trajectory", data=X)
+    # Normalize and compute PCA of dihedral angles
     X_std = StandardScaler().fit_transform(X)
     sklearn_pca = PCA(n_components=2)
     X_transf = sklearn_pca.fit_transform(X_std)
     expl = sklearn_pca.explained_variance_ratio_
     print("Ratio of variance retrieved by each component:",expl)
-    #graficamos el acumulado de varianza explicada en las nuevas dimensiones
+    # Plot cumulative variance retrieved by new components (i.e. those from PCA)
     plt.figure()
     plt.plot(np.cumsum(sklearn_pca.explained_variance_ratio_))
     plt.xlabel('number of components')
     plt.ylabel('cumulative explained variance')
     plt.savefig('cum_variance_%g.png'%t)
 
-    #colors = ['royalblue', 'maroon', 'forestgreen', 'mediumorchid', \
-    #'tan', 'deeppink', 'olive', 'goldenrod', 'lightcyan', 'lightgray']
-    #vectorizer = np.vectorize(lambda x: colors[x % len(colors)])
     counts, ybins, xbins, image = plt.hist2d(X_transf[:,0], X_transf[:,1], \
-                #bins=[np.linspace(-np.pi,np.pi,20), np.linspace(-np.pi,np.pi,30)], \
-                bins=20, cmap='binary_r', alpha=0.2)
-    #plt.contour(np.transpose(counts), extent=[xbins.min(), xbins.max(), \
-    #            ybins.min(), ybins.max()], linewidths=1, colors='gray')
+        bins=len(X_transf[:,0]), cmap='binary_r', alpha=0.2)#bins=[np.linspace(-np.pi,np.pi,20), np.linspace(-np.pi,np.pi,30)]
     countmax = np.amax(counts)
-    counts = np.log(countmax) - np.log(counts)
-    plt.scatter(X_transf[:,0],X_transf[:,1], c=counts)
+    #counts = np.log(countmax) - np.log(counts)
+    print(counts, countmax)
+    #plt.contour(np.transpose(counts), extent=[xbins.min(), xbins.max(), ybins.min(), ybins.max()], \
+    #              linewidths=1, colors='gray')
+    #plt.scatter(X_transf[:,0],X_transf[:,1])# c=counts)
+    fig, ax = plt.subplots(1,1, figsize=(8,8), sharex=True, sharey=True)
+    ax.contour(np.transpose(counts), extent=[xbins.min(), xbins.max(), ybins.min(), ybins.max()], \
+                  linewidths=1, colors='gray')
+    ax.plot(X_transf[:,0],X_transf[:,1], 'o', ms=0.2, color='C%g'%t)
+    plt.tight_layout()
     plt.savefig('dpca_%g.png'%t)
 
     return X_transf
