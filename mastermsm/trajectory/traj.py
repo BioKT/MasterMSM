@@ -55,7 +55,7 @@ class MultiTimeSeries(object):
 
         """
         if method=='hdbscan':
-            labels = self.joint_discretize_hdbscan(mcs, ms, dPCA)
+            labels = self.joint_discretize_hdbscan(mcs=mcs, ms=ms, dPCA=dPCA)
         elif method=='contacts':
             labels = self.joint_discretize_contacts()
 
@@ -65,9 +65,12 @@ class MultiTimeSeries(object):
             tr.distraj = list(labels[i:i+ltraj]) #labels[i:i+ltraj]
             i +=ltraj
 
-    def joint_discretize_hdbscan(self, mcs, ms, dPCA):
+    def joint_discretize_hdbscan(self, mcs=None, ms=None, dPCA=False):
         """
         Analyze jointly torsion angles from all trajectories.
+        In the case dPCA is True, the components arising from
+        the PCA analysis of torsion angles are used to build
+        the clusters.
         
         Produces a fake trajectory comprising a concatenated set
         to recover the labels from HDBSCAN.
@@ -75,24 +78,22 @@ class MultiTimeSeries(object):
         """
         phi_cum = []
         psi_cum = []
-        for t,tr in enumerate(self.traj_list):
+        for tr in self.traj_list:
             phi = md.compute_phi(tr.mdt)
-            psi = md.compute_psi(tr.mdt)
-            if dPCA is True:
-                angles = np.column_stack((phi[1], psi[1]))
-                v = traj_lib.dPCA(angles, t)
-                #print(type(v), v[0], len(v[0]), len(phi[1]), len(v[:,0]))
-                phi_cum.append(v[:,0])
-                psi_cum.append(v[:,1])
-            else:
-                phi_cum.append(phi[1])
-                psi_cum.append(psi[1])
+            psi = md.compute_psi(tr.mdt)    
+            phi_cum.append(phi[1])
+            psi_cum.append(psi[1])
         phi_cum = np.vstack(phi_cum)
-        psi_cum = np.vstack(psi_cum)  
-        phi_fake = [phi[0], phi_cum]
-        psi_fake = [psi[0], psi_cum]
+        psi_cum = np.vstack(psi_cum)
 
-        labels = traj_lib.discrete_hdbscan(phi_fake, psi_fake, mcs=mcs, ms=ms, dPCA=dPCA)
+        if dPCA is True:
+            angles = np.column_stack((phi_cum, psi_cum))
+            v = traj_lib.dPCA(angles)
+            labels = traj_lib.discrete_hdbscan(pcs=v, mcs=mcs, ms=ms, dPCA=True)
+        else:
+            phi_fake = [phi[0], phi_cum]
+            psi_fake = [psi[0], psi_cum]
+            labels = traj_lib.discrete_hdbscan(phi=phi_fake, psi=psi_fake, mcs=mcs, ms=ms)
 
         return labels
 

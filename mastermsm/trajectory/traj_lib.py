@@ -2,6 +2,7 @@
 This file is part of the MasterMSM package.
 
 """
+import h5py
 import sys
 import math
 import hdbscan
@@ -214,9 +215,10 @@ def _stategrid(phi, psi, nbins):
     ibin = int(0.5*nbins*(phi/math.pi + 1.)) + int(0.5*nbins*(psi/math.pi + 1))*nbins
     return ibin
 
-def discrete_hdbscan(phi, psi, mcs=None, ms=None, dPCA=False):
-    """ Assign a set of phi, psi angles to coarse states by
-        using the HDBSCAN algorithm
+def discrete_hdbscan(phi=None, psi=None, pcs=None, mcs=None, ms=None, dPCA=False):
+    """ Assign a set of phi, psi angles (or their corresponding
+        dPCA variables if dPCA=True) to coarse states
+        by using the HDBSCAN algorithm
 
     Parameters
     ----------
@@ -224,30 +226,33 @@ def discrete_hdbscan(phi, psi, mcs=None, ms=None, dPCA=False):
         A list of Phi Ramachandran angles
     psi : list
         A list of Psi Ramachandran angles
+    pcs : matrix
+        Matrix containing principal components obtained
+        from PCA of dihedral angles
     mcs : int
             min_cluster_size for HDBSCAN
     ms : int
             min_samples for HDBSCAN
 
     """
-    if len(phi[0]) != len(psi[0]): 
-        sys.exit()
+    if dPCA is not True:
+        if len(phi[0]) != len(psi[0]): 
+            sys.exit()
         
-    ndih = len(phi[0])
-    phis, psis = [], []
-    for f, y in zip(phi[1],psi[1]):
-        for n in range(ndih):
-            phis.append(f[n])
-            psis.append(y[n])
+        ndih = len(phi[0])
+        phis, psis = [], []
+        for f, y in zip(phi[1],psi[1]):
+            for n in range(ndih):
+                phis.append(f[n])
+                psis.append(y[n])
     
-    data = np.column_stack((range(len(phis)),phis,psis))
-    if dPCA is True:
-        X = data[:,[1,2]]
-    else:
+        data = np.column_stack((range(len(phis)),phis,psis))
         X = StandardScaler().fit_transform(data[:,[1,2]])
+    else:
+        X = pcs
 
     if not mcs:
-        mcs = 10
+        mcs = 50
         ms = mcs
     
     while True:
@@ -256,19 +261,19 @@ def discrete_hdbscan(phi, psi, mcs=None, ms=None, dPCA=False):
         if n_micro_clusters > 0:
             print("HDBSCAN mcs value set to %g"%mcs)
             break
-        elif mcs < 200:
+        elif mcs < 400:
             mcs += 10
         else:
             sys.exit("Cannot found any valid HDBSCAN mcs value")
         #n_noise = list(labels).count(-1)
 
     ## plot clusters and corresponding tree
-    #import matplotlib.pyplot as plt
-    #colors = ['royalblue', 'maroon', 'forestgreen', 'mediumorchid', \
-    #'tan', 'deeppink', 'olive', 'goldenrod', 'lightcyan', 'lightgray']
-    #vectorizer = np.vectorize(lambda x: colors[x % len(colors)])
-    #plt.scatter(X[:,0],X[:,1], c=vectorizer(labels))
-    #plt.savefig('alaTB_hdbscan.png')
+    import matplotlib.pyplot as plt
+    colors = ['royalblue', 'maroon', 'forestgreen', 'mediumorchid', \
+    'tan', 'deeppink', 'olive', 'goldenrod', 'lightcyan', 'lightgray']
+    vectorizer = np.vectorize(lambda x: colors[x % len(colors)])
+    plt.scatter(X[:,0],X[:,1], c=vectorizer(hb.labels_))
+    plt.savefig('alaTB_hdbscan.png')
     #hb.condensed_tree_.plot()
     #plt.savefig('tree.png')
 
@@ -282,44 +287,64 @@ def discrete_hdbscan(phi, psi, mcs=None, ms=None, dPCA=False):
 
     return labels
 
-def dPCA(angles, t):
+def dPCA(angles, t=None):
     """
     Compute PCA of dihedral angles
-    A. Altis et al. JCP 244111 (2007)
 
+    We follow the methods described in A. Altis et al. 
+    *J. Chem. Phys.*  244111 (2007)
+
+    Parameters
+    ----------
+    angles :
+    
+    t : 
+    
+    Returns
+    -------
+    
     """
-    print("ionix:",len(angles[:,1]),len(angles[0]))
-    X = np.zeros(( len(angles[:,1]) , (len(angles[0])+len(angles[0])) ))
-    for i,ang in enumerate(angles):
-        #[X[0][i], X[1][i] = np.cos(ang[i]), np.sin(ang[i]) for i in range(len(ang))]
+    shape = np.shape(angles)
+    print (shape)
+    X = np.zeros((shape[0] , \
+                  shape[1]+shape[1]))
+    for i, ang in enumerate(angles):
         p = 0
         for phi in ang:
             X[i][p], X[i][p+1] = np.cos(phi), np.sin(phi)
             p += 2
     X_std = StandardScaler().fit_transform(X)
-    sklearn_pca = PCA(n_components=2)
+    sklearn_pca = PCA(n_components=2*shape[1])
+    
     X_transf = sklearn_pca.fit_transform(X_std)
     expl = sklearn_pca.explained_variance_ratio_
-    print("Ratio of variance retrieved by each component:",expl)
-    #graficamos el acumulado de varianza explicada en las nuevas dimensiones
-    plt.figure()
-    plt.plot(np.cumsum(sklearn_pca.explained_variance_ratio_))
-    plt.xlabel('number of components')
-    plt.ylabel('cumulative explained variance')
-    plt.savefig('cum_variance_%g.png'%t)
+    
+    print("Ratio of variance retrieved by each component:", expl)
+    ## Save cos and sin of dihedral angles along the trajectory
+    #h5file = "data/out/%g_traj_angles.h5"%t
+    #with h5py.File(h5file, "w") as hf:
+    #    hf.create_dataset("angles_trajectory", data=X)
+    ## Plot cumulative variance retrieved by new components (i.e. those from PCA)
+    #plt.figure()
+    #plt.plot(np.cumsum(sklearn_pca.explained_variance_ratio_))
+    #plt.xlabel('number of components')
+    #plt.ylabel('cumulative explained variance')
+    #plt.savefig('cum_variance_%g.png'%t)
 
-    #colors = ['royalblue', 'maroon', 'forestgreen', 'mediumorchid', \
-    #'tan', 'deeppink', 'olive', 'goldenrod', 'lightcyan', 'lightgray']
-    #vectorizer = np.vectorize(lambda x: colors[x % len(colors)])
-    counts, ybins, xbins, image = plt.hist2d(X_transf[:,0], X_transf[:,1], \
-                #bins=[np.linspace(-np.pi,np.pi,20), np.linspace(-np.pi,np.pi,30)], \
-                bins=20, cmap='binary_r', alpha=0.2)
-    #plt.contour(np.transpose(counts), extent=[xbins.min(), xbins.max(), \
-    #            ybins.min(), ybins.max()], linewidths=1, colors='gray')
-    countmax = np.amax(counts)
-    counts = np.log(countmax) - np.log(counts)
-    plt.scatter(X_transf[:,0],X_transf[:,1], c=counts)
-    plt.savefig('dpca_%g.png'%t)
+    #counts, ybins, xbins, image = plt.hist2d(X_transf[:,0], X_transf[:,1], \
+    #    bins=len(X_transf[:,0]), cmap='binary_r', alpha=0.2)#bins=[np.linspace(-np.pi,np.pi,20), np.linspace(-np.pi,np.pi,30)]
+    ##countmax = np.amax(counts)
+    ##counts = np.log(countmax) - np.log(counts)
+    ##print(counts, countmax)
+    #plt.contour(np.transpose(counts), extent=[xbins.min(), xbins.max(), ybins.min(), ybins.max()], \
+    #              linewidths=1, colors='gray')
+    #plt.scatter(X_transf[:,0],X_transf[:,1])# c=counts)
+    #fig, ax = plt.subplots(1,1, figsize=(8,8), sharex=True, sharey=True)
+    #ax.contour(np.transpose(counts), extent=[xbins.min(), xbins.max(), ybins.min(), ybins.max()], \
+    #              linewidths=1, colors='gray')
+    #ax.plot(X_transf[:,0],X_transf[:,1], 'o', ms=0.2, color='C%g'%t)
+    #plt.tight_layout()
+    #plt.savefig('dpca_%g.png'%t)
 
     return X_transf
 
