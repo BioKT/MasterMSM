@@ -2,7 +2,7 @@
 This file is part of the MasterMSM package.
 
 """
-import warnings
+import warnings, sys
 import math
 from functools import reduce, cmp_to_key
 import itertools
