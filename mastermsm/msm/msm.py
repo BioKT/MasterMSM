@@ -161,12 +161,12 @@ class SuperMSM(object):
         nkeys = len(self.keys)
         # defining lag times to produce the MSM
         try:
-            assert (time is none)
+            assert (time is None)
             lagtimes = self.dt * np.array([1] + range(50, 210, 25))
         except AssertionError:
             lagtimes = np.array(time)
 
-        # defining lag times to propopagate
+        # defining lag times to propagate
         # logs = np.linspace(np.log10(self.dt),np.log10(np.max(lagtimes)*5),20)
         # lagtimes_exp = 10**logs
         init_states = [x for x in range(nkeys) if self.keys[x] in init]
