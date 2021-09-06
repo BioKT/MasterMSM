@@ -201,7 +201,7 @@ class TimeSeries(object):
                 return cstates, 1.
 
     def discretize(self, method="rama", states=None, nbins=20,\
-            mcs=100, ms=50):
+            mcs=100, ms=50, lagt=None):
         """ Discretize the simulation data.
 
         Parameters
@@ -219,6 +219,8 @@ class TimeSeries(object):
             min_cluster_size for HDBSCAN
         ms : int
             min_samples for HDBSCAN
+        lagt : int
+            Lag time for TICA
 
         Returns
         -------
@@ -240,6 +242,14 @@ class TimeSeries(object):
             self.distraj = traj_lib.discrete_backbone_torsion(mcs, ms, phi=phi, psi=psi)
         elif method == "contacts_hdb":
             self.distraj = traj_lib.discrete_contacts_hdbscan(mcs, ms, self.mdt)
+        elif method == "tica":
+            dists = md.compute_contacts(self.mdt, contacts='all', scheme='ca', periodic=True)
+            x = []
+            for dist in dists[0]:
+                x.append(dist)
+            x = np.transpose(x)
+            if lagt == None: lagt = self.dt
+            self.distraj = traj_lib.tica(x,lagt)
 
     def find_keys(self, exclude=['O']):
         """ Finds out the discrete states in the trajectory

@@ -6,8 +6,10 @@ This file is part of the MasterMSM package.
 import copy
 import sys
 import math
-import hdbscan
 import numpy as np
+from numpy.core.fromnumeric import mean
+from scipy import linalg as spla
+import hdbscan
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 import mdtraj as md
@@ -425,3 +427,96 @@ def _shift(psi, phi):
         if psi_s[i] > 2:
             psi_s[i] -= 2*np.pi
     return psi_s, phi_s
+
+def tica(x,tau,dim=2):
+    """ 
+    Calculate TICA components for features trajectory
+    'x' with lag time 'tau'.
+    JCTC Schultze et al. 2021
+
+    Parameters
+    -----------
+    x : array
+        Array with features for each frame of the discrete trajectory.
+    tau : int
+        Lag time corresponding to the discrete trajectory.
+    dim : int
+        Number of TICA dimensions to be computed.
+
+    Returns:
+    -------
+    evals : numpy array
+        Resulting eigenvalues
+    evecs : numpy array
+        Resulting reaction coordinates
+
+    """
+
+    # IONIX: ORGANIZAR x de modo que x[0] contiene la lista de los
+    #      valores del primer feature para todos los frames, x[1]
+    #      la lista del segundo feature, etc.
+    print('tau value for TICA:',tau)
+    
+    # compute mean free x
+    x = meanfree(x)
+    # estimate covariant symmetrized matrices
+    cmat, cmat0 = covmatsym(x,tau)
+    # solve generalized eigenvalue problem
+    n = len(x)
+    evals, evecs = \
+        spla.eigh(cmat,b=cmat0,eigvals_only=False,subset_by_index=[n-dim,n-1])
+
+    return evals, evecs
+
+def meanfree(x):
+    """ 
+    Compute mean free coordinates, i.e.
+    with zero time average.
+
+    """
+    for i,xval in enumerate(x):
+        x[i] = xval - np.mean(xval)
+    return x
+
+def covmatsym(x,tau):
+    """ 
+    Build symmetrized covariance matrices.
+
+    """
+    cmat = np.zeros((len(x),len(x)),float)
+    for i,xval in enumerate(x):
+        for j in range(i):
+            cmat[i][j] = covmat(xval,x[j],tau)
+    cmat /= float(len(x[0])-tau)
+    cmat *= 0.5
+
+    cmat0 = np.zeros((len(x),len(x)),float)
+    for i,xval in enumerate(x):
+        for j in range(i):
+            cmat0[i][j] = covmat0(xval,x[j],tau)
+    cmat0 /= float(len(x[0])-tau)
+    cmat0 *= 0.5
+
+    return cmat, cmat0
+
+def covmat(x,y,tau):
+    """ 
+    Calculate covariance matrices.
+
+    """
+    if len(x) != len(y): sys.exit('cannot obtain covariance matrices')
+    aux = 0.0
+    for i,xval in enumerate(x):
+        aux += xval*y[i+tau] + x[i+tau]*y[i]
+        if i == (len(x)-tau-1): return aux
+
+def covmat0(x,y,tau):
+    """ 
+    Calculate covariance matrices.
+
+    """
+    if len(x) != len(y): sys.exit('cannot obtain covariance matrices')
+    aux = 0.0
+    for i,xval in enumerate(x):
+        aux += xval*y[i] + x[i+tau]*y[i+tau]
+        if i == (len(x)-tau-1): return aux
