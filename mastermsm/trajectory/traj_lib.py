@@ -428,7 +428,7 @@ def _shift(psi, phi):
             psi_s[i] -= 2*np.pi
     return psi_s, phi_s
 
-def tica(x,tau,dim=2):
+def tica_worker(x,tau,dim=2):
     """ 
     Calculate TICA components for features trajectory
     'x' with lag time 'tau'.
@@ -452,9 +452,9 @@ def tica(x,tau,dim=2):
 
     """
 
-    # IONIX: ORGANIZAR x de modo que x[0] contiene la lista de los
-    #      valores del primer feature para todos los frames, x[1]
-    #      la lista del segundo feature, etc.
+    # ORGANIZAR x de modo que x[0] contiene la lista de los
+    # valores del primer feature para todos los frames, x[1]
+    # la lista del segundo feature, etc.
     print('tau value for TICA:',tau)
     
     # compute mean free x
@@ -464,7 +464,8 @@ def tica(x,tau,dim=2):
     # solve generalized eigenvalue problem
     n = len(x)
     evals, evecs = \
-        spla.eigh(cmat,b=cmat0,eigvals_only=False,subset_by_index=[n-dim,n-1])
+        spla.eig(cmat,b=cmat0)
+        #spla.eigh(cmat,b=cmat0,eigvals_only=False,subset_by_index=[n-dim,n-1])
 
     return evals, evecs
 
@@ -480,7 +481,8 @@ def meanfree(x):
 
 def covmatsym(x,tau):
     """ 
-    Build symmetrized covariance matrices.
+    Build symmetrized covariance
+    matrices (left).
 
     """
     cmat = np.zeros((len(x),len(x)),float)
@@ -501,7 +503,7 @@ def covmatsym(x,tau):
 
 def covmat(x,y,tau):
     """ 
-    Calculate covariance matrices.
+    Calculate covariance matrices (right).
 
     """
     if len(x) != len(y): sys.exit('cannot obtain covariance matrices')
