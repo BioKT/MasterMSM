@@ -53,6 +53,18 @@ class MultiTimeSeries(object):
         """
         Discretize simultaneously all trajectories with HDBSCAN.
 
+        Parameters
+        ----------
+        method : str
+            The method of choice for the discretization. Options are 'backbone_torsions'
+            and 'contacts'.
+        mcs : int
+            Minimum cluster size for HDBSCAN clustering.
+        ms : int
+            Minsamples parameter for HDBSCAN clustering.
+        dPCA : bool
+            Whether we are using the dihedral PCA method.
+
         """
         if method=='backbone_torsions':
             labels = self.joint_discretize_backbone_torsions(mcs=mcs, ms=ms, dPCA=dPCA)
@@ -67,15 +79,19 @@ class MultiTimeSeries(object):
 
     def joint_discretize_backbone_torsions(self, mcs=None, ms=None, dPCA=False):
         """
-        Analyze jointly torsion angles from all trajectories.
-        In the case dPCA is True, the components arising from
-        the PCA analysis of torsion angles are used to build
-        the clusters.
-        
-        A fake trajectory comprising a concatenated set is
-        produced to recover the labels from HDBSCAN.
+        Analyze jointly torsion angles from multiple trajectories.
+
+        Parameters
+        ----------
+        mcs : int
+            Minimum cluster size for HDBSCAN clustering.
+        ms : int
+            Minsamples parameter for HDBSCAN clustering.
+        dPCA : bool
+            Whether we are using the dihedral PCA method.
 
         """
+        # First we build the fake trajectory combining data
         phi_cum = []
         psi_cum = []
         for tr in self.traj_list:
@@ -86,6 +102,7 @@ class MultiTimeSeries(object):
         phi_cum = np.vstack(phi_cum)
         psi_cum = np.vstack(psi_cum)
 
+        # Then we generate the consistent set of clusters
         if dPCA is True:
             angles = np.column_stack((phi_cum, psi_cum))
             v = traj_lib.dPCA(angles)
@@ -94,7 +111,6 @@ class MultiTimeSeries(object):
             phi_fake = [phi[0], phi_cum]
             psi_fake = [psi[0], psi_cum]
             labels = traj_lib.discrete_backbone_torsion(mcs, ms, phi=phi_fake, psi=psi_fake)
-
         return labels
 
     def joint_discretize_contacts(self, mcs=None, ms=None):
