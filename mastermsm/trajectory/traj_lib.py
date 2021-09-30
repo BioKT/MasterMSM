@@ -12,8 +12,6 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 import mdtraj as md
 import matplotlib.pyplot as plt
-from numpy.core.fromnumeric import mean
-from scipy import linalg as spla
 
 def discrete_rama(phi, psi, seq=None, bounds=None, states=['A', 'E', 'L']):
     """ Assign a set of phi, psi angles to coarse states.
