@@ -6,14 +6,14 @@ This file is part of the MasterMSM package.
 import copy
 import sys
 import math
-import numpy as np
-from numpy.core.fromnumeric import mean
-from scipy import linalg as spla
 import hdbscan
+import numpy as np
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 import mdtraj as md
 import matplotlib.pyplot as plt
+from numpy.core.fromnumeric import mean
+from scipy import linalg as spla
 
 def discrete_rama(phi, psi, seq=None, bounds=None, states=['A', 'E', 'L']):
     """ Assign a set of phi, psi angles to coarse states.
@@ -218,10 +218,14 @@ def _stategrid(phi, psi, nbins):
     ibin = int(0.5*nbins*(phi/math.pi + 1.)) + int(0.5*nbins*(psi/math.pi + 1))*nbins
     return ibin
 
-def discrete_backbone_torsion(mcs, ms, phi=None, psi=None, pcs=None, dPCA=False):
-    """ Assign a set of phi, psi angles (or their corresponding
-        dPCA variables if dPCA=True) to coarse states
-        by using the HDBSCAN algorithm
+def discrete_backbone_torsion(mcs, ms, phi=None, psi=None, \
+                              pcs=None, dPCA=False):
+    """
+    Discretize backbone torsion angles
+
+    Assign a set of phi, psi angles (or their corresponding
+    dPCA variables if dPCA=True) to coarse states
+    by using the HDBSCAN algorithm.
 
     Parameters
     ----------
@@ -238,63 +242,68 @@ def discrete_backbone_torsion(mcs, ms, phi=None, psi=None, pcs=None, dPCA=False)
         min_samples for HDBSCAN
 
     """
-    if dPCA is not True:
-        if len(phi[0]) != len(psi[0]): 
-            sys.exit()
-        
-        ndih = len(phi[0])
-        #print(len(psi[1]), ndih, len(phi[1]))
-        phis, psis = [], []
-        for f, y in zip(phi[1],psi[1]):
-            for n in range(ndih):
-                phis.append(f[n])
-                psis.append(y[n])
-
-        psiss, phiss = _shift(psis, phis)
-        data = np.column_stack((phiss,psiss))
-        X = StandardScaler().fit_transform(data)
-    else:
+    if dPCA:
         X = pcs
+    else:
+        # shift and combine dihedrals
+        if len(phi[0]) != len(psi[0]): 
+            raise ValueError("Inconsistent dimensions for angles")
 
-    if mcs is None: mcs = 50
-    if ms  is None: ms  = mcs
-    
-    while True:
-        hb = hdbscan.HDBSCAN(min_cluster_size = mcs, min_samples = ms).fit(X)#fit_predict(X)
-        hb.condensed_tree_.plot(select_clusters=True)
-        plt.savefig("alatb-hdbscan-tree.png",dpi=300,transparent=True)
+        ndih = len(phi[0])
+        phi_shift, psi_shift = [], []
+        for f, y in zip(phi[1], psi[1]):
+            for n in range(ndih):
+                phi_shift.append(f[n])
+                psi_shift.append(y[n])
+        np.savetxt("phi_psi.dat", np.column_stack((phi_shift, psi_shift)))
+        psi_shift, phi_shift = _shift(psi_shift, phi_shift)
+        data = np.column_stack((phi_shift, psi_shift))
+        np.savetxt("phi_psi_shifted.dat", data)
+    X = StandardScaler().fit_transform(data)
 
-        n_micro_clusters = len(set(hb.labels_)) - (1 if -1 in hb.labels_ else 0)
-        if n_micro_clusters > 0:
-            print("HDBSCAN mcs value set to %g"%mcs, n_micro_clusters,'clusters.')
-            break
-        elif mcs < 400:
-            mcs += 25
-        else:
-            sys.exit("Cannot found any valid HDBSCAN mcs value")
-        #n_noise = list(labels).count(-1)
+    # Set values for clustering parameters
+    if mcs is None:
+        mcs = int(np.sqrt(len(X)))
+        print("Setting minimum cluster size to: %g" % mcs)
+    if ms  is None:
+        ms  = mcs
+        print("Setting min samples to: %g" % ms)
 
-    aaa
-    ## plot clusters
-    colors = ['royalblue', 'maroon', 'forestgreen', 'mediumorchid', \
-    'tan', 'deeppink', 'olive', 'goldenrod', 'lightcyan', 'lightgray']
-    vectorizer = np.vectorize(lambda x: colors[x % len(colors)])
-    fig, ax = plt.subplots(figsize=(7,7))
-    assign = hb.labels_ >= 0
-    ax.scatter(X[assign,0],X[assign,1], c=hb.labels_[assign])
-    ax.set_xlim(-np.pi, np.pi)
-    ax.set_ylim(-np.pi, np.pi)
-    plt.savefig('alaTB_hdbscan.png', dpi=300, transparent=True)
+    hdb = hdbscan.HDBSCAN(min_cluster_size=mcs, min_samples=ms).fit(X)
+    hdb.condensed_tree_.plot(select_clusters=True)
 
-    # remove noise from microstate trajectory and apply TBA (Buchete et al. JPCB 2008)
-    labels = _filter_states(hb.labels_)
+    #plt.savefig("alatb-hdbscan-tree.png",dpi=300,transparent=True)
 
-    # remove from clusters points with small (<0.1) probability
-    for i in range(len(labels)):
-        if hb.probabilities_[i] < 0.1:
-            labels[i] = -1
+#    n_micro_clusters = len(set(hb.labels_)) - (1 if -1 in hb.labels_ else 0
+#    if n_micro_clusters > 0:
+#        print("HDBSCAN mcs value set to %g"%mcs, n_micro_clusters,'clusters.')
+#        break
+#    elif mcs < 400:
+#        mcs += 25
+#    else:
+#        sys.exit("Cannot find any valid HDBSCAN mcs value")
+#    #n_noise = list(labels).count(-1)
 
-    return labels
+#    ## plot clusters
+#    colors = ['royalblue', 'maroon', 'forestgreen', 'mediumorchid', \
+#    'tan', 'deeppink', 'olive', 'goldenrod', 'lightcyan', 'lightgray']
+#    vectorizer = np.vectorize(lambda x: colors[x % len(colors)])
+#    fig, ax = plt.subplots(figsize=(7,7))
+#    assign = hb.labels_ >= 0
+#    ax.scatter(X[assign,0],X[assign,1], c=hb.labels_[assign])
+#    ax.set_xlim(-np.pi, np.pi)
+#    ax.set_ylim(-np.pi, np.pi)
+#    plt.savefig('alaTB_hdbscan.png', dpi=300, transparent=True)
+#
+#    # remove noise from microstate trajectory and apply TBA (Buchete et al. JPCB 2008)
+#    labels = _filter_states(hb.labels_)
+#
+#    # remove from clusters points with small (<0.1) probability
+#    for i in range(len(labels)):
+#        if hb.probabilities_[i] < 0.1:
+#            labels[i] = -1
+
+    return hdb.labels_
 
 def dPCA(angles):
     """
@@ -419,20 +428,20 @@ def _filter_states(states):
     return fs
 
 def _shift(psi, phi):
-    psi_s, phi_s = copy.deepcopy(psi), copy.deepcopy(phi)
+    psi_s, phi_s = copy.deepcopy(phi), copy.deepcopy(psi)
     for i in range(len(phi_s)):
         if phi_s[i] < -2:
             phi_s[i] += 2*np.pi
     for i in range(len(psi_s)):
         if psi_s[i] > 2:
             psi_s[i] -= 2*np.pi
-    return psi_s, phi_s
+    return phi_s, psi_s
 
 def tica_worker(x,tau,dim=2):
-    """ 
+    """
     Calculate TICA components for features trajectory
     'x' with lag time 'tau'.
-    JCTC Schultze et al. 2021
+    Schultze et al. JCTC 2021
 
     Parameters
     -----------
@@ -452,25 +461,25 @@ def tica_worker(x,tau,dim=2):
 
     """
 
-    # ORGANIZAR x de modo que x[0] contiene la lista de los
-    # valores del primer feature para todos los frames, x[1]
+    # x[0] contiene la lista de los valores del
+    # primer feature para todos los frames, x[1]
     # la lista del segundo feature, etc.
-    print('tau value for TICA:',tau)
-    
+    print('Lag time for TICA:',tau)
+
     # compute mean free x
     x = meanfree(x)
     # estimate covariant symmetrized matrices
     cmat, cmat0 = covmatsym(x,tau)
     # solve generalized eigenvalue problem
-    n = len(x)
+    #n = len(x)
     evals, evecs = \
-        spla.eig(cmat,b=cmat0)
+        spla.eig(cmat,b=cmat0,left=True,right=False)
         #spla.eigh(cmat,b=cmat0,eigvals_only=False,subset_by_index=[n-dim,n-1])
 
     return evals, evecs
 
 def meanfree(x):
-    """ 
+    """
     Compute mean free coordinates, i.e.
     with zero time average.
 
@@ -480,9 +489,9 @@ def meanfree(x):
     return x
 
 def covmatsym(x,tau):
-    """ 
+    """
     Build symmetrized covariance
-    matrices (left).
+    matrices.
 
     """
     cmat = np.zeros((len(x),len(x)),float)
@@ -502,7 +511,7 @@ def covmatsym(x,tau):
     return cmat, cmat0
 
 def covmat(x,y,tau):
-    """ 
+    """
     Calculate covariance matrices (right).
 
     """
@@ -513,8 +522,8 @@ def covmat(x,y,tau):
         if i == (len(x)-tau-1): return aux
 
 def covmat0(x,y,tau):
-    """ 
-    Calculate covariance matrices.
+    """
+    Calculate covariance matrices (left).
 
     """
     if len(x) != len(y): sys.exit('cannot obtain covariance matrices')
