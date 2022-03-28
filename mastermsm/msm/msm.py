@@ -7,6 +7,7 @@ import math
 from functools import reduce, cmp_to_key
 import itertools
 import numpy as np
+from numpy.core.numeric import normalize_axis_tuple
 import networkx as nx
 import scipy.linalg as spla
 import matplotlib.pyplot as plt
@@ -350,7 +351,7 @@ class MSM(object):
             self.count += self.count.transpose()
         self.keep_states, self.keep_keys = self.check_connect()
 
-    def do_trans(self, evecs=False):
+    def do_trans(self, evecs=False, normalize=False):
         """ Wrapper for transition matrix calculation.
 
         Also calculates its eigenvalues and right eigenvectors.
@@ -365,7 +366,9 @@ class MSM(object):
         nkeep = len(self.keep_states)
         keep_states = self.keep_states
         count = self.count
-        self.trans = msm_lib.calc_trans(nkeep, keep_states, count)
+        ###print('ionix keep_states:',keep_states)
+        ###print('ionix count matrix:',count)
+        self.trans = msm_lib.calc_trans(nkeep, keep_states, count, normalize=normalize)
         if not evecs:
             self.tauT, self.peqT = self.calc_eigsT()
         else:

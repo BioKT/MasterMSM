@@ -257,6 +257,35 @@ class TimeSeries(object):
         elif method == "contacts_hdb":
             self.distraj = traj_lib.discrete_contacts_hdbscan(mcs, ms, self.mdt)
 
+    def tica(self, method='contacts', lagt=None):
+        """ TICA dimensionality reduction.
+
+        Parameters
+        ----------
+        method : str
+            Compute input for TICA
+        lagt   : int
+            Lag time for TICA
+        
+        Returns
+        -------
+        evals : array
+            Eigenvalues of TICA coordinate transformation
+        evecs : array
+            Eigenvectors of TICA coordinate transformation
+
+        """
+        if method == "contacts":
+            dists = md.compute_contacts(self.mdt, contacts='all', scheme='ca', periodic=True)
+            x = []
+            for dist in dists[0]:
+                x.append(dist)
+            x = np.transpose(x)
+            if lagt == None: lagt = self.dt
+            evals, evecs = traj_lib.tica_worker(x,lagt)
+            ###self.distraj = PROJECT trajectory onto TICA vectors?
+            return evals, evecs 
+
     def find_keys(self, exclude=['O']):
         """ Finds out the discrete states in the trajectory
 

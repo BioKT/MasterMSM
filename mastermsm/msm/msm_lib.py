@@ -2,6 +2,7 @@
 This file is part of the MasterMSM package.
 
 """
+import sys #ionix
 import copy
 import numpy as np
 import networkx as nx
@@ -536,15 +537,15 @@ def do_boots_worker(x):
     peqT = rvecsT[:,ieqT]/peqT_sum
     return tauT, peqT, trans, keep_keys
 
-def calc_trans(nkeep=None, keep_states=None, count=None):
+def calc_trans(nkeep=None, keep_states=None, count=None, normalize=False):
     """ Calculates transition matrix.
 
     Uses the maximum likelihood expression by Prinz et al.[1]_
 
     Parameters
     ----------
-    lagt : float
-        Lag time for construction of MSM.
+    normalize : boolean
+        Use method of Zimmerman et al. JCTC 2018
 
     Returns
     -------
@@ -558,11 +559,23 @@ def calc_trans(nkeep=None, keep_states=None, count=None):
     Generation and validation", J. Chem. Phys. (2011).
     """
     trans = np.zeros([nkeep, nkeep], float)
-    for i in range(nkeep):
-        ni = reduce(lambda x, y: x + y, map(lambda x:
-            count[keep_states[x]][keep_states[i]], range(nkeep)))
-        for j in range(nkeep):
-            trans[j][i] = float(count[keep_states[j]][keep_states[i]])/float(ni)
+    if normalize:
+        pseudo = 1./float(nkeep)
+        for i in range(nkeep):
+            ni = reduce(lambda x, y: x + y, map(lambda x:
+                count[keep_states[x]][keep_states[i]], range(nkeep)))
+            for j in range(nkeep):
+                trans[j][i] =  float(count[keep_states[j]][keep_states[i]]) + pseudo
+                trans[j][i] /= float(ni + pseudo)
+    else:
+        for i in range(nkeep):
+            ni = reduce(lambda x, y: x + y, map(lambda x:
+                count[x][i], range(nkeep)))
+                #ionix count[keep_states[x]][keep_states[i]], range(nkeep)))
+            if ni==0.0: print(count) #ionix
+            sys.stdout.flush()
+            for j in range(nkeep):
+                trans[j][i] = float(count[keep_states[j]][keep_states[i]])/float(ni)
     return trans
 
 def calc_rate(nkeep, trans, lagt):
