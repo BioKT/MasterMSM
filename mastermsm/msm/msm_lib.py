@@ -2,6 +2,7 @@
 This file is part of the MasterMSM package.
 
 """
+import sys #ionix
 import copy
 import numpy as np
 import networkx as nx
@@ -569,7 +570,10 @@ def calc_trans(nkeep=None, keep_states=None, count=None, normalize=False):
     else:
         for i in range(nkeep):
             ni = reduce(lambda x, y: x + y, map(lambda x:
-                count[keep_states[x]][keep_states[i]], range(nkeep)))
+                count[x][i], range(nkeep)))
+                #ionix count[keep_states[x]][keep_states[i]], range(nkeep)))
+            if ni==0.0: print(count) #ionix
+            sys.stdout.flush()
             for j in range(nkeep):
                 trans[j][i] = float(count[keep_states[j]][keep_states[i]])/float(ni)
     return trans
