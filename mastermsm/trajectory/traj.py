@@ -3,10 +3,11 @@ This file is part of the MasterMSM package.
 
 """
 import os
+import numpy as np
 import mdtraj as md
 from ..trajectory import traj_lib
 
-def _load_mdtraj(top=None, traj=None):
+def _load_mdtraj(top=None, traj=None, stride=None):
     """ Loads trajectories using mdtraj.
 
     Parameters
@@ -22,7 +23,111 @@ def _load_mdtraj(top=None, traj=None):
         A list of mdtraj Trajectory objects.
 
     """
-    return md.load(traj, top=top)
+    return md.load(traj, top=top, stride=stride)
+
+class MultiTimeSeries(object):
+    """ A class for generating multiple TimeSeries objects in
+    a consistent way. In principle this is only needed when
+    the clustering is not established a priori.
+
+    """
+    def __init__(self, top=None, trajs=None, dt=None, stride=None):
+        """
+        Parameters
+        ----------
+        dt : float
+            The time step.
+        top : string
+            The topology file, may be a PDB or GRO file.
+        trajs : list 
+            A list of trajectory filenames to be read.
+
+        """
+        self.file_list = trajs
+        self.traj_list = []
+        for traj in self.file_list:
+            tr = TimeSeries(top=top, traj=traj, stride=stride)
+            self.traj_list.append(tr)
+    
+    def joint_discretize(self, method='backbone_torsions', mcs=None, ms=None, dPCA=False):
+        """
+        Discretize simultaneously all trajectories with HDBSCAN.
+
+        Parameters
+        ----------
+        method : str
+            The method of choice for the discretization. Options are 'backbone_torsions'
+            and 'contacts'.
+        mcs : int
+            Minimum cluster size for HDBSCAN clustering.
+        ms : int
+            Minsamples parameter for HDBSCAN clustering.
+        dPCA : bool
+            Whether we are using the dihedral PCA method.
+
+        """
+        if method=='backbone_torsions':
+            labels = self.joint_discretize_backbone_torsions(mcs=mcs, ms=ms, dPCA=dPCA)
+        elif method=='contacts':
+            labels = self.joint_discretize_contacts(mcs=mcs, ms=ms)
+
+        i = 0
+        for tr in self.traj_list:
+            ltraj = tr.mdt.n_frames
+            tr.distraj = list(labels[i:i+ltraj])
+            i +=ltraj
+
+    def joint_discretize_backbone_torsions(self, mcs=None, ms=None, dPCA=False):
+        """
+        Analyze jointly torsion angles from multiple trajectories.
+
+        Parameters
+        ----------
+        mcs : int
+            Minimum cluster size for HDBSCAN clustering.
+        ms : int
+            Minsamples parameter for HDBSCAN clustering.
+        dPCA : bool
+            Whether we are using the dihedral PCA method.
+
+        """
+        # First we build the fake trajectory combining data
+        phi_cum = []
+        psi_cum = []
+        for tr in self.traj_list:
+            phi = md.compute_phi(tr.mdt)
+            psi = md.compute_psi(tr.mdt)    
+            phi_cum.append(phi[1])
+            psi_cum.append(psi[1])
+        phi_cum = np.vstack(phi_cum)
+        psi_cum = np.vstack(psi_cum)
+
+        # Then we generate the consistent set of clusters
+        if dPCA is True:
+            angles = np.column_stack((phi_cum, psi_cum))
+            v = traj_lib.dPCA(angles)
+            labels = traj_lib.discrete_backbone_torsion(mcs, ms, pcs=v, dPCA=True)
+        else:
+            phi_fake = [phi[0], phi_cum]
+            psi_fake = [psi[0], psi_cum]
+            labels = traj_lib.discrete_backbone_torsion(mcs, ms, phi=phi_fake, psi=psi_fake)
+        return labels
+
+    def joint_discretize_contacts(self, mcs=None, ms=None):
+        """
+        Analyze jointly pairwise contacts from all trajectories.
+        
+        Produces a fake trajectory comprising a concatenated set
+        to recover the labels from HDBSCAN.
+
+        """
+        mdt_cum = []
+        for tr in self.traj_list:
+            mdt_cum.append(tr.mdt) #mdt_cum = np.vstack(mdt_cum)
+
+        labels = traj_lib.discrete_contacts_hdbscan(mcs, ms, mdt_cum)
+
+        return labels
 
 class TimeSeries(object):
     """ A class to read and discretize simulation trajectories.
@@ -40,6 +145,7 @@ class TimeSeries(object):
         The assigned trajectory.
     dt : float
         The time step
+    
 
     References
     ----------
@@ -49,7 +155,8 @@ class TimeSeries(object):
         of Molecular Dynamics Trajectories", Biophys. J. (2015).
 
     """
-    def __init__(self, top=None, traj=None, method=None, dt=None, distraj=None):
+    def __init__(self, top=None, traj=None, dt=None, \
+            distraj=None, stride=None):
         """
         Parameters
         ----------
@@ -61,8 +168,8 @@ class TimeSeries(object):
             The topology file, may be a PDB or GRO file.
         traj : string
             The trajectory filenames to be read.
-        method : string
-            The method for discretizing the data.
+        stride : int
+            Only read every stride-th frame
 
         """
         if distraj is not None:
@@ -71,7 +178,7 @@ class TimeSeries(object):
         else:
             # An MD trajectory is provided
             self.file_name = traj
-            mdt = _load_mdtraj(top=top, traj=traj)
+            mdt = _load_mdtraj(top=top, traj=traj, stride=stride)
             self.mdt = mdt
             self.dt = self.mdt.timestep
 
@@ -109,16 +216,16 @@ class TimeSeries(object):
                 cstates = [x.split()[0] for x in raw]
                 return cstates, 1.
 
-
-
-    def discretize(self, method="rama", states=None, nbins=20, mcs=185, ms=185):
+    def discretize(self, method="rama", states=None, nbins=20,\
+            mcs=100, ms=50):
         """ Discretize the simulation data.
 
         Parameters
         ----------
         method : str
             A method for doing the clustering. Options are
-            "rama", "ramagrid"...
+            "rama", "ramagrid", "rama_hdb", "contacts_hdb";
+            where the latter two use HDBSCAN.
         states : list
             A list of states to be considered in the discretization.
             Only for method "rama".
@@ -143,13 +250,12 @@ class TimeSeries(object):
             phi = md.compute_phi(self.mdt)
             psi = md.compute_psi(self.mdt)
             self.distraj = traj_lib.discrete_ramagrid(phi, psi, nbins)
-        elif method == "hdbscan":
+        elif method == "rama_hdb":
             phi = md.compute_phi(self.mdt)
             psi = md.compute_psi(self.mdt)
-            self.distraj = traj_lib.discrete_hdbscan(phi, psi, mcs, ms)
-
-        return phi, psi
-
+            self.distraj = traj_lib.discrete_backbone_torsion(mcs, ms, phi=phi, psi=psi)
+        elif method == "contacts_hdb":
+            self.distraj = traj_lib.discrete_contacts_hdbscan(mcs, ms, self.mdt)
 
     def find_keys(self, exclude=['O']):
         """ Finds out the discrete states in the trajectory

@@ -2,11 +2,16 @@
 This file is part of the MasterMSM package.
 
 """
+#import h5py
+import copy
 import sys
 import math
 import hdbscan
 import numpy as np
 from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
+import mdtraj as md
+import matplotlib.pyplot as plt
 
 def discrete_rama(phi, psi, seq=None, bounds=None, states=['A', 'E', 'L']):
     """ Assign a set of phi, psi angles to coarse states.
@@ -136,7 +141,6 @@ def _inbounds(bounds,phi, psi):
                     return 1
     return 0
 
-
 def _state(phi,psi,bounds):
     """ Finds coarse state for a pair of phi-psi dihedrals
 
@@ -212,9 +216,14 @@ def _stategrid(phi, psi, nbins):
     ibin = int(0.5*nbins*(phi/math.pi + 1.)) + int(0.5*nbins*(psi/math.pi + 1))*nbins
     return ibin
 
-def discrete_hdbscan(phi, psi, mcs, ms):
-    """ Assign a set of phi, psi angles to coarse states by
-        using the HDBSCAN algorithm
+def discrete_backbone_torsion(mcs, ms, phi=None, psi=None, \
+                              pcs=None, dPCA=False):
+    """
+    Discretize backbone torsion angles
+
+    Assign a set of phi, psi angles (or their corresponding
+    dPCA variables if dPCA=True) to coarse states
+    by using the HDBSCAN algorithm.
 
     Parameters
     ----------
@@ -222,53 +231,206 @@ def discrete_hdbscan(phi, psi, mcs, ms):
         A list of Phi Ramachandran angles
     psi : list
         A list of Psi Ramachandran angles
+    pcs : matrix
+        Matrix containing principal components obtained
+        from PCA of dihedral angles
     mcs : int
-            min_cluster_size for HDBSCAN
+        min_cluster_size for HDBSCAN
     ms : int
-            min_samples for HDBSCAN
+        min_samples for HDBSCAN
 
     """
-    if len(phi[0]) != len(psi[0]): sys.exit()
-    ndih = len(phi[0])
-    phis, psis = [], []
-    for f,y in zip(phi[1],psi[1]):
-        for n in range(ndih):
-            phis.append(f[n]*180/math.pi)
-            psis.append(y[n]*180/math.pi)
+    if dPCA:
+        X = pcs
+    else:
+        # shift and combine dihedrals
+        if len(phi[0]) != len(psi[0]): 
+            raise ValueError("Inconsistent dimensions for angles")
+
+        ndih = len(phi[0])
+        phi_shift, psi_shift = [], []
+        for f, y in zip(phi[1], psi[1]):
+            for n in range(ndih):
+                phi_shift.append(f[n])
+                psi_shift.append(y[n])
+        np.savetxt("phi_psi.dat", np.column_stack((phi_shift, psi_shift)))
+        psi_shift, phi_shift = _shift(psi_shift, phi_shift)
+        data = np.column_stack((phi_shift, psi_shift))
+        np.savetxt("phi_psi_shifted.dat", data)
+    X = StandardScaler().fit_transform(data)
+
+    # Set values for clustering parameters
+    if mcs is None:
+        mcs = int(np.sqrt(len(X)))
+        print("Setting minimum cluster size to: %g" % mcs)
+    if ms  is None:
+        ms  = mcs
+        print("Setting min samples to: %g" % ms)
+
+    hdb = hdbscan.HDBSCAN(min_cluster_size=mcs, min_samples=ms).fit(X)
+    hdb.condensed_tree_.plot(select_clusters=True)
+
+    #plt.savefig("alatb-hdbscan-tree.png",dpi=300,transparent=True)
+
+#    n_micro_clusters = len(set(hb.labels_)) - (1 if -1 in hb.labels_ else 0
+#    if n_micro_clusters > 0:
+#        print("HDBSCAN mcs value set to %g"%mcs, n_micro_clusters,'clusters.')
+#        break
+#    elif mcs < 400:
+#        mcs += 25
+#    else:
+#        sys.exit("Cannot find any valid HDBSCAN mcs value")
+#    #n_noise = list(labels).count(-1)
+
+#    ## plot clusters
+#    colors = ['royalblue', 'maroon', 'forestgreen', 'mediumorchid', \
+#    'tan', 'deeppink', 'olive', 'goldenrod', 'lightcyan', 'lightgray']
+#    vectorizer = np.vectorize(lambda x: colors[x % len(colors)])
+#    fig, ax = plt.subplots(figsize=(7,7))
+#    assign = hb.labels_ >= 0
+#    ax.scatter(X[assign,0],X[assign,1], c=hb.labels_[assign])
+#    ax.set_xlim(-np.pi, np.pi)
+#    ax.set_ylim(-np.pi, np.pi)
+#    plt.savefig('alaTB_hdbscan.png', dpi=300, transparent=True)
+#
+#    # remove noise from microstate trajectory and apply TBA (Buchete et al. JPCB 2008)
+#    labels = _filter_states(hb.labels_)
+#
+#    # remove from clusters points with small (<0.1) probability
+#    for i in range(len(labels)):
+#        if hb.probabilities_[i] < 0.1:
+#            labels[i] = -1
+
+    return hdb.labels_
+
+def dPCA(angles):
+    """
+    Compute PCA of dihedral angles
+
+    We follow the methods described in A. Altis et al. 
+    *J. Chem. Phys.*  244111 (2007)
+
+    Parameters
+    ----------
+    angles : angles ordered by columns
     
-    data = np.column_stack((range(len(phis)),phis,psis))
-    X = StandardScaler().fit_transform(data[:,[1,2]])
-    hb = hdbscan.HDBSCAN(min_cluster_size = mcs, min_samples = ms).fit(X)#fit_predict(X)
+    Returns
+    -------
+    X_transf : dPCA components to retrieve 80%
+        of variance ordered by columns
+    
+    """
+    shape = np.shape(angles)
+    #print (shape)
+    X = np.zeros((shape[0] , \
+                  shape[1]+shape[1]))
+    for i, ang in enumerate(angles):
+        p = 0
+        for phi in ang:
+            X[i][p], X[i][p+1] = np.cos(phi), np.sin(phi)
+            p += 2
+    X_std = StandardScaler().fit_transform(X)
+    sklearn_pca = PCA(n_components=2*shape[1])
+    
+    X_transf = sklearn_pca.fit_transform(X_std)
+    expl = sklearn_pca.explained_variance_ratio_
+    print("Ratio of variance retrieved by each component:", expl)
 
-    labels = hb.labels_
-    #n_micro_clusters = len(set(labels)) - (1 if -1 in labels else 0)
-    #n_noise = list(labels).count(-1)
-
-    # remove from clusters points with small (<0.1) probability
-    for i, x_i in enumerate(labels):
-        if hb.probabilities_[i] < 0.1:
-            labels[i] = -1
-
-    # plot clusters and corresponding tree
-    import matplotlib.pyplot as plt
-    colors = ['royalblue', 'maroon', 'forestgreen', 'mediumorchid', \
-    'tan', 'deeppink', 'olive', 'goldenrod', 'lightcyan', 'lightgray']
-    vectorizer = np.vectorize(lambda x: colors[x % len(colors)])
-    plt.scatter(X[:,0],X[:,1], c=vectorizer(labels))
-    plt.savefig('alaTB_hdbscan.png')
-    hb.condensed_tree_.plot()
-    plt.savefig('tree.png')
-
-    # remove noise from microstate trajectory and apply TBA (Buchete JPCB 2008)
+    cum_var = 0.0
     i = 0
-    last = labels[i]
-    while last == -1:
+    while cum_var < 0.8:
+        cum_var += expl[i]
         i += 1
-        last = labels[i]
-    for i, x_i in enumerate(labels):
-        if x_i == -1:
-            labels[i] = last
-        else:
-            last = x_i
 
-    return labels
+    ## Save cos and sin of dihedral angles along the trajectory
+    #h5file = "data/out/%g_traj_angles.h5"%t
+    #with h5py.File(h5file, "w") as hf:
+    #    hf.create_dataset("angles_trajectory", data=X)
+    ## Plot cumulative variance retrieved by new components (i.e. those from PCA)
+    #plt.figure()  #plt.plot(np.cumsum(sklearn_pca.explained_variance_ratio_))
+    #plt.xlabel('number of components')  #plt.ylabel('cumulative explained variance')
+    #plt.savefig('cum_variance_%g.png'%t)
+
+    #counts, ybins, xbins, image = plt.hist2d(X_transf[:,0], X_transf[:,1], \
+    #    bins=len(X_transf[:,0]), cmap='binary_r', alpha=0.2)#bins=[np.linspace(-np.pi,np.pi,20), np.linspace(-np.pi,np.pi,30)]
+    ##countmax = np.amax(counts)
+    ##counts = np.log(countmax) - np.log(counts)
+    ##print(counts, countmax)
+    #plt.contour(np.transpose(counts), extent=[xbins.min(), xbins.max(), ybins.min(), ybins.max()], \
+    #              linewidths=1, colors='gray')
+    #plt.scatter(X_transf[:,0],X_transf[:,1])# c=counts)
+    #fig, ax = plt.subplots(1,1, figsize=(8,8), sharex=True, sharey=True)
+    #ax.contour(np.transpose(counts), extent=[xbins.min(), xbins.max(), ybins.min(), ybins.max()], \
+    #              linewidths=1, colors='gray')
+    #ax.plot(X_transf[:,0],X_transf[:,1], 'o', ms=0.2, color='C%g'%t)
+    #plt.tight_layout()
+    #plt.savefig('dpca_%g.png'%t)
+
+    return X_transf[:,:i]
+
+def discrete_contacts_hdbscan(mcs, ms, mdt_all):
+    """
+    HDBSCAN discretization based on contacts
+
+    Parameters
+    ----------
+    mdt : object
+        mdtraj trajectory
+    mcs : int
+        min_cluster_size for HDBSCAN
+    ms : int
+        min_samples for HDBSCAN
+
+    Returns
+    -------
+    labels : list
+        Indexes corresponding to the clustering
+
+    """
+
+    dists_all = []
+    for mdt in mdt_all:
+        dists = md.compute_contacts(mdt, contacts='all', periodic=True)
+        for dist in dists[0]:
+            dists_all.append(dist)
+
+    X = StandardScaler().fit_transform(dists_all) #dists[0]
+    if mcs is None: mcs = int(np.sqrt(len(X)))
+    if ms  is None: ms  = 100
+    hdb = hdbscan.HDBSCAN(min_cluster_size=mcs, min_samples=ms)
+    hdb.fit(X)
+    hdb.condensed_tree_.plot(select_clusters=True)
+    plt.savefig("hdbscan-tree.png",dpi=300,transparent=True)
+
+    # In case not enough states are produced, exit
+    if (len(np.unique(hdb.labels_))<=2):
+        raise Exception("Cannot generate clusters from contacts")
+
+    dtraj = _filter_states(hdb.labels_)
+    return dtraj
+
+def _filter_states(states):
+    """
+    Filters to remove not-assigned frames when using dbscan or hdbscan
+    
+    """
+    fs = []
+    for s in states:
+        if s >= 0:
+                fs.append(s)
+        else:
+            try:
+                fs.append(fs[-1])
+            except IndexError:
+                pass
+    return fs
+
+def _shift(psi, phi):
+    psi_s, phi_s = copy.deepcopy(phi), copy.deepcopy(psi)
+    for i in range(len(phi_s)):
+        if phi_s[i] < -2:
+            phi_s[i] += 2*np.pi
+    for i in range(len(psi_s)):
+        if psi_s[i] > 2:
+            psi_s[i] -= 2*np.pi
+    return phi_s, psi_s
