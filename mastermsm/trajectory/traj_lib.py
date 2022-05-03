@@ -434,3 +434,21 @@ def _shift(psi, phi):
         if psi_s[i] > 2:
             psi_s[i] -= 2*np.pi
     return phi_s, psi_s
+
+def standard_scaling(X):
+    """ Whitens a set of n-dimensional arrays
+
+    Parameters
+    ----------
+    X : list
+        The list of arrays to analyze
+
+    Returns
+    -------
+    X_transform : list
+        The corresponding list of whitened arrays
+
+    """
+    scaler = StandardScaler()
+    X_transform = scaler.fit_transform(X)
+    return X_transform

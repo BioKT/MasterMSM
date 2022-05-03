@@ -145,7 +145,6 @@ class TimeSeries(object):
         The assigned trajectory.
     dt : float
         The time step
-    
 
     References
     ----------
@@ -272,12 +271,55 @@ class TimeSeries(object):
                 keys.append(s)
         self.keys = keys
 
+    def add_feature(self, feature_vector):
+        """
+        Adds features to TimeSeries object
+
+        Parameters
+        ----------
+        feature_vector : array
+            n-dimensional array with features for the different snapshots
+            we want to include in the analysis
+
+        """
+        self.features = feature_vector
+
     def gc(self):
         """ 
         Gets rid of the mdtraj attribute
 
         """
         delattr (self, "mdt")
+
+
+class Discretizer(object):
+    """
+    A class for discretizing TimeSeries objects 
+
+    Discretization is performed based on the feature vectors
+    of the trajectories read as TimeSeries objects
+
+    Attributes: 
+        trajs : list of trajectory objects 
+
+    """
+    def __init__(self, trajs):
+        self.trajs = trajs
+
+    def scaler(self):
+        """
+        Preprocesses the feature vectors to be used in discretization.
+        removing the mean and scaling to unit variance.
+
+        """
+
+        # Run check on dataset consistency
+
+        # Whiten the data 
+        X = self.trajs.features
+        self.X_transform = traj_lib.standard_scaling(X)
+
+#    def pca(self):
 
 #    def discrete_rama(self, A=[-100, -40, -60, 0], \
 #            L=[-180, -40, 120., 180.], \
