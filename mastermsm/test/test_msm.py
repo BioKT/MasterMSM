@@ -145,8 +145,6 @@ class TestMSMLib(unittest.TestCase):
         self.assertIsNotNone(res_sum_d_flux)
         self.assertIsInstance(res_sum_d_flux, float)
 
-
-
     def test_tau_averages(self):
         tau_boots_test = np.random.rand(2, 2)
         keys_test = range(3)
@@ -578,8 +576,3 @@ class TestMSM(unittest.TestCase):
         modes = [key for key in acf_ave.keys()]
 
         self.assertIsInstance(acf_ave[modes[0]][0], float)
-
-
-
-
-

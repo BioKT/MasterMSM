@@ -2,7 +2,6 @@ import unittest
 import mdtraj as md
 import numpy as np
 from mastermsm.trajectory import traj_lib, traj
-from mastermsm.msm import msm, msm_lib
 from test.download_data import download_test_data
 import os
 
@@ -11,7 +10,7 @@ class TestMDTrajLib(unittest.TestCase):
     def setUp(self):
         download_test_data()
         self.tr = traj.TimeSeries(top='test/data/alaTB.gro', \
-                                  traj=['test/data/protein_only.xtc'])
+                       traj=['test/data/protein_only.xtc'])
 
     def test_inrange(self):
         self.inrange = traj_lib._inrange(2, 1, 3)
@@ -201,79 +200,9 @@ class UseMDtraj(unittest.TestCase):
         self.assertIsNotNone(self.tr.discretize)
         self.assertIs(callable(self.tr.discretize), True)
 
-
-class TestMSMLib(unittest.TestCase):
-    def test_esort(self):
-        self.assertTrue(hasattr(msm_lib, 'esort'))
-        self.assertTrue(callable(msm_lib.esort))
-        self.esort = msm_lib.esort([0,float(1)], [1,float(2)])
-        self.assertEqual(self.esort, 1)
-        self.esort = msm_lib.esort([0,float(100)], [1,float(2)])
-        self.assertEqual(self.esort, -1)
-        self.esort = msm_lib.esort([100,float(1)], [1,float(1)])
-        self.assertEqual(self.esort, 0)
-
-    def test_mat_mul_v(self):
-        self.assertTrue(hasattr(msm_lib,'mat_mul_v'))
-        self.assertTrue(callable(msm_lib.mat_mul_v))
-        self.matrix = np.array([
-            [1, 2, 3],
-            [4, 5, 6]
-        ])
-        self.vector = np.array(
-            [1, 0, 1]
-        )
-        self.assertEqual(msm_lib.mat_mul_v(self.matrix, self.vector),  [4, 10])
-        self.matrix = np.array([
-            [-5, -4, 2],
-            [1, 6, -3],
-            [3, 5.5, -4]
-        ])
-        self.vector = np.array(
-            [1, 2, -3]
-        )
-        self.assertEqual(msm_lib.mat_mul_v(self.matrix, self.vector), [-19, 22, 26])
-
-    def test_rand_rate(self):
-        testT = np.array([
-            [10, 2, 1],
-            [1, 1, 1],
-            [0, 1, 0]
-        ])
-        self.random1 = msm_lib.rand_rate(nkeep= 3, count= testT)
-        self.random2 = msm_lib.rand_rate(nkeep= 3, count= testT)
-        self.assertEqual(self.random1.shape, (3, 3))
-        self.assertFalse((self.random1 == self.random2).all())
-
-    def test_traj_split(self):
-        traj1 = traj.TimeSeries(distraj=[1, 2, 3], dt=1.)
-        traj2 = traj.TimeSeries(distraj=[3, 2, 1], dt=2.)
-        trajs = [traj1, traj2]
-        self.filepath = msm_lib.traj_split(data=trajs, lagt=10)
-        self.assertIsInstance(self.filepath, str)
-        self.assertTrue(os.path.exists(self.filepath))
-        os.remove(self.filepath)  # clean temp file
-
-    def calc_trans(self):
-        self.testT = msm_lib.calc_trans(nkeep=10)
-        self.assertIsInstance(self.testT, np.ndarray)
-        self.assertEqual(self.testT.shape, (10,10))
-
-    def test_calc_rate(self):
-        self.testT = np.array([
-            [1, 2, 3],
-            [0, 0, 0],
-            [10, 10, 10]
-
-        ])
-        self.rate = msm_lib.calc_rate(nkeep=3, trans=self.testT, lagt=10)
-        self.assertIsInstance(self.rate, np.ndarray)
-        self.assertEqual(self.rate.shape, (3, 3))
-
-    def test_calc_lifetime(self):
-        distraj = [1, 1, 1, 2]
-        dt = 1.
-        keys = [1, 2]
-        data = [distraj, dt, keys]
-        self.life = msm_lib.calc_lifetime(data)
-        self.assertIsInstance(self.life, dict)
+#class TestDiscretizer(object):
+#    def test_scaler_read():
+#        trajs = np.array([1,1,2,2])
+#        disc = traj.Discretizer(trajs)
+#        vals = disc.scaler()
+#        self.assertEqual(len(vals, 4)
