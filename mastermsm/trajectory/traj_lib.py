@@ -8,7 +8,6 @@ import sys
 import math
 import hdbscan
 import numpy as np
-from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 import mdtraj as md
 import matplotlib.pyplot as plt
@@ -30,6 +29,48 @@ def load_mdtraj(top=None, traj=None, stride=None):
 
     """
     return md.load(traj, top=top, stride=stride)
+
+def compute_rama(traj, shift=True):
+    """ Computes Ramachandran angles 
+
+    Parameters
+    ----------
+    traj : md.trajectory
+        An MDtraj trajectory object
+    shift : bool
+        Whether we want to shift the torsions or not
+
+    Returns
+    -------
+    phi : array
+        An array with phi torsions
+    psi : array
+        An array with psi torsions
+
+    """
+    _, phi = md.compute_phi(traj.mdt)
+    _, psi = md.compute_phi(traj.mdt)
+    if shift:
+        return _shift(phi, psi)
+    else:
+        return phi, psi
+
+def compute_contacts(traj, scheme, log=False):
+    """ Computes inter-residue contacts
+
+    Parameters
+    ----------
+    traj : md.trajectory
+        An MDtraj trajectory object
+    log : bool
+        Whether distances are in log scale
+
+    """
+    distances, pairs = md.compute_contacts(traj, scheme=scheme)
+    if not log:
+        return distances
+    else:
+        return np.log(distances)
 
 def discrete_rama(phi, psi, seq=None, bounds=None, states=['A', 'E', 'L']):
     """ Assign a set of phi, psi angles to coarse states.
@@ -452,21 +493,3 @@ def _shift(psi, phi):
         if psi_s[i] > 2:
             psi_s[i] -= 2*np.pi
     return phi_s, psi_s
-
-def standard_scaling(X):
-    """ Whitens a set of n-dimensional arrays
-
-    Parameters
-    ----------
-    X : list
-        The list of arrays to analyze
-
-    Returns
-    -------
-    X_transform : list
-        The corresponding list of whitened arrays
-
-    """
-    scaler = StandardScaler()
-    X_transform = scaler.fit_transform(X)
-    return X_transform

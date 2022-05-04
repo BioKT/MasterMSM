@@ -6,6 +6,7 @@ import os
 import numpy as np
 import mdtraj as md
 from ..trajectory import traj_lib
+from sklearn.preprocessing import StandardScaler
 
 class TimeSeries(object):
     """ A class for generating multiple Trajectory objects. 
@@ -147,46 +148,6 @@ class Trajectory(object):
                 cstates = [x.split()[0] for x in raw]
                 return cstates, 1.
 
-    def discretize(self, method="rama", states=None, nbins=20,\
-            mcs=100, ms=50):
-        """ Discretize the simulation data.
-
-        Parameters
-        ----------
-        method : str
-            A method for doing the clustering. Options are
-            "rama", "ramagrid", "rama_hdb", "contacts_hdb";
-            where the latter two use HDBSCAN.
-        states : list
-            A list of states to be considered in the discretization.
-            Only for method "rama".
-        nbins : int
-            Number of bins in the grid. Only for "ramagrid".
-        mcs : int
-            min_cluster_size for HDBSCAN
-        ms : int
-            min_samples for HDBSCAN
-
-        Returns
-        -------
-        discrete : list
-            A list with the set of discrete states visited.
-
-        """
-        if method == "rama":
-            phi = md.compute_phi(self.mdt)
-            psi = md.compute_psi(self.mdt)
-            self.dtraj = traj_lib.discrete_rama(phi, psi, states=states)
-        elif method == "ramagrid":
-            phi = md.compute_phi(self.mdt)
-            psi = md.compute_psi(self.mdt)
-            self.dtraj = traj_lib.discrete_ramagrid(phi, psi, nbins)
-        elif method == "rama_hdb":
-            phi = md.compute_phi(self.mdt)
-            psi = md.compute_psi(self.mdt)
-            self.dtraj = traj_lib.discrete_backbone_torsion(mcs, ms, phi=phi, psi=psi)
-        elif method == "contacts_hdb":
-            self.dtraj = traj_lib.discrete_contacts_hdbscan(mcs, ms, self.mdt)
 
     def find_keys(self, exclude=['O']):
         """ Finds out the discrete states in the trajectory
@@ -205,7 +166,7 @@ class Trajectory(object):
 
     def add_feature(self, feature_vector):
         """
-        Adds features to TimeSeries object
+        Manually adds features to Trajectory object
 
         Parameters
         ----------
@@ -304,32 +265,60 @@ class Trajectory(object):
 #        return labels
 
 
-#class Discretizer(object):
-#    """
-#    A class for discretizing TimeSeries objects 
-#
-#    Discretization is performed based on the feature vectors
-#    of the trajectories read as TimeSeries objects
-#
-#    Attributes: 
-#        trajs : list of trajectory objects 
-#
-#    """
-#    def __init__(self, trajs):
-#        self.trajs = trajs
-#
-#    def scaler(self):
-#        """
-#        Preprocesses the feature vectors to be used in discretization.
-#        removing the mean and scaling to unit variance.
-#
-#        """
-#
-#        # Run check on dataset consistency
-#
-#        # Whiten the data 
-#        X = self.trajs.features
-#        self.X_transform = traj_lib.standard_scaling(X)
+class Featurizer(object):
+    """
+    A class for featurizing TimeSeries objects 
+
+    Attributes: 
+        timeseries : list of trajectory objects 
+        
+    """
+    def __init__(self, timeseries=None):
+        self.timeseries = timeseries
+
+    def add_torsions(self, shift=True):
+        """ Adds torsions as features
+
+        Parameters
+        ----------
+        shift : bool 
+            Whether we want to shift the torsions or not        
+
+        """
+        for tr in self.timeseries.trajs:
+            phi, psi = traj_lib.compute_rama(tr)
+            tr.features = np.column_stack((phi, psi))
+
+    def add_contacts(self, scheme='ca', log=False):
+        """ Adds contacts as features
+
+        Parameters
+        ----------
+        scheme : str
+            Scheme to determine the distance between two residues. Options are: 
+            ‘ca’, ‘closest’, ‘closest-heavy’, ‘sidechain’, ‘sidechain-heavy’
+        log : bool
+            Whether distances are added in log scale.
+
+        """
+        for tr in self.timeseries.trajs:
+            tr.features = traj_lib.compute_contacts(tr.mdt, scheme=scheme, \
+                    log=log)
+
+    def whiten(self):
+        """
+        Preprocesses the feature vectors to be used in discretization.
+        removing the mean and scaling to unit variance.
+
+        """
+        # first we fit the standard scaler using all the data
+        scaler = StandardScaler()
+        X = np.vstack([tr.features for tr in self.timeseries.trajs])
+        scaler.fit(X)
+        # then we replace the feature vectors by their whitened versions
+        for tr in self.timeseries.trajs:
+            X = scaler.transform(tr.features)
+            tr.features = X
 
 #    def pca(self):
 
@@ -341,4 +330,44 @@ class Trajectory(object):
 #        """
 #        for t in self.mdtrajs:
 #            phi,psi = zip(mdtraj.compute_phi(traj), mdtraj.compute_psi(traj))
+#    def discretize(self, method="rama", states=None, nbins=20,\
+#            mcs=100, ms=50):
+#        """ Discretize the simulation data.
 #
+#        Parameters
+#        ----------
+#        method : str
+#            A method for doing the clustering. Options are
+#            "rama", "ramagrid", "rama_hdb", "contacts_hdb";
+#            where the latter two use HDBSCAN.
+#        states : list
+#            A list of states to be considered in the discretization.
+#            Only for method "rama".
+#        nbins : int
+#            Number of bins in the grid. Only for "ramagrid".
+#        mcs : int
+#            min_cluster_size for HDBSCAN
+#        ms : int
+#            min_samples for HDBSCAN
+#
+#        Returns
+#        -------
+#        discrete : list
+#            A list with the set of discrete states visited.
+#
+#        """
+#        if method == "rama":
+#            phi = md.compute_phi(self.mdt)
+#            psi = md.compute_psi(self.mdt)
+#            self.dtraj = traj_lib.discrete_rama(phi, psi, states=states)
+#        elif method == "ramagrid":
+#            phi = md.compute_phi(self.mdt)
+#            psi = md.compute_psi(self.mdt)
+#            self.dtraj = traj_lib.discrete_ramagrid(phi, psi, nbins)
+#        elif method == "rama_hdb":
+#            phi = md.compute_phi(self.mdt)
+#            psi = md.compute_psi(self.mdt)
+#            self.dtraj = traj_lib.discrete_backbone_torsion(mcs, ms, phi=phi, psi=psi)
+#        elif method == "contacts_hdb":
+#            self.dtraj = traj_lib.discrete_contacts_hdbscan(mcs, ms, self.mdt)
+
