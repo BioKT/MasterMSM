@@ -30,7 +30,8 @@ jobs:
       - name: Download repository
         run: |
            python --version
+           pip install -r requirements.txt
            python setup.py install
 
       - name: Run tests
-        run: pytest 
+        run: coverage run --source=. -m py.test
