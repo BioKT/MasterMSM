@@ -169,110 +169,109 @@ class TimeSeries(object):
         """
         delattr (self, "mdt")
 
-class MultiTimeSeries(object):
-    """ A class for generating multiple TimeSeries objects in
-    a consistent way. In principle this is only needed when
-    the clustering is not established a priori.
-
-    """
-    def __init__(self, top=None, trajs=None, dt=None, stride=None):
-        """
-        Parameters
-        ----------
-        dt : float
-            The time step.
-        top : string
-            The topology file, may be a PDB or GRO file.
-        trajs : list 
-            A list of trajectory filenames to be read.
-
-        """
-        self.file_list = trajs
-        self.traj_list = []
-        for traj in self.file_list:
-            tr = TimeSeries(top=top, traj=traj, stride=stride)
-            self.traj_list.append(tr)
-    
-    def joint_discretize(self, method='backbone_torsions', mcs=None, ms=None, dPCA=False):
-        """
-        Discretize simultaneously all trajectories with HDBSCAN.
-
-        Parameters
-        ----------
-        method : str
-            The method of choice for the discretization. Options are 'backbone_torsions'
-            and 'contacts'.
-        mcs : int
-            Minimum cluster size for HDBSCAN clustering.
-        ms : int
-            Minsamples parameter for HDBSCAN clustering.
-        dPCA : bool
-            Whether we are using the dihedral PCA method.
-
-        """
-        if method=='backbone_torsions':
-            labels = self.joint_discretize_backbone_torsions(mcs=mcs, ms=ms, dPCA=dPCA)
-        elif method=='contacts':
-            labels = self.joint_discretize_contacts(mcs=mcs, ms=ms)
-
-        i = 0
-        for tr in self.traj_list:
-            ltraj = tr.mdt.n_frames
-            tr.distraj = list(labels[i:i+ltraj])
-            i +=ltraj
-
-    def joint_discretize_backbone_torsions(self, mcs=None, ms=None, dPCA=False):
-        """
-        Analyze jointly torsion angles from multiple trajectories.
-
-        Parameters
-        ----------
-        mcs : int
-            Minimum cluster size for HDBSCAN clustering.
-        ms : int
-            Minsamples parameter for HDBSCAN clustering.
-        dPCA : bool
-            Whether we are using the dihedral PCA method.
-
-        """
-        # First we build the fake trajectory combining data
-        phi_cum = []
-        psi_cum = []
-        for tr in self.traj_list:
-            phi = md.compute_phi(tr.mdt)
-            psi = md.compute_psi(tr.mdt)    
-            phi_cum.append(phi[1])
-            psi_cum.append(psi[1])
-        phi_cum = np.vstack(phi_cum)
-        psi_cum = np.vstack(psi_cum)
-
-        # Then we generate the consistent set of clusters
-        if dPCA is True:
-            angles = np.column_stack((phi_cum, psi_cum))
-            v = traj_lib.dPCA(angles)
-            labels = traj_lib.discrete_backbone_torsion(mcs, ms, pcs=v, dPCA=True)
-        else:
-            phi_fake = [phi[0], phi_cum]
-            psi_fake = [psi[0], psi_cum]
-            labels = traj_lib.discrete_backbone_torsion(mcs, ms, phi=phi_fake, psi=psi_fake)
-        return labels
-
-    def joint_discretize_contacts(self, mcs=None, ms=None):
-        """
-        Analyze jointly pairwise contacts from all trajectories.
-        
-        Produces a fake trajectory comprising a concatenated set
-        to recover the labels from HDBSCAN.
-
-        """
-        mdt_cum = []
-        for tr in self.traj_list:
-            mdt_cum.append(tr.mdt) #mdt_cum = np.vstack(mdt_cum)
-
-        labels = traj_lib.discrete_contacts_hdbscan(mcs, ms, mdt_cum)
-
-        return labels
-
+#class MultiTimeSeries(object):
+#    """ A class for generating multiple TimeSeries objects in
+#    a consistent way. In principle this is only needed when
+#    the clustering is not established a priori.
+#
+#    """
+#    def __init__(self, top=None, trajs=None, dt=None, stride=None):
+#        """
+#        Parameters
+#        ----------
+#        dt : float
+#            The time step.
+#        top : string
+#            The topology file, may be a PDB or GRO file.
+#        trajs : list 
+#            A list of trajectory filenames to be read.
+#
+#        """
+#        self.file_list = trajs
+#        self.traj_list = []
+#        for traj in self.file_list:
+#            tr = TimeSeries(top=top, traj=traj, stride=stride)
+#            self.traj_list.append(tr)
+#    
+#    def joint_discretize(self, method='backbone_torsions', mcs=None, ms=None, dPCA=False):
+#        """
+#        Discretize simultaneously all trajectories with HDBSCAN.
+#
+#        Parameters
+#        ----------
+#        method : str
+#            The method of choice for the discretization. Options are 'backbone_torsions'
+#            and 'contacts'.
+#        mcs : int
+#            Minimum cluster size for HDBSCAN clustering.
+#        ms : int
+#            Minsamples parameter for HDBSCAN clustering.
+#        dPCA : bool
+#            Whether we are using the dihedral PCA method.
+#
+#        """
+#        if method=='backbone_torsions':
+#            labels = self.joint_discretize_backbone_torsions(mcs=mcs, ms=ms, dPCA=dPCA)
+#        elif method=='contacts':
+#            labels = self.joint_discretize_contacts(mcs=mcs, ms=ms)
+#
+#        i = 0
+#        for tr in self.traj_list:
+#            ltraj = tr.mdt.n_frames
+#            tr.distraj = list(labels[i:i+ltraj])
+#            i +=ltraj
+#
+#    def joint_discretize_backbone_torsions(self, mcs=None, ms=None, dPCA=False):
+#        """
+#        Analyze jointly torsion angles from multiple trajectories.
+#
+#        Parameters
+#        ----------
+#        mcs : int
+#            Minimum cluster size for HDBSCAN clustering.
+#        ms : int
+#            Minsamples parameter for HDBSCAN clustering.
+#        dPCA : bool
+#            Whether we are using the dihedral PCA method.
+#
+#        """
+#        # First we build the fake trajectory combining data
+#        phi_cum = []
+#        psi_cum = []
+#        for tr in self.traj_list:
+#            phi = md.compute_phi(tr.mdt)
+#            psi = md.compute_psi(tr.mdt)    
+#            phi_cum.append(phi[1])
+#            psi_cum.append(psi[1])
+#        phi_cum = np.vstack(phi_cum)
+#        psi_cum = np.vstack(psi_cum)
+#
+#        # Then we generate the consistent set of clusters
+#        if dPCA is True:
+#            angles = np.column_stack((phi_cum, psi_cum))
+#            v = traj_lib.dPCA(angles)
+#            labels = traj_lib.discrete_backbone_torsion(mcs, ms, pcs=v, dPCA=True)
+#        else:
+#            phi_fake = [phi[0], phi_cum]
+#            psi_fake = [psi[0], psi_cum]
+#            labels = traj_lib.discrete_backbone_torsion(mcs, ms, phi=phi_fake, psi=psi_fake)
+#        return labels
+#
+#    def joint_discretize_contacts(self, mcs=None, ms=None):
+#        """
+#        Analyze jointly pairwise contacts from all trajectories.
+#        
+#        Produces a fake trajectory comprising a concatenated set
+#        to recover the labels from HDBSCAN.
+#
+#        """
+#        mdt_cum = []
+#        for tr in self.traj_list:
+#            mdt_cum.append(tr.mdt) #mdt_cum = np.vstack(mdt_cum)
+#
+#        labels = traj_lib.discrete_contacts_hdbscan(mcs, ms, mdt_cum)
+#
+#        return labels
 
 
 class Discretizer(object):
