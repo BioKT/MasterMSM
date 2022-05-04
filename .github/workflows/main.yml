@@ -29,8 +29,6 @@ jobs:
           python-version: '3.x' 
       - name: Download repository
         run: |
-           git clone --branch=master https://github.com/BioKT/MasterMSM.git 
-           cd BioKT/MasterMSM
            python --version
            python setup.py install
 
