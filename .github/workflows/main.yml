@@ -32,5 +32,5 @@ jobs:
            python --version
            python setup.py install
 
-#      - name: Run tests
-#        run: nosetests -v 
+      - name: Run tests
+        run: nosetests -v 
