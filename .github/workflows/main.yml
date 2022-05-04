@@ -33,4 +33,4 @@ jobs:
            python setup.py install
 
       - name: Run tests
-        run: nosetests -v 
+        run: pytest 
