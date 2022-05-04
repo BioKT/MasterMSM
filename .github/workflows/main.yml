@@ -23,17 +23,16 @@ jobs:
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       - uses: actions/checkout@v3
-      - name: Set up Python ${{ matrix.python-version }}
-          uses: actions/setup-python@v2
-          with:
-            python-version: ${{ matrix.python-version }}
-
-#      - name: Clone repository
-#        run: |
-#          git clone --depth=50 --branch=develop https://github.com/BioKT/MasterMSM.git 
-#          cd BioKT/MasterMSM
-#          python --version
-#          python setup.py install 
+      - name: Set up Python
+      - uses: actions/setup-python@v3
+        with:
+          python-version: '3.x' 
+      - name: Download repository
+        run: |
+           git clone --branch=master https://github.com/BioKT/MasterMSM.git 
+           cd BioKT/MasterMSM
+           python --version
+           python setup.py install
 
 #      - name: Run tests
 #        run: nosetests -v 
