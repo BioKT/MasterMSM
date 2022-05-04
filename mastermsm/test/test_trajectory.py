@@ -225,9 +225,18 @@ class UseMDtraj(unittest.TestCase):
 #        self.assertIsNotNone(self.tr.discretize)
 #        self.assertIs(callable(self.tr.discretize), True)
 
-#class TestDiscretizer(object):
-#    def test_scaler_read():
-#        trajs = np.array([1,1,2,2])
-#        disc = traj.Discretizer(trajs)
-#        vals = disc.scaler()
-#        self.assertEqual(len(vals, 4)
+class TestDiscretizer(object):
+    def setUp(self):
+        download_test_data()
+        self.ts = traj.TimeSeries(top='test/data/alaTB.gro', \
+                trajs=['test/data/protein_only.xtc'])
+
+    def test_create_discretizer(self):
+        disc = traj.Discretizer(self.ts)
+        self.assertEqual(disc.timeseries.n_trajs, 1)
+
+    def test_torsions(self):
+        disc = traj.Discretizer(self.ts)
+        disc.add_torsions()
+        self.assertEqual(np.shape(datasets.trajs[0].feature_vector),\
+                (10003, 2))
