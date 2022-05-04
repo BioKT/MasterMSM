@@ -13,6 +13,24 @@ from sklearn.decomposition import PCA
 import mdtraj as md
 import matplotlib.pyplot as plt
 
+def load_mdtraj(top=None, traj=None, stride=None):
+    """ Loads trajectories using mdtraj.
+
+    Parameters
+    ----------
+    top: str
+        The topology file, may be a PDB or GRO file.
+    traj : str
+        A list with the trajectory filenames to be read.
+
+    Returns
+    -------
+    mdtrajs : list
+        A list of mdtraj Trajectory objects.
+
+    """
+    return md.load(traj, top=top, stride=stride)
+
 def discrete_rama(phi, psi, seq=None, bounds=None, states=['A', 'E', 'L']):
     """ Assign a set of phi, psi angles to coarse states.
 
