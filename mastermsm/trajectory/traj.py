@@ -8,6 +8,60 @@ import mdtraj as md
 from ..trajectory import traj_lib
 
 class TimeSeries(object):
+    """ A class for generating multiple Trajectory objects. 
+    TimeSeries objects are discretized jointly as their 
+    elements have consistent dimensions.
+
+    """
+    def __init__(self, top=None, trajs=None, dtrajs=None, dt=None, \
+            stride=None):
+        """
+        Parameters
+        ----------
+        dt : float
+            The time step.
+        top : string
+            The topology file, may be a PDB or GRO file.
+        trajs : str / list 
+            A string or list of trajectory filenames to be read.
+        dtrajs : str / list 
+            A string or list of discrete trajectory filenames to be read.
+            
+        """
+        self.trajs = []
+
+        if trajs is not None:
+            # using Gromacs xtc files
+            file_list = trajs
+            if isinstance(file_list, list):
+                for file in file_list:
+                    print ("loading file %s"%file)
+                    tr = Trajectory(top=top, traj=file, stride=stride)
+                    self.trajs.append(tr)
+            elif isinstance(file_list, str):
+                tr = Trajectory(top=top, traj=file_list, stride=stride)
+                self.trajs.append(tr)
+
+        elif dtrajs is not None:
+            # using discrete trajectories instead
+            if not (any(isinstance(el, list) for el in dtrajs)): 
+                # dtrajs is a list of discrete states
+                tr = Trajectory(dtraj=dtrajs, stride=stride)
+                self.trajs.append(tr)
+            else:
+                # dtrajs is a list of lists
+                for dt in dtrajs:
+                    tr = Trajectory(dtraj=dtrajs, stride=stride)
+                    self.trajs.append(tr)
+
+        else:
+            # maybe experimenting with the class
+            pass
+
+        self.n_trajs = len(self.trajs)
+        print ("Loaded %i trajectories\n"%self.n_trajs)
+
+class Trajectory(object):
     """ A class to read and discretize simulation trajectories.
     When simulation trajectories are provided, frames are read
     and discretized using mdtraj [1]_. Alternatively, a discrete
@@ -19,7 +73,7 @@ class TimeSeries(object):
         An mdtraj Trajectory object.
     file_name : str
         The name of the trajectory file.
-    distraj : list
+    dtraj : list
         The assigned trajectory.
     dt : float
         The time step
@@ -33,11 +87,11 @@ class TimeSeries(object):
 
     """
     def __init__(self, top=None, traj=None, dt=None, \
-            distraj=None, stride=None):
+            dtraj=None, stride=None):
         """
         Parameters
         ----------
-        distraj : string
+        dtraj : string
             The discrete state trajectory file.
         dt : float
             The time step.
@@ -49,9 +103,9 @@ class TimeSeries(object):
             Only read every stride-th frame
 
         """
-        if distraj is not None:
+        if dtraj is not None:
             # A discrete trajectory is provided
-            self.distraj, self.dt = self._read_distraj(distraj=distraj, dt=dt)
+            self.dtraj, self.dt = self._read_dtraj(dtraj=dtraj, dt=dt)
         else:
             # An MD trajectory is provided
             self.file_name = traj
@@ -59,12 +113,12 @@ class TimeSeries(object):
             self.mdt = mdt
             self.dt = self.mdt.timestep
 
-    def _read_distraj(self, distraj=None, dt=None):
+    def _read_dtraj(self, dtraj=None, dt=None):
         """ Loads discrete trajectories directly.
 
         Parameters
         ----------
-        distraj : str, list
+        dtraj : str, list
             File or list with discrete trajectory.
         
         Returns
@@ -73,14 +127,14 @@ class TimeSeries(object):
            A list of mdtraj Trajectory objects.
 
        """
-        if isinstance(distraj, list):
-            cstates = distraj
+        if isinstance(dtraj, list):
+            cstates = dtraj
             if dt is None:
                 dt = 1.
             return cstates, dt
 
-        elif os.path.isfile(distraj):
-            raw = open(distraj, "r").readlines()
+        elif os.path.isfile(dtraj):
+            raw = open(dtraj, "r").readlines()
             try:
                 cstates = [x.split()[1] for x in raw]
                 dt =  float(raw[2].split()[0]) - float(raw[1].split()[0])
@@ -122,17 +176,17 @@ class TimeSeries(object):
         if method == "rama":
             phi = md.compute_phi(self.mdt)
             psi = md.compute_psi(self.mdt)
-            self.distraj = traj_lib.discrete_rama(phi, psi, states=states)
+            self.dtraj = traj_lib.discrete_rama(phi, psi, states=states)
         elif method == "ramagrid":
             phi = md.compute_phi(self.mdt)
             psi = md.compute_psi(self.mdt)
-            self.distraj = traj_lib.discrete_ramagrid(phi, psi, nbins)
+            self.dtraj = traj_lib.discrete_ramagrid(phi, psi, nbins)
         elif method == "rama_hdb":
             phi = md.compute_phi(self.mdt)
             psi = md.compute_psi(self.mdt)
-            self.distraj = traj_lib.discrete_backbone_torsion(mcs, ms, phi=phi, psi=psi)
+            self.dtraj = traj_lib.discrete_backbone_torsion(mcs, ms, phi=phi, psi=psi)
         elif method == "contacts_hdb":
-            self.distraj = traj_lib.discrete_contacts_hdbscan(mcs, ms, self.mdt)
+            self.dtraj = traj_lib.discrete_contacts_hdbscan(mcs, ms, self.mdt)
 
     def find_keys(self, exclude=['O']):
         """ Finds out the discrete states in the trajectory
@@ -144,7 +198,7 @@ class TimeSeries(object):
 
         """
         keys = []
-        for s in self.distraj:
+        for s in self.dtraj:
             if s not in keys and s not in exclude:
                 keys.append(s)
         self.keys = keys
@@ -169,30 +223,6 @@ class TimeSeries(object):
         """
         delattr (self, "mdt")
 
-#class MultiTimeSeries(object):
-#    """ A class for generating multiple TimeSeries objects in
-#    a consistent way. In principle this is only needed when
-#    the clustering is not established a priori.
-#
-#    """
-#    def __init__(self, top=None, trajs=None, dt=None, stride=None):
-#        """
-#        Parameters
-#        ----------
-#        dt : float
-#            The time step.
-#        top : string
-#            The topology file, may be a PDB or GRO file.
-#        trajs : list 
-#            A list of trajectory filenames to be read.
-#
-#        """
-#        self.file_list = trajs
-#        self.traj_list = []
-#        for traj in self.file_list:
-#            tr = TimeSeries(top=top, traj=traj, stride=stride)
-#            self.traj_list.append(tr)
-#    
 #    def joint_discretize(self, method='backbone_torsions', mcs=None, ms=None, dPCA=False):
 #        """
 #        Discretize simultaneously all trajectories with HDBSCAN.
@@ -218,7 +248,7 @@ class TimeSeries(object):
 #        i = 0
 #        for tr in self.traj_list:
 #            ltraj = tr.mdt.n_frames
-#            tr.distraj = list(labels[i:i+ltraj])
+#            tr.dtraj = list(labels[i:i+ltraj])
 #            i +=ltraj
 #
 #    def joint_discretize_backbone_torsions(self, mcs=None, ms=None, dPCA=False):
@@ -274,32 +304,32 @@ class TimeSeries(object):
 #        return labels
 
 
-class Discretizer(object):
-    """
-    A class for discretizing TimeSeries objects 
-
-    Discretization is performed based on the feature vectors
-    of the trajectories read as TimeSeries objects
-
-    Attributes: 
-        trajs : list of trajectory objects 
-
-    """
-    def __init__(self, trajs):
-        self.trajs = trajs
-
-    def scaler(self):
-        """
-        Preprocesses the feature vectors to be used in discretization.
-        removing the mean and scaling to unit variance.
-
-        """
-
-        # Run check on dataset consistency
-
-        # Whiten the data 
-        X = self.trajs.features
-        self.X_transform = traj_lib.standard_scaling(X)
+#class Discretizer(object):
+#    """
+#    A class for discretizing TimeSeries objects 
+#
+#    Discretization is performed based on the feature vectors
+#    of the trajectories read as TimeSeries objects
+#
+#    Attributes: 
+#        trajs : list of trajectory objects 
+#
+#    """
+#    def __init__(self, trajs):
+#        self.trajs = trajs
+#
+#    def scaler(self):
+#        """
+#        Preprocesses the feature vectors to be used in discretization.
+#        removing the mean and scaling to unit variance.
+#
+#        """
+#
+#        # Run check on dataset consistency
+#
+#        # Whiten the data 
+#        X = self.trajs.features
+#        self.X_transform = traj_lib.standard_scaling(X)
 
 #    def pca(self):
 
