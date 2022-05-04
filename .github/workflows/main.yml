@@ -30,7 +30,8 @@ jobs:
         run: 
             git clone --depth=50 --branch=develop https://github.com/BioKT/MasterMSM.git 
             cd BioKT/MasterMSM
+            python --version
             python setup.py install 
             rundir=$HOME
-            cd $rundir
-            nosetests -v --with-coverage
+            cd rundir
+            nosetests -v 
