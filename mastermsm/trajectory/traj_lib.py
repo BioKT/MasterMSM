@@ -49,7 +49,7 @@ def compute_rama(traj, shift=True):
 
     """
     _, phi = md.compute_phi(traj.mdt)
-    _, psi = md.compute_phi(traj.mdt)
+    _, psi = md.compute_psi(traj.mdt)
     if shift:
         return _shift(phi, psi)
     else:
@@ -484,12 +484,12 @@ def _filter_states(states):
                 pass
     return fs
 
-def _shift(psi, phi):
-    psi_s, phi_s = copy.deepcopy(phi), copy.deepcopy(psi)
+def _shift(phi, psi):
+    phi_s, psi_s = copy.deepcopy(phi), copy.deepcopy(psi)
     for i in range(len(phi_s)):
-        if phi_s[i] < -2:
+        if phi_s[i] < 0:
             phi_s[i] += 2*np.pi
     for i in range(len(psi_s)):
-        if psi_s[i] > 2:
-            psi_s[i] -= 2*np.pi
+        if psi_s[i] < -2:
+            psi_s[i] += 2*np.pi
     return phi_s, psi_s

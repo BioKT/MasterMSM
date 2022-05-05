@@ -164,19 +164,6 @@ class Trajectory(object):
                 keys.append(s)
         self.keys = keys
 
-    def add_feature(self, feature_vector):
-        """
-        Manually adds features to Trajectory object
-
-        Parameters
-        ----------
-        feature_vector : array
-            n-dimensional array with features for the different snapshots
-            we want to include in the analysis
-
-        """
-        self.features = feature_vector
-
     def gc(self):
         """ 
         Gets rid of the mdtraj attribute
@@ -286,7 +273,7 @@ class Featurizer(object):
 
         """
         for tr in self.timeseries.trajs:
-            phi, psi = traj_lib.compute_rama(tr)
+            phi, psi = traj_lib.compute_rama(tr, shift=shift)
             tr.features = np.column_stack((phi, psi))
 
     def add_contacts(self, scheme='ca', log=False):
@@ -319,6 +306,20 @@ class Featurizer(object):
         for tr in self.timeseries.trajs:
             X = scaler.transform(tr.features)
             tr.features = X
+
+    def add_feature(self, feature_vector):
+        """
+        Manually adds features to Trajectory object
+
+        Parameters
+        ----------
+        feature_vector : array
+            n-dimensional array with features for the different snapshots
+            we want to include in the analysis
+
+        """
+        self.features = feature_vector
+
 
 #    def pca(self):
 
