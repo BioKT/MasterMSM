@@ -35,6 +35,6 @@ jobs:
 
       - name: Run tests
         run: |
-           python -m pip install flake8 pytest
-           cd mastermsm/test
-           pytest
+           python -m pip install nose coverage
+           #cd mastermsm/test
+           nosetests--with-coverage
