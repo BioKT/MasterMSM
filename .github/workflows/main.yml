@@ -36,5 +36,5 @@ jobs:
       - name: Run tests
         run: |
            python -m pip install nose coverage
-           cd mastermsm/
+           cd $HOME
            nosetests --with-coverage
