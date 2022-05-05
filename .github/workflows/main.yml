@@ -37,4 +37,4 @@ jobs:
         run: |
            python -m pip install nose2
            cd $HOME
-           nose2 -v
+           nose2 -v -s mastermsm
