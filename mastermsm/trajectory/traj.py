@@ -169,7 +169,7 @@ class Trajectory(object):
         Gets rid of the mdtraj attribute
 
         """
-        delattr (self, "mdt")
+        delattr(self, "mdt")
 
 #    def joint_discretize(self, method='backbone_torsions', mcs=None, ms=None, dPCA=False):
 #        """
