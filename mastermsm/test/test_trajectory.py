@@ -237,6 +237,9 @@ class TestDiscretizer(object):
 
     def test_torsions(self):
         disc = traj.Discretizer(self.ts)
-        disc.add_torsions()
+        disc.add_torsions(shift=False)
         self.assertEqual(np.shape(datasets.trajs[0].feature_vector),\
                 (10003, 2))
+        disc.add_torsions(shift=True)
+        self.assertTrue(np.all(datasets.trajs[0].feature_vector[:,1] > -2))
+        self.assertTrue(np.all(datasets.trajs[0].feature_vector[:,0] > -2))
