@@ -1,13 +1,12 @@
 import os
 from urllib.request import urlretrieve
 
-def download_test_data():
-    base_url = "https://mastermsm.s3.eu-west-2.amazonaws.com/"
-    gro = "test/data/alaTB.gro"
-    xtc = "test/data/protein_only.xtc"
+def download_osf_alaTB():
+    downloads = {"alaTB.gro": "https://osf.io/hgbqs/download", \
+            "alaTB.xtc": "https://osf.io/ujmhc/download"}
     cpath = os.getcwd()
     if os.path.exists(cpath+"/test/data") is False:
         os.mkdir(cpath+"/test/data")
-    for fname in [gro,xtc]:
-        if os.path.isfile(cpath+"/%s"%fname) is False:
-            urlretrieve(base_url+fname, fname)
+    for k, v in downloads.items():
+        if os.path.isfile(cpath+"/%s"%k) is False:
+            urlretrieve(v, "test/data/" + k)
