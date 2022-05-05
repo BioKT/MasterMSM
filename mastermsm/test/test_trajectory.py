@@ -2,36 +2,36 @@ import unittest
 import mdtraj as md
 import numpy as np
 from mastermsm.trajectory import traj_lib, traj
-from test.download_data import download_test_data
+from test.download_data import download_osf_alaTB
 import os
 
 class TestTimeSeries(unittest.TestCase):
     def setUp(self):
-        download_test_data()
-        self.xtc = traj.TimeSeries(top='test/data/alaTB.gro', \
-                    trajs=['test/data/protein_only.xtc'])
-        self.xtc_multi = traj.TimeSeries(top='test/data/alaTB.gro', \
-                       trajs=['test/data/protein_only.xtc', \
-                       'test/data/protein_only.xtc'])
+        download_osf_alaTB()
+        self.ts = traj.TimeSeries(top='test/data/alaTB.gro', \
+                    trajs=['test/data/alaTB.xtc'])
+        self.ts_multi = traj.TimeSeries(top='test/data/alaTB.gro', \
+                       trajs=['test/data/alaTB.xtc', \
+                       'test/data/alaTB.xtc'])
 
         self.dis = traj.TimeSeries(dtrajs=[0,1,1,0])
         self.dis_multi = traj.TimeSeries(dtrajs=[[0,1,1,0], \
                 [1,0,0,1]])
 
     def test_timeseries(self):
-        self.assertEqual(self.xtc.n_trajs, 1)
-        self.assertEqual(self.xtc_multi.n_trajs, 2)
+        self.assertEqual(self.ts.n_trajs, 1)
+        self.assertEqual(self.ts_multi.n_trajs, 2)
         self.assertEqual(self.dis.n_trajs, 1)
         self.assertEqual(self.dis_multi.n_trajs, 2)
 
 #class TestMDTrajLib(unittest.TestCase):
 #    def setUp(self):
-#        download_test_data()
-#        self.xtc = traj.TimeSeries(top='test/data/alaTB.gro', \
-#                    trajs=['test/data/protein_only.xtc'])
-#        self.xtc_multi = traj.TimeSeries(top='test/data/alaTB.gro', \
-#                       trajs=['test/data/protein_only.xtc', \
-#                       'test/data/protein_only.xtc'])
+#        download_osf_alaTB()
+#        self.ts = traj.TimeSeries(top='test/data/alaTB.gro', \
+#                 trajs=['test/data/alaTB.xtc'])
+#        self.ts_multi = traj.TimeSeries(top='test/data/alaTB.gro', \
+#                       trajs=['test/data/alaTB.xtc', \
+#                       'test/data/alaTB.xtc'])
 #        self.ts_dis = traj.TimeSeries(dtrajs=[0,1,1,0])
 
 
@@ -110,20 +110,20 @@ class TestTimeSeries(unittest.TestCase):
 
 class TestMDtraj(unittest.TestCase):
     def setUp(self):
-        download_test_data()
-        self.traj = md.load('test/data/protein_only.xtc', \
+        download_osf_alaTB()
+        self.ts = traj.TimeSeries(top='test/data/alaTB.gro', \
+                    trajs=['test/data/alaTB.xtc'])
+        self.traj = md.load('test/data/alaTB.xtc', \
                 top='test/data/alaTB.gro')
         self.topfn = 'test/data/alaTB.gro'
-        self.trajfn = 'test/data/protein_only.xtc'
-        self.ts = traj.TimeSeries(top='test/data/alaTB.gro', \
-                             trajs=['test/data/protein_only.xtc'])
+        self.trajfn = 'test/data/alaTB.xtc'
 
     def test_traj(self):
         self.assertIsNotNone(self.traj)
         self.assertEqual(self.traj.n_atoms, 19)
-        self.assertEqual(self.traj.timestep, 1.)
+        self.assertEqual(self.traj.timestep, 5.)
         self.assertEqual(self.traj.n_residues, 3)
-        self.assertEqual(self.traj.n_frames, 10003)
+        self.assertEqual(self.traj.n_frames, 40001)
 
     def test_load_mdtraj(self):
         mdtraj = traj_lib.load_mdtraj(top=self.topfn, traj=self.trajfn)
@@ -212,24 +212,24 @@ class TestMDtraj(unittest.TestCase):
 
 class UseMDtraj(unittest.TestCase):
     def setUp(self):
-        download_test_data()
+        download_osf_alaTB()
         self.ts = traj.TimeSeries(top='test/data/alaTB.gro', \
-                trajs=['test/data/protein_only.xtc'])
+                trajs=['test/data/alaTB.xtc'])
 
     def test_atributes(self):
         tr = self.ts.trajs[0]
         self.assertIsNotNone(tr.mdt)
         self.assertEqual(tr.mdt.n_atoms, 19)
-        self.assertEqual(tr.mdt.n_frames, 10003)
+        self.assertEqual(tr.mdt.n_frames, 40001)
         self.assertEqual(tr.mdt.n_residues, 3)
 #        self.assertIsNotNone(self.tr.discretize)
 #        self.assertIs(callable(self.tr.discretize), True)
 
 class TestDiscretizer(object):
     def setUp(self):
-        download_test_data()
+        download_osf_alaTB()
         self.ts = traj.TimeSeries(top='test/data/alaTB.gro', \
-                trajs=['test/data/protein_only.xtc'])
+                trajs=['test/data/alaTB.xtc'])
 
     def test_create_discretizer(self):
         disc = traj.Discretizer(self.ts)
