@@ -9,60 +9,6 @@ from ..trajectory import traj_lib
 from sklearn.preprocessing import StandardScaler
 
 class TimeSeries(object):
-    """ A class for generating multiple Trajectory objects. 
-    TimeSeries objects are discretized jointly as their 
-    elements have consistent dimensions.
-
-    """
-    def __init__(self, top=None, trajs=None, dtrajs=None, dt=None, \
-            stride=None):
-        """
-        Parameters
-        ----------
-        dt : float
-            The time step.
-        top : string
-            The topology file, may be a PDB or GRO file.
-        trajs : str / list 
-            A string or list of trajectory filenames to be read.
-        dtrajs : str / list 
-            A string or list of discrete trajectory filenames to be read.
-            
-        """
-        self.trajs = []
-
-        if trajs is not None:
-            # using Gromacs xtc files
-            file_list = trajs
-            if isinstance(file_list, list):
-                for file in file_list:
-                    print ("loading file %s"%file)
-                    tr = Trajectory(top=top, traj=file, stride=stride)
-                    self.trajs.append(tr)
-            elif isinstance(file_list, str):
-                tr = Trajectory(top=top, traj=file_list, stride=stride)
-                self.trajs.append(tr)
-
-        elif dtrajs is not None:
-            # using discrete trajectories instead
-            if not (any(isinstance(el, list) for el in dtrajs)): 
-                # dtrajs is a list of discrete states
-                tr = Trajectory(dtraj=dtrajs, stride=stride)
-                self.trajs.append(tr)
-            else:
-                # dtrajs is a list of lists
-                for dt in dtrajs:
-                    tr = Trajectory(dtraj=dtrajs, stride=stride)
-                    self.trajs.append(tr)
-
-        else:
-            # maybe experimenting with the class
-            pass
-
-        self.n_trajs = len(self.trajs)
-        print ("Loaded %i trajectories\n"%self.n_trajs)
-
-class Trajectory(object):
     """ A class to read and discretize simulation trajectories.
     When simulation trajectories are provided, frames are read
     and discretized using mdtraj [1]_. Alternatively, a discrete
@@ -102,7 +48,7 @@ class Trajectory(object):
             The trajectory filenames to be read.
         stride : int
             Only read every stride-th frame
-
+            
         """
         if dtraj is not None:
             # A discrete trajectory is provided
@@ -276,7 +222,7 @@ class Featurizer(object):
             phi, psi = traj_lib.compute_rama(tr, shift=shift)
             tr.features = np.column_stack((phi, psi))
 
-    def add_contacts(self, scheme='ca', log=False):
+    def add_contacts(self, scheme='closest-heavy', log=False):
         """ Adds contacts as features
 
         Parameters

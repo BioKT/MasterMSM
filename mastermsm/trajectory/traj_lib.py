@@ -55,7 +55,7 @@ def compute_rama(traj, shift=True):
     else:
         return phi, psi
 
-def compute_contacts(traj, scheme, log=False):
+def compute_contacts(traj, scheme=None, log=False):
     """ Computes inter-residue contacts
 
     Parameters
@@ -487,9 +487,7 @@ def _filter_states(states):
 def _shift(phi, psi):
     phi_s, psi_s = copy.deepcopy(phi), copy.deepcopy(psi)
     for i in range(len(phi_s)):
-        if phi_s[i] < 0:
-            phi_s[i] += 2*np.pi
+        phi_s[i] = [x+2*np.pi if x<0 else x for x in phi_s[i]]
     for i in range(len(psi_s)):
-        if psi_s[i] < -2:
-            psi_s[i] += 2*np.pi
+        psi_s[i] = [x+2*np.pi if (x<-2) else x for x in psi_s[i]]
     return phi_s, psi_s
