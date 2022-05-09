@@ -9,7 +9,7 @@ from ..trajectory import traj_lib
 from sklearn.preprocessing import StandardScaler
 
 class TimeSeries(object):
-    """ A class to read and discretize simulation trajectories.
+    """ A class for handling simulation trajectories.
     When simulation trajectories are provided, frames are read
     and discretized using mdtraj [1]_. Alternatively, a discrete
     trajectory can be provided.
@@ -119,87 +119,6 @@ class TimeSeries(object):
         """
         delattr(self, "mdt")
 
-#    def joint_discretize(self, method='backbone_torsions', mcs=None, ms=None, dPCA=False):
-#        """
-#        Discretize simultaneously all trajectories with HDBSCAN.
-#
-#        Parameters
-#        ----------
-#        method : str
-#            The method of choice for the discretization. Options are 'backbone_torsions'
-#            and 'contacts'.
-#        mcs : int
-#            Minimum cluster size for HDBSCAN clustering.
-#        ms : int
-#            Minsamples parameter for HDBSCAN clustering.
-#        dPCA : bool
-#            Whether we are using the dihedral PCA method.
-#
-#        """
-#        if method=='backbone_torsions':
-#            labels = self.joint_discretize_backbone_torsions(mcs=mcs, ms=ms, dPCA=dPCA)
-#        elif method=='contacts':
-#            labels = self.joint_discretize_contacts(mcs=mcs, ms=ms)
-#
-#        i = 0
-#        for tr in self.traj_list:
-#            ltraj = tr.mdt.n_frames
-#            tr.dtraj = list(labels[i:i+ltraj])
-#            i +=ltraj
-#
-#    def joint_discretize_backbone_torsions(self, mcs=None, ms=None, dPCA=False):
-#        """
-#        Analyze jointly torsion angles from multiple trajectories.
-#
-#        Parameters
-#        ----------
-#        mcs : int
-#            Minimum cluster size for HDBSCAN clustering.
-#        ms : int
-#            Minsamples parameter for HDBSCAN clustering.
-#        dPCA : bool
-#            Whether we are using the dihedral PCA method.
-#
-#        """
-#        # First we build the fake trajectory combining data
-#        phi_cum = []
-#        psi_cum = []
-#        for tr in self.traj_list:
-#            phi = md.compute_phi(tr.mdt)
-#            psi = md.compute_psi(tr.mdt)    
-#            phi_cum.append(phi[1])
-#            psi_cum.append(psi[1])
-#        phi_cum = np.vstack(phi_cum)
-#        psi_cum = np.vstack(psi_cum)
-#
-#        # Then we generate the consistent set of clusters
-#        if dPCA is True:
-#            angles = np.column_stack((phi_cum, psi_cum))
-#            v = traj_lib.dPCA(angles)
-#            labels = traj_lib.discrete_backbone_torsion(mcs, ms, pcs=v, dPCA=True)
-#        else:
-#            phi_fake = [phi[0], phi_cum]
-#            psi_fake = [psi[0], psi_cum]
-#            labels = traj_lib.discrete_backbone_torsion(mcs, ms, phi=phi_fake, psi=psi_fake)
-#        return labels
-#
-#    def joint_discretize_contacts(self, mcs=None, ms=None):
-#        """
-#        Analyze jointly pairwise contacts from all trajectories.
-#        
-#        Produces a fake trajectory comprising a concatenated set
-#        to recover the labels from HDBSCAN.
-#
-#        """
-#        mdt_cum = []
-#        for tr in self.traj_list:
-#            mdt_cum.append(tr.mdt) #mdt_cum = np.vstack(mdt_cum)
-#
-#        labels = traj_lib.discrete_contacts_hdbscan(mcs, ms, mdt_cum)
-#
-#        return labels
-
-
 class Featurizer(object):
     """
     A class for featurizing TimeSeries objects 
@@ -286,6 +205,26 @@ class Featurizer(object):
         X = [tr.features for tr in self.timeseries]
         return traj_lib.doPCA(X, n=n)
 
+class Discretizer(object):
+    """
+    Attributes
+
+ 
+    """
+    def __init__(self, timeseries=None):
+        """ 
+
+        Parameters
+        ----------
+        timeseries : list
+            List of objects of the TimeSeries class
+
+        """
+        if not isinstance(timeseries, list):
+            self.timeseries = [timeseries]
+        else:
+            self.timeseries = timeseries
+
 #    def discrete_rama(self, A=[-100, -40, -60, 0], \
 #            L=[-180, -40, 120., 180.], \
 #            E=[50., 100., -40., 70.]):
@@ -294,44 +233,16 @@ class Featurizer(object):
 #        """
 #        for t in self.mdtrajs:
 #            phi,psi = zip(mdtraj.compute_phi(traj), mdtraj.compute_psi(traj))
-#    def discretize(self, method="rama", states=None, nbins=20,\
-#            mcs=100, ms=50):
-#        """ Discretize the simulation data.
-#
-#        Parameters
-#        ----------
-#        method : str
-#            A method for doing the clustering. Options are
-#            "rama", "ramagrid", "rama_hdb", "contacts_hdb";
-#            where the latter two use HDBSCAN.
-#        states : list
-#            A list of states to be considered in the discretization.
-#            Only for method "rama".
-#        nbins : int
-#            Number of bins in the grid. Only for "ramagrid".
-#        mcs : int
-#            min_cluster_size for HDBSCAN
-#        ms : int
-#            min_samples for HDBSCAN
-#
-#        Returns
-#        -------
-#        discrete : list
-#            A list with the set of discrete states visited.
-#
-#        """
-#        if method == "rama":
-#            phi = md.compute_phi(self.mdt)
-#            psi = md.compute_psi(self.mdt)
-#            self.dtraj = traj_lib.discrete_rama(phi, psi, states=states)
-#        elif method == "ramagrid":
-#            phi = md.compute_phi(self.mdt)
-#            psi = md.compute_psi(self.mdt)
-#            self.dtraj = traj_lib.discrete_ramagrid(phi, psi, nbins)
-#        elif method == "rama_hdb":
-#            phi = md.compute_phi(self.mdt)
-#            psi = md.compute_psi(self.mdt)
-#            self.dtraj = traj_lib.discrete_backbone_torsion(mcs, ms, phi=phi, psi=psi)
-#        elif method == "contacts_hdb":
-#            self.dtraj = traj_lib.discrete_contacts_hdbscan(mcs, ms, self.mdt)
 
+    def buchete_hummer(self, states='AE'):
+        """ Discretize the simulation data.
+
+        Parameters
+        ----------
+        states : list
+           States to use in the assignment. Options are 'AE' and 'AEL'. 
+
+        """
+        for tr in self.timeseries:
+            phi, psi = traj_lib.compute_rama(tr, shift=False, sincos=False)
+            tr.dtraj = traj_lib.discrete_rama(phi, psi, states=list(states))

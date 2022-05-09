@@ -102,18 +102,19 @@ def discrete_rama(phi, psi, seq=None, bounds=None, states=['A', 'E', 'L']):
     -----
     Here we follow Buchete and Hummer for the assignment procedure [1]_ .
 
-    .. [1] N. V. Buchete and G. Hummer, "Coarse master equations for peptide folding dynamics", J. Phys. Chem. B. (2008).
+    .. [1] N. V. Buchete and G. Hummer, "Coarse master equations for peptide
+    folding dynamics", J. Phys. Chem. B. (2008).
 
     """
     if bounds is None:
         TBA_bounds = {}
         if 'A' in states:
-            TBA_bounds['A'] = [ -100., -40., -50., -10. ]
+            TBA_bounds['A'] = [ -130., -40., -50., 20. ]
         if 'E' in states:
-            TBA_bounds['E'] = [ -180., -40., 125.,165. ]
+            TBA_bounds['E'] = [ -180., -40., 125., 180. ]
         if 'L' in states:
-            TBA_bounds['L'] = [ 50., 100., -40.,70.0 ]
-
+            TBA_bounds['L'] = [ 30., 100., -40.,70.0 ]
+    print (bounds)
     res_idx = 0
     if len(phi[0]) != len(psi[0]):
         print (" Different number of phi and psi dihedrals")
@@ -123,11 +124,11 @@ def discrete_rama(phi, psi, seq=None, bounds=None, states=['A', 'E', 'L']):
     cstates = []
     prev_s_string = ""
     ndih = len(phi[0])
-    for f,y in zip(phi[1],psi[1]):
+    for f,y in zip(phi, psi):
         s_string = []
+
         for n in range(ndih):
             s, _ = _state(f[n]*180/math.pi, y[n]*180/math.pi, TBA_bounds)
-        #if s == "O" and len(prev_s_string) > 0:
             if s == "O":
                 try:
                     s_string += prev_s_string[n]
