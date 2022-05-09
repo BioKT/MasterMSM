@@ -33,7 +33,7 @@ class TimeSeries(object):
         of Molecular Dynamics Trajectories", Biophys. J. (2015).
 
     """
-    def __init__(self, top=None, traj=None, dt=None, \
+    def __init__(self, top=None, xtc=None, dt=None, \
             dtraj=None, stride=None):
         """
         Parameters
@@ -44,8 +44,8 @@ class TimeSeries(object):
             The time step.
         top : string
             The topology file, may be a PDB or GRO file.
-        traj : string
-            The trajectory filenames to be read.
+        xtc : string
+            The trajectory filename.
         stride : int
             Only read every stride-th frame
             
@@ -53,12 +53,14 @@ class TimeSeries(object):
         if dtraj is not None:
             # A discrete trajectory is provided
             self.dtraj, self.dt = self._read_dtraj(dtraj=dtraj, dt=dt)
-        else:
+        elif xtc is not None:
             # An MD trajectory is provided
-            self.file_name = traj
-            mdt = traj_lib.load_mdtraj(top=top, traj=traj, stride=stride)
+            self.file_name = xtc 
+            mdt = traj_lib.load_mdtraj(xtc=xtc, top=top, stride=stride)
             self.mdt = mdt
             self.dt = self.mdt.timestep
+        else:
+            pass
 
     def _read_dtraj(self, dtraj=None, dt=None):
         """ Loads discrete trajectories directly.
@@ -207,19 +209,24 @@ class Featurizer(object):
         
     """
     def __init__(self, timeseries=None):
-        self.timeseries = timeseries
+        if not isinstance(timeseries, list):
+            self.timeseries = [timeseries]
+        else:
+            self.timeseries = timeseries
 
-    def add_torsions(self, shift=True):
+    def add_torsions(self, shift=False, sincos=False):
         """ Adds torsions as features
 
         Parameters
         ----------
         shift : bool 
-            Whether we want to shift the torsions or not        
+            Whether we want to shift the torsions or not
+        sincos : bool
+            Whether we are calculating the sines and cosines 
 
         """
-        for tr in self.timeseries.trajs:
-            phi, psi = traj_lib.compute_rama(tr, shift=shift)
+        for tr in self.timeseries:
+            phi, psi = traj_lib.compute_rama(tr, shift=shift, sincos=sincos)
             tr.features = np.column_stack((phi, psi))
 
     def add_contacts(self, scheme='closest-heavy', log=False):
@@ -234,7 +241,7 @@ class Featurizer(object):
             Whether distances are added in log scale.
 
         """
-        for tr in self.timeseries.trajs:
+        for tr in self.timeseries:
             tr.features = traj_lib.compute_contacts(tr.mdt, scheme=scheme, \
                     log=log)
 
@@ -246,10 +253,10 @@ class Featurizer(object):
         """
         # first we fit the standard scaler using all the data
         scaler = StandardScaler()
-        X = np.vstack([tr.features for tr in self.timeseries.trajs])
+        X = np.vstack([tr.features for tr in self.timeseries])
         scaler.fit(X)
         # then we replace the feature vectors by their whitened versions
-        for tr in self.timeseries.trajs:
+        for tr in self.timeseries:
             X = scaler.transform(tr.features)
             tr.features = X
 
@@ -264,10 +271,20 @@ class Featurizer(object):
             we want to include in the analysis
 
         """
-        self.features = feature_vector
+        self.tr.features = feature_vector
 
+    def doPCA(self, n=2):
+        """ 
+        Runs PCA on feature space
 
-#    def pca(self):
+        Parameters
+        ----------
+        n : int
+            Number of PCs
+
+        """
+        X = [tr.features for tr in self.timeseries]
+        return traj_lib.doPCA(X, n=n)
 
 #    def discrete_rama(self, A=[-100, -40, -60, 0], \
 #            L=[-180, -40, 120., 180.], \

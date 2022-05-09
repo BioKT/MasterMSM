@@ -12,15 +12,15 @@ from sklearn.decomposition import PCA
 import mdtraj as md
 import matplotlib.pyplot as plt
 
-def load_mdtraj(top=None, traj=None, stride=None):
+def load_mdtraj(top=None, xtc=None, stride=None):
     """ Loads trajectories using mdtraj.
 
     Parameters
     ----------
     top: str
         The topology file, may be a PDB or GRO file.
-    traj : str
-        A list with the trajectory filenames to be read.
+    xtc : str
+        The trajectory filename.
 
     Returns
     -------
@@ -28,9 +28,9 @@ def load_mdtraj(top=None, traj=None, stride=None):
         A list of mdtraj Trajectory objects.
 
     """
-    return md.load(traj, top=top, stride=stride)
+    return md.load(xtc, top=top, stride=stride)
 
-def compute_rama(traj, shift=True):
+def compute_rama(traj, shift=False, sincos=False):
     """ Computes Ramachandran angles 
 
     Parameters
@@ -39,6 +39,8 @@ def compute_rama(traj, shift=True):
         An MDtraj trajectory object
     shift : bool
         Whether we want to shift the torsions or not
+    sincos : bool
+        Whether we are calculating the sines and cosines 
 
     Returns
     -------
@@ -52,6 +54,9 @@ def compute_rama(traj, shift=True):
     _, psi = md.compute_psi(traj.mdt)
     if shift:
         return _shift(phi, psi)
+    elif sincos:
+        return np.column_stack([np.sin(phi), np.cos(phi)]), \
+                np.column_stack([np.sin(psi), np.cos(psi)])
     else:
         return phi, psi
 
@@ -362,71 +367,65 @@ def discrete_backbone_torsion(mcs, ms, phi=None, psi=None, \
 
     return hdb.labels_
 
-def dPCA(angles):
-    """
-    Compute PCA of dihedral angles
+#def dPCA(angles):
+#    """
+#    Compute PCA of dihedral angles
+#
+#    We follow the methods described in A. Altis et al. 
+#    *J. Chem. Phys.*  244111 (2007)
+#
+#    Parameters
+#    ----------
+#    angles : angles ordered by columns
+#    
+#    Returns
+#    -------
+#    X_transf : dPCA components to retrieve 80%
+#        of variance ordered by columns
+#    
+#    """
+#    shape = np.shape(angles)
+#    #print (shape)
+#    X = np.zeros((shape[0] , \
+#                  shape[1]+shape[1]))
+#    for i, ang in enumerate(angles):
+#        p = 0
+#        for phi in ang:
+#            X[i][p], X[i][p+1] = np.cos(phi), np.sin(phi)
+#            p += 2
+#    X_std = StandardScaler().fit_transform(X)
+#    sklearn_pca = PCA(n_components=2*shape[1])
+#    
+#    X_transf = sklearn_pca.fit_transform(X_std)
+#    expl = sklearn_pca.explained_variance_ratio_
+#    print("Ratio of variance retrieved by each component:", expl)
+#
+#    cum_var = 0.0
+#    i = 0
+#    while cum_var < 0.8:
+#        cum_var += expl[i]
+#        i += 1
+#
+#   return X_transf[:,:i]
 
-    We follow the methods described in A. Altis et al. 
-    *J. Chem. Phys.*  244111 (2007)
+def doPCA(X, n=2):
+    """ Runs PCA on feature space
 
     Parameters
     ----------
-    angles : angles ordered by columns
-    
-    Returns
-    -------
-    X_transf : dPCA components to retrieve 80%
-        of variance ordered by columns
-    
+    X : np.array
+        Feature vector
+    n : int
+        Number of PCs
+
     """
-    shape = np.shape(angles)
-    #print (shape)
-    X = np.zeros((shape[0] , \
-                  shape[1]+shape[1]))
-    for i, ang in enumerate(angles):
-        p = 0
-        for phi in ang:
-            X[i][p], X[i][p+1] = np.cos(phi), np.sin(phi)
-            p += 2
-    X_std = StandardScaler().fit_transform(X)
-    sklearn_pca = PCA(n_components=2*shape[1])
-    
-    X_transf = sklearn_pca.fit_transform(X_std)
-    expl = sklearn_pca.explained_variance_ratio_
-    print("Ratio of variance retrieved by each component:", expl)
-
-    cum_var = 0.0
-    i = 0
-    while cum_var < 0.8:
-        cum_var += expl[i]
-        i += 1
-
-    ## Save cos and sin of dihedral angles along the trajectory
-    #h5file = "data/out/%g_traj_angles.h5"%t
-    #with h5py.File(h5file, "w") as hf:
-    #    hf.create_dataset("angles_trajectory", data=X)
-    ## Plot cumulative variance retrieved by new components (i.e. those from PCA)
-    #plt.figure()  #plt.plot(np.cumsum(sklearn_pca.explained_variance_ratio_))
-    #plt.xlabel('number of components')  #plt.ylabel('cumulative explained variance')
-    #plt.savefig('cum_variance_%g.png'%t)
-
-    #counts, ybins, xbins, image = plt.hist2d(X_transf[:,0], X_transf[:,1], \
-    #    bins=len(X_transf[:,0]), cmap='binary_r', alpha=0.2)#bins=[np.linspace(-np.pi,np.pi,20), np.linspace(-np.pi,np.pi,30)]
-    ##countmax = np.amax(counts)
-    ##counts = np.log(countmax) - np.log(counts)
-    ##print(counts, countmax)
-    #plt.contour(np.transpose(counts), extent=[xbins.min(), xbins.max(), ybins.min(), ybins.max()], \
-    #              linewidths=1, colors='gray')
-    #plt.scatter(X_transf[:,0],X_transf[:,1])# c=counts)
-    #fig, ax = plt.subplots(1,1, figsize=(8,8), sharex=True, sharey=True)
-    #ax.contour(np.transpose(counts), extent=[xbins.min(), xbins.max(), ybins.min(), ybins.max()], \
-    #              linewidths=1, colors='gray')
-    #ax.plot(X_transf[:,0],X_transf[:,1], 'o', ms=0.2, color='C%g'%t)
-    #plt.tight_layout()
-    #plt.savefig('dpca_%g.png'%t)
-
-    return X_transf[:,:i]
-
+    sklearn_pca = PCA(n_components=n)
+    Xcum = np.vstack(X) 
+    sklearn_pca.fit(Xcum)
+    Xt = [sklearn_pca.transform(x) for x in X]
+    expl_var = sklearn_pca.explained_variance_ratio_
+    return Xt, expl_var
+ 
 def discrete_contacts_hdbscan(mcs, ms, mdt_all):
     """
     HDBSCAN discretization based on contacts
