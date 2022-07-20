@@ -487,7 +487,7 @@ def _filter_states(states):
 def _shift(phi, psi):
     phi_s, psi_s = copy.deepcopy(phi), copy.deepcopy(psi)
     for i in range(len(phi_s)):
-        phi_s[i] = [x+2*np.pi if x<0 else x for x in phi_s[i]]
+        phi_s[i] = [x + 2*np.pi if x < 0 else x for x in phi_s[i]]
     for i in range(len(psi_s)):
-        psi_s[i] = [x+2*np.pi if (x<-2) else x for x in psi_s[i]]
+        psi_s[i] = [x + 2*np.pi if (x <-2) else x for x in psi_s[i]]
     return phi_s, psi_s
