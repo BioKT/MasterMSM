@@ -132,7 +132,7 @@ class Featurizer(object):
             self.timeseries = [timeseries]
         else:
             self.timeseries = timeseries
-        self.featurizer.n_trajs = len(self.timeseries)
+        self.n_trajs = len(self.timeseries)
 
     def add_torsions(self, shift=False, sincos=False):
         """ Adds torsions as features
