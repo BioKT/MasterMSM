@@ -267,21 +267,15 @@ class TestFeaturizer_ala5(unittest.TestCase):
         self.assertEqual(feat.n_trajs, 1)
         feat = traj.Featurizer(self.ts2)
         self.assertEqual(feat.n_trajs, 2)
-#
-#    def test_torsions(self):
-#        feat = traj.Featurizer(self.ts)
-#        feat.add_torsions(shift=False)
-#        self.assertEqual(np.shape(datasets.trajs[0].features),\
-#                (10003, 2))
-#        disc.add_torsions(shift=True)
-#        self.assertTrue(np.all(datasets.trajs[0].features[:,1] > -2))
-#        self.assertTrue(np.all(datasets.trajs[0].features[:,0] > -2))
-#
-#    def test_contacts(self):
-#        feat = traj.Featurizer(self.ts)
-#        feat.add_contacts()
-#        self.assertEqual(np.shape(datasets.trajs[0].features),\
-#                (10003, 2))
-#        disc.add_torsions(shift=True)
-#        self.assertTrue(np.all(datasets.trajs[0].features[:,1] > -2))
-#        self.assertTrue(np.all(datasets.trajs[0].features[:,0] > -2))
+
+    def test_torsions(self):
+        feat = traj.Featurizer(self.ts)
+        feat.add_torsions(shift=False)
+        self.assertEqual(np.shape(self.ts.features),\
+                (50001, 10))
+
+    def test_contacts(self):
+        feat = traj.Featurizer(self.ts)
+        feat.add_contacts()
+        self.assertEqual(np.shape(self.ts.features),\
+                (50001, 3))
