@@ -132,6 +132,7 @@ class Featurizer(object):
             self.timeseries = [timeseries]
         else:
             self.timeseries = timeseries
+        self.featurizer.n_trajs = len(self.timeseries)
 
     def add_torsions(self, shift=False, sincos=False):
         """ Adds torsions as features
@@ -146,7 +147,11 @@ class Featurizer(object):
         """
         for tr in self.timeseries:
             phi, psi = traj_lib.compute_rama(tr, shift=shift, sincos=sincos)
-            tr.features = np.column_stack((phi, psi))
+            if hasattr(tr, 'features'):
+                tr.features = np.hstack([tr.features, \
+                        np.column_stack((phi, psi))])
+            else:
+                tr.features = np.column_stack((phi, psi))
 
     def add_contacts(self, scheme='closest-heavy', log=False):
         """ Adds contacts as features
@@ -161,8 +166,13 @@ class Featurizer(object):
 
         """
         for tr in self.timeseries:
-            tr.features = traj_lib.compute_contacts(tr.mdt, scheme=scheme, \
-                    log=log)
+            if hasattr(tr, 'features'):
+                tr.features = np.hstack([tr.features, \
+                        traj_lib.compute_contacts(tr.mdt, \
+                        scheme=scheme, log=log)])
+            else:
+                tr.features = traj_lib.compute_contacts(tr.mdt, \
+                        scheme=scheme, log=log)
 
     def whiten(self):
         """
