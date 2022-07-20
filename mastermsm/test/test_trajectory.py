@@ -3,6 +3,7 @@ import mdtraj as md
 import numpy as np
 from mastermsm.trajectory import traj_lib, traj
 from test.download_data import download_osf_alaTB
+from test.download_data import download_osf_ala5
 import os
 
 class TestTimeSeries(unittest.TestCase):
@@ -11,8 +12,9 @@ class TestTimeSeries(unittest.TestCase):
 
         top = 'test/data/alaTB.gro'
         xtc = 'test/data/alaTB.xtc'
-        self.traj = traj.TimeSeries(xtc=xtc, top=top)
-        self.trajs = [traj.TimeSeries(xtc=xtc, top=top) \
+
+        self.ts = traj.TimeSeries(xtc=xtc, top=top)
+        self.tss = [traj.TimeSeries(xtc=xtc, top=top) \
                 for i in range(2)]
 
         self.dis = traj.TimeSeries(dtraj=[0,1,1,0])
@@ -110,8 +112,7 @@ class TestMDtraj(unittest.TestCase):
         self.xtc = 'test/data/alaTB.xtc'
         self.mdtraj = traj_lib.load_mdtraj(xtc=self.xtc, top=self.gro)
         self.mdtrajs = [traj_lib.load_mdtraj(xtc=self.xtc, \
-                top=self.gro) \
-                for i in range(2)]
+                top=self.gro) for i in range(2)]
 
     def test_traj(self):
         self.assertIsNotNone(self.mdtraj)
@@ -209,7 +210,6 @@ class TestMDtraj(unittest.TestCase):
 #        self.tr.gc()
 #        self.assertIs(hasattr(self.tr, 'mdt'), False)
 
-
 class UseMDtraj(unittest.TestCase):
     def setUp(self):
         download_osf_alaTB()
@@ -225,10 +225,8 @@ class UseMDtraj(unittest.TestCase):
         self.assertEqual(tr.mdt.n_atoms, 19)
         self.assertEqual(tr.mdt.n_frames, 40001)
         self.assertEqual(tr.mdt.n_residues, 3)
-#        self.assertIsNotNone(self.tr.discretize)
-#        self.assertIs(callable(self.tr.discretize), True)
 
-class TestFeaturizer(object):
+class TestFeaturizer_alaTB(unittest.TestCase):
     def setUp(self):
         download_osf_alaTB()
         top = 'test/data/alaTB.gro'
@@ -243,11 +241,44 @@ class TestFeaturizer(object):
         feat = traj.Featurizer(self.ts2)
         self.assertEqual(feat.n_trajs, 2)
 
-    def test_torsions(self):
+#    def test_torsions(self):
+#        feat = traj.Featurizer(self.ts)
+#        feat.add_torsions(shift=False)
+#        self.assertEqual(np.shape(datasets.trajs[0].features),\
+#                (10003, 2))
+#        disc.add_torsions(shift=True)
+#        self.assertTrue(np.all(datasets.trajs[0].features[:,1] > -2))
+#        self.assertTrue(np.all(datasets.trajs[0].features[:,0] > -2))
+
+class TestFeaturizer_ala5(unittest.TestCase):
+    def setUp(self):
+        download_osf_ala5()
+        top = 'test/data/ala5.gro'
+        xtc = 'test/data/ala5.xtc'
+        self.ts = traj.TimeSeries(xtc=xtc, top=top)
+        self.ts2 = [traj.TimeSeries(xtc=xtc, top=top) \
+                for i in range(2)]
+
+    def test_create_featurizer(self):
         feat = traj.Featurizer(self.ts)
-        feat.add_torsions(shift=False)
-        self.assertEqual(np.shape(datasets.trajs[0].features),\
-                (10003, 2))
-        disc.add_torsions(shift=True)
-        self.assertTrue(np.all(datasets.trajs[0].features[:,1] > -2))
-        self.assertTrue(np.all(datasets.trajs[0].features[:,0] > -2))
+        self.assertEqual(feat.n_trajs, 1)
+        feat = traj.Featurizer(self.ts2)
+        self.assertEqual(feat.n_trajs, 2)
+#
+#    def test_torsions(self):
+#        feat = traj.Featurizer(self.ts)
+#        feat.add_torsions(shift=False)
+#        self.assertEqual(np.shape(datasets.trajs[0].features),\
+#                (10003, 2))
+#        disc.add_torsions(shift=True)
+#        self.assertTrue(np.all(datasets.trajs[0].features[:,1] > -2))
+#        self.assertTrue(np.all(datasets.trajs[0].features[:,0] > -2))
+#
+#    def test_contacts(self):
+#        feat = traj.Featurizer(self.ts)
+#        feat.add_contacts()
+#        self.assertEqual(np.shape(datasets.trajs[0].features),\
+#                (10003, 2))
+#        disc.add_torsions(shift=True)
+#        self.assertTrue(np.all(datasets.trajs[0].features[:,1] > -2))
+#        self.assertTrue(np.all(datasets.trajs[0].features[:,0] > -2))
