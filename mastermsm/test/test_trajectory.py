@@ -241,14 +241,17 @@ class TestFeaturizer_alaTB(unittest.TestCase):
         feat = traj.Featurizer(self.ts2)
         self.assertEqual(feat.n_trajs, 2)
 
-#    def test_torsions(self):
-#        feat = traj.Featurizer(self.ts)
-#        feat.add_torsions(shift=False)
-#        self.assertEqual(np.shape(datasets.trajs[0].features),\
-#                (10003, 2))
-#        disc.add_torsions(shift=True)
-#        self.assertTrue(np.all(datasets.trajs[0].features[:,1] > -2))
-#        self.assertTrue(np.all(datasets.trajs[0].features[:,0] > -2))
+    def test_torsions(self):
+        feat = traj.Featurizer(self.ts)
+        feat.add_torsions(shift=False)
+        self.assertEqual(np.shape(self.ts.features),\
+                (40001, 2))
+
+    def test_torsions_shift(self):
+        feat = traj.Featurizer(self.ts)
+        feat.add_torsions(shift=True)
+        self.assertTrue(np.all(self.ts.features[:,1] > -2))
+        self.assertTrue(np.all(self.ts.features[:,0] > -2))
 
 class TestFeaturizer_ala5(unittest.TestCase):
     def setUp(self):
