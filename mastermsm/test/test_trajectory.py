@@ -247,6 +247,12 @@ class TestFeaturizer_alaTB(unittest.TestCase):
         self.assertEqual(np.shape(self.ts.features),\
                 (40001, 2))
 
+    def test_torsions_sincos(self):
+        feat = traj.Featurizer(self.ts)
+        feat.add_torsions(shift=False, sincos=True)
+        self.assertEqual(np.shape(self.ts.features),\
+                (40001, 4))
+
     def test_torsions_shift(self):
         feat = traj.Featurizer(self.ts)
         feat.add_torsions(shift=True)
@@ -274,8 +280,29 @@ class TestFeaturizer_ala5(unittest.TestCase):
         self.assertEqual(np.shape(self.ts.features),\
                 (50001, 10))
 
+    def test_torsions_sincos(self):
+        feat = traj.Featurizer(self.ts)
+        feat.add_torsions(shift=False, sincos=True)
+        self.assertEqual(np.shape(self.ts.features),\
+                (50001, 20))
+
     def test_contacts(self):
         feat = traj.Featurizer(self.ts)
         feat.add_contacts()
         self.assertEqual(np.shape(self.ts.features),\
                 (50001, 3))
+
+class TestDimRed_alaTB(unittest.TestCase):
+    def setUp(self):
+        download_osf_alaTB()
+        top = 'test/data/alaTB.gro'
+        xtc = 'test/data/alaTB.xtc'
+        self.ts = traj.TimeSeries(xtc=xtc, top=top)
+        feat = traj.Featurizer(self.ts)
+        feat.add_torsions(shift=False)
+
+    def test_whiten(self):
+        dr = traj.DimRed(self.ts)
+        dr.whiten()
+        self.assertLess(np.abs(np.mean(self.ts.features[:,0])), 1e-6)
+        self.assertLess(np.abs(np.mean(self.ts.features[:,1])), 1e-6)
