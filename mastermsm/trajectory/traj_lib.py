@@ -8,7 +8,6 @@ import sys
 import math
 import hdbscan
 import numpy as np
-from sklearn.decomposition import PCA
 import mdtraj as md
 import matplotlib.pyplot as plt
 
@@ -409,25 +408,6 @@ def discrete_backbone_torsion(mcs, ms, phi=None, psi=None, \
 #
 #   return X_transf[:,:i]
 
-def doPCA(X, n=2):
-    """ Runs PCA on feature space
-
-    Parameters
-    ----------
-    X : np.array
-        Feature vector
-    n : int
-        Number of PCs
-
-    """
-    print (np.shape(X))
-    sklearn_pca = PCA(n_components=n)
-    Xcum = np.vstack(X) 
-    sklearn_pca.fit(Xcum)
-    Xt = [sklearn_pca.transform(x) for x in X]
-    expl_var = sklearn_pca.explained_variance_ratio_
-    return Xt, expl_var
- 
 def discrete_contacts_hdbscan(mcs, ms, mdt_all):
     """
     HDBSCAN discretization based on contacts

@@ -6,7 +6,9 @@ import os
 import numpy as np
 import mdtraj as md
 from ..trajectory import traj_lib
+from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
+from sklearn.cluster import KMeans
 
 class TimeSeries(object):
     """ A class for handling simulation trajectories.
@@ -214,7 +216,14 @@ class DimRed(object):
 
         """
         X = [tr.features for tr in self.timeseries]
-        Xt, expl_var = traj_lib.doPCA(X, n=n)
+        Xcum = np.vstack(X) 
+
+        sklearn_pca = PCA(n_components=n)
+        sklearn_pca.fit(Xcum)
+
+        Xt = [sklearn_pca.transform(x) for x in X]
+        expl_var = sklearn_pca.explained_variance_ratio_
+
         print (" Run PCA on %i components"%n)
         print ("     Explained variance: \n", expl_var)
         for i, tr in enumerate(self.timeseries):
@@ -222,8 +231,8 @@ class DimRed(object):
 
 class Discretizer(object):
     """
-    Attributes
-
+    A class for discretizing molecular trajectories.
+    Includes methods for assignment and clustering.
  
     """
     def __init__(self, timeseries=None):
@@ -239,6 +248,25 @@ class Discretizer(object):
             self.timeseries = [timeseries]
         else:
             self.timeseries = timeseries
+
+    def kmeans(self, k=50, dim=2):
+        """
+        Run kmeans on the feature space
+
+        Parameters
+        ----------
+        k: int
+            Number of k-centers
+
+        dim: int
+            Number of dimensions from feature space to do the clustering.
+
+        """
+        X = np.vstack([tr.features[:,:dim] for tr in self.timeseries])
+        kmeans = KMeans(n_clusters=k).fit(X)
+        self.k_centers = kmeans.cluster_centers_
+        for tr in self.timeseries:
+            tr.dtraj = kmeans.predict(tr.features[:,:dim])
 
 #    def discrete_rama(self, A=[-100, -40, -60, 0], \
 #            L=[-180, -40, 120., 180.], \
