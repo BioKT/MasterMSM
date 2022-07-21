@@ -446,8 +446,8 @@ def discrete_contacts_hdbscan(mcs, ms, mdt_all):
     if (len(np.unique(hdb.labels_))<=2):
         raise Exception("Cannot generate clusters from contacts")
 
-    dtraj = _filter_states(hdb.labels_)
-    return dtraj
+    distraj = _filter_states(hdb.labels_)
+    return distraj
 
 def _filter_states(states):
     """

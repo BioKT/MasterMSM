@@ -22,7 +22,7 @@ class TimeSeries(object):
         An mdtraj Trajectory object.
     file_name : str
         The name of the trajectory file.
-    dtraj : list
+    distraj : list
         The assigned trajectory.
     dt : float
         The time step
@@ -36,11 +36,11 @@ class TimeSeries(object):
 
     """
     def __init__(self, top=None, xtc=None, dt=None, \
-            dtraj=None, stride=None):
+            distraj=None, stride=None):
         """
         Parameters
         ----------
-        dtraj : string
+        distraj : string
             The discrete state trajectory file.
         dt : float
             The time step.
@@ -52,9 +52,9 @@ class TimeSeries(object):
             Only read every stride-th frame
             
         """
-        if dtraj is not None:
+        if distraj is not None:
             # A discrete trajectory is provided
-            self.dtraj, self.dt = self._read_dtraj(dtraj=dtraj, dt=dt)
+            self.distraj, self.dt = self._read_dtraj(distraj=distraj, dt=dt)
         elif xtc is not None:
             # An MD trajectory is provided
             self.file_name = xtc 
@@ -64,12 +64,12 @@ class TimeSeries(object):
         else:
             pass
 
-    def _read_dtraj(self, dtraj=None, dt=None):
+    def _read_distraj(self, distraj=None, dt=None):
         """ Loads discrete trajectories directly.
 
         Parameters
         ----------
-        dtraj : str, list
+        distraj : str, list
             File or list with discrete trajectory.
         
         Returns
@@ -78,14 +78,14 @@ class TimeSeries(object):
            A list of mdtraj Trajectory objects.
 
        """
-        if isinstance(dtraj, list):
-            cstates = dtraj
+        if isinstance(distraj, list):
+            cstates = distraj
             if dt is None:
                 dt = 1.
             return cstates, dt
 
-        elif os.path.isfile(dtraj):
-            raw = open(dtraj, "r").readlines()
+        elif os.path.isfile(distraj):
+            raw = open(distraj, "r").readlines()
             try:
                 cstates = [x.split()[1] for x in raw]
                 dt =  float(raw[2].split()[0]) - float(raw[1].split()[0])
@@ -109,7 +109,7 @@ class TimeSeries(object):
 
         """
         keys = []
-        for s in self.dtraj:
+        for s in self.distraj:
             if s not in keys and s not in exclude:
                 keys.append(s)
         self.keys = keys
@@ -266,7 +266,7 @@ class Discretizer(object):
         kmeans = KMeans(n_clusters=k).fit(X)
         self.k_centers = kmeans.cluster_centers_
         for tr in self.timeseries:
-            tr.dtraj = kmeans.predict(tr.features[:,:dim])
+            tr.distraj = kmeans.predict(tr.features[:,:dim])
 
 #    def discrete_rama(self, A=[-100, -40, -60, 0], \
 #            L=[-180, -40, 120., 180.], \
@@ -288,4 +288,4 @@ class Discretizer(object):
         """
         for tr in self.timeseries:
             phi, psi = traj_lib.compute_rama(tr, shift=False, sincos=False)
-            tr.dtraj = traj_lib.discrete_rama(phi, psi, states=list(states))
+            tr.distraj = traj_lib.discrete_rama(phi, psi, states=list(states))
