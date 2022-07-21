@@ -420,6 +420,7 @@ def doPCA(X, n=2):
         Number of PCs
 
     """
+    print (np.shape(X))
     sklearn_pca = PCA(n_components=n)
     Xcum = np.vstack(X) 
     sklearn_pca.fit(Xcum)
