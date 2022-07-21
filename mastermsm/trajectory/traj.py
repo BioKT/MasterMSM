@@ -174,6 +174,20 @@ class Featurizer(object):
                 tr.features = traj_lib.compute_contacts(tr.mdt, \
                         scheme=scheme, log=log)
 
+class DimRed(object):
+    """
+    A class for performing dimensionality reduction of a 
+    set of features vectors.
+
+
+    """
+    def __init__(self, timeseries=None):
+        if not isinstance(timeseries, list):
+            self.timeseries = [timeseries]
+        else:
+            self.timeseries = timeseries
+        self.n_trajs = len(self.timeseries)
+
     def whiten(self):
         """
         Preprocesses the feature vectors to be used in discretization.
@@ -189,19 +203,6 @@ class Featurizer(object):
             X = scaler.transform(tr.features)
             tr.features = X
 
-    def add_feature(self, feature_vector):
-        """
-        Manually adds features to Trajectory object
-
-        Parameters
-        ----------
-        feature_vector : array
-            n-dimensional array with features for the different snapshots
-            we want to include in the analysis
-
-        """
-        self.tr.features = feature_vector
-
     def doPCA(self, n=2):
         """ 
         Runs PCA on feature space
@@ -213,7 +214,11 @@ class Featurizer(object):
 
         """
         X = [tr.features for tr in self.timeseries]
-        return traj_lib.doPCA(X, n=n)
+        Xt, expl_var = traj_lib.doPCA(X, n=n)
+        print (" Run PCA on %i components"%n)
+        print ("     Explained variance: \n", expl_var)
+        for i, tr in enumerate(self.timeseries):
+            tr.features = Xt[i]
 
 class Discretizer(object):
     """
