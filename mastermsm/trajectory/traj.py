@@ -6,9 +6,6 @@ import os
 import numpy as np
 import mdtraj as md
 from ..trajectory import traj_lib
-from sklearn.decomposition import PCA
-from sklearn.preprocessing import StandardScaler
-from sklearn.cluster import KMeans
 
 class TimeSeries(object):
     """ A class for handling simulation trajectories.
@@ -196,6 +193,7 @@ class DimRed(object):
         removing the mean and scaling to unit variance.
 
         """
+        from sklearn.preprocessing import StandardScaler
         # first we fit the standard scaler using all the data
         scaler = StandardScaler()
         X = np.vstack([tr.features for tr in self.timeseries])
@@ -215,6 +213,7 @@ class DimRed(object):
             Number of PCs
 
         """
+        from sklearn.decomposition import PCA
         X = [tr.features for tr in self.timeseries]
         Xcum = np.vstack(X) 
 
@@ -257,35 +256,46 @@ class Discretizer(object):
         ----------
         k: int
             Number of k-centers
-
         dim: int
             Number of dimensions from feature space to do the clustering.
 
         """
+        from sklearn.cluster import KMeans
         X = np.vstack([tr.features[:,:dim] for tr in self.timeseries])
         kmeans = KMeans(n_clusters=k).fit(X)
         self.k_centers = kmeans.cluster_centers_
         for tr in self.timeseries:
             tr.distraj = kmeans.predict(tr.features[:,:dim])
 
-#    def discrete_rama(self, A=[-100, -40, -60, 0], \
-#            L=[-180, -40, 120., 180.], \
-#            E=[50., 100., -40., 70.]):
-#        """ Discretize based on Ramachandran angles.
-#
-#        """
-#        for t in self.mdtrajs:
-#            phi,psi = zip(mdtraj.compute_phi(traj), mdtraj.compute_psi(traj))
+    def hdbscan(self, mcs=None, ms=None, dim=2):
+        """
+        Run HDBSCAN on the feature space. This generates core
+        sets automatically. 
 
-    def buchete_hummer(self, states='AE'):
-        """ Discretize the simulation data.
+        Requires: https://github.com/scikit-learn-contrib/hdbscan
+
+        See documentation on how to set parameters: 
+        https://hdbscan.readthedocs.io/en/latest/parameter_selection.html
 
         Parameters
         ----------
-        states : list
-           States to use in the assignment. Options are 'AE' and 'AEL'. 
+        mcs : int
+            min_cluster_size
+        ms : int
+            min_samples
+        dim : int
+            Number of dimensions from feature space to do the clustering.
 
         """
+        import hdbscan
+        X = np.vstack([tr.features[:,:dim] for tr in self.timeseries])
+        if not ms:
+            ms = mcs
+        hdb = hdbscan.HDBSCAN(min_cluster_size=mcs, min_samples=ms,\
+                 prediction_data=True).fit(X)
+        self.hdb_clusters = [x for x in np.unique(hdb.labels_) if (x != -1)]
+        self.hdb_nclusters = len(self.hdb_clusters)
         for tr in self.timeseries:
-            phi, psi = traj_lib.compute_rama(tr, shift=False, sincos=False)
-            tr.distraj = traj_lib.discrete_rama(phi, psi, states=list(states))
+            labels, _ = hdbscan.approximate_predict(hdb, \
+                    tr.features[:,:dim])
+            tr.distraj = traj_lib._filter_states(labels)
