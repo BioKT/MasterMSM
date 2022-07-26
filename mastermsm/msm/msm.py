@@ -7,22 +7,19 @@ import math
 from functools import reduce, cmp_to_key
 import itertools
 import numpy as np
-import networkx as nx
 import scipy.linalg as spla
 import matplotlib.pyplot as plt
 import multiprocessing as mp
 from ..msm import msm_lib
 
-
 class SuperMSM(object):
-    """ A class for constructing the MSM
+    """ 
+    A class for constructing the MSM
 
     Attributes
     ----------
     data : list
         A list of instances of the TimeSeries class
-    keys : list of str
-        Names of states.
     msms : dict
         A dictionary containing MSMs for different lag times.
     sym : bool
@@ -30,70 +27,40 @@ class SuperMSM(object):
 
     """
 
-    def __init__(self, trajs, file_keys=None, keys=None, sym=False):
+    def __init__(self, trajs, sym=False):
         """
-
         Parameters
         ----------
         trajs : list
             A list of TimeSeries objects from the trajectory module
-        file_keys : str
-            A file from which the states are read. If not defined
-            keys are automatically generated from the time series.
         sym : bool
             Tells MSM whether to symmetrize count matrices or not.
 
         """
+        for tr in trajs:
+            tr.find_keys()
         self.data = trajs
-        if isinstance(keys, list):
-            print("Using the following keys", keys)
-            self.keys = keys
-        else:
-            try:
-                self.keys = list(map(lambda x: x.split()[0],
-                                     open(file_keys, "r").readlines()))
-            except TypeError:
-                self.keys = self._merge_trajs()
-        self.dt = self._max_dt()
+
+        # find common set of states for all trajectories
+        self.keys = msm_lib.merge_trajs(self.data)
+
+        self.dt = msm_lib.max_dt(self.data)
         self._out()
         self.sym = sym
         self.msms = {}
 
-    def _merge_trajs(self):
-        """ Merge all trajectories into a consistent set.
-
-        Returns
-        -------
-        new_keys : list
-            Combination of keys from all trajectories.
-
-        """
-        new_keys = []
-        for traj in self.data:
-            new_keys += filter(lambda x: x not in new_keys, traj.keys)
-        return new_keys
-
-    def _max_dt(self):
-        """ Find maximum dt in trajectories.
-
-        Returns
-        -------
-        float
-            The maximum value of the time-step within the trajectories.
-
-        """
-        return np.max([x.dt for x in self.data])
-
     def _out(self):
         """ Output description to user """
         try:
-            print("\n Building MSM from \n", [x.file_name for x in self.data])
+            print("\n Building MSM from \n", [x.file_name for x \
+                    in self.data])
         except AttributeError:
             pass
         print("     # states: %g" % (len(self.keys)))
 
     def do_msm(self, lagt, sliding=True):
-        """ Construct MSM for specific value of lag time.
+        """ 
+        Construct MSM for specific value of lag time.
 
         Parameters
         -----------
@@ -103,8 +70,27 @@ class SuperMSM(object):
             Whether a sliding window is used in counts.
 
         """
+        # estimate count matrix
         self.msms[lagt] = MSM(self.data, keys=self.keys, lagt=lagt, sym=self.sym)
-        self.msms[lagt].do_count(sliding=sliding)
+        count = self.msms[lagt].calc_count_multi(sliding=sliding)
+        if self.sym:
+            print(" symmetrizing")
+            count += count.transpose()
+        self.msms[lagt].count = count
+
+        # check connectivity
+        self.keep_states, self.keep_keys = msm_lib.check_connect(count, self.keys)
+
+        # estimate transition matrix
+        nkeep = len(self.keep_states)
+        keep_states = self.keep_states
+        count = self.msms[lagt].count
+        self.trans = msm_lib.calc_trans(nkeep, keep_states, count)
+        #if not evecs:
+        #    self.tauT, self.peqT = self.calc_eigsT()
+        #else:
+        #    self.tauT, self.peqT, self.rvecsT, self.lvecsT = \
+        #        self.calc_eigsT(evecs=True)
 
     def convergence_test(self, sliding=True, error=True, time=None):
         """ Carry out convergence test for relaxation times.
@@ -264,7 +250,8 @@ class SuperMSM(object):
         pool.join()
 
         # add up all independent counts
-        count = reduce(lambda x, y: np.matrix(x) + np.matrix(y), result)
+        #count = reduce(lambda x, y: np.matrix(x) + np.matrix(y), result)
+        count = np.sum(result, 0)
 
         # calculate length of visits
         mpinput = [[x.distraj, x.dt, self.keys] for x in self.data]
@@ -335,42 +322,6 @@ class MSM(object):
         self.lagt = lagt
         self.sym = sym
 
-    def do_count(self, sliding=True):
-        """ Calculates the count matrix.
-
-        Parameters
-        ----------
-        sliding : bool
-            Whether a sliding window is used in counts.
-
-        """
-        self.count = self.calc_count_multi(sliding=sliding)
-        if self.sym:
-            print(" symmetrizing")
-            self.count += self.count.transpose()
-        self.keep_states, self.keep_keys = self.check_connect()
-
-    def do_trans(self, evecs=False):
-        """ Wrapper for transition matrix calculation.
-
-        Also calculates its eigenvalues and right eigenvectors.
-
-        Parameters
-        ----------
-        evecs : bool
-            Whether we want the left eigenvectors of the transition matrix.
-
-        """
-        # print "\n    Calculating transition matrix ..."
-        nkeep = len(self.keep_states)
-        keep_states = self.keep_states
-        count = self.count
-        self.trans = msm_lib.calc_trans(nkeep, keep_states, count)
-        if not evecs:
-            self.tauT, self.peqT = self.calc_eigsT()
-        else:
-            self.tauT, self.peqT, self.rvecsT, self.lvecsT = \
-                self.calc_eigsT(evecs=True)
 
     def do_rate(self, method='Taylor', evecs=False, init=False, report=False):
         """ Calculates the rate matrix from the transition matrix.
@@ -466,7 +417,7 @@ class MSM(object):
         pool.join()
 
         # add up all independent counts
-        count = reduce(lambda x, y: np.matrix(x) + np.matrix(y), result)
+        count = np.sum(result, 0)
         return np.array(count)
 
     #    def calc_count_seq(self, sliding=True):
@@ -499,32 +450,6 @@ class MSM(object):
     #                    pass
     #        return count
     #
-    def check_connect(self):
-        """ Check connectivity of rate matrix.
-
-        Returns
-        -------
-        keep_states : list
-            Indexes of states from the largest strongly connected set.
-        keep_keys : list
-            Keys for the largest strongly connected set.
-
-        References
-        -----
-        We use the Tarjan algorithm as implemented in NetworkX. [1]_
-
-        .. [1] R. Tarjan, "Depth-first search and linear graph algorithms",
-            SIAM Journal of Computing (1972).
-
-        """
-        D = nx.DiGraph(self.count)
-        keep_states = list(sorted(list(nx.strongly_connected_components(D)),
-                                  key=len, reverse=True)[0])
-        keep_states.sort()
-        # keep_states = sorted(nx.strongly_connected_components(D)[0])
-        keep_keys = list(map(lambda x: self.keys[x], keep_states))
-        return keep_states, keep_keys
-
     def calc_eigsK(self, evecs=False):
         """ Calculate eigenvalues and eigenvectors of rate matrix K
 
@@ -636,7 +561,7 @@ class MSM(object):
                 lvecsT_sorted[:, i] = lvecsT[:, iiT]
             return tauT, peqT, rvecsT_sorted, lvecsT_sorted
 
-    def boots(self, nboots=20, nproc=None, sliding=True):
+    def boots(self, nboots=20, neigs=1, nproc=None, sliding=True):
         """ Bootstrap the simulation data to calculate errors.
 
         We generate count matrices with the same number of counts
@@ -649,6 +574,8 @@ class MSM(object):
         ----------
         nboots : int
             Number of bootstrap samples
+        neigs : int
+            Number of eigenvalues to calculate
         nproc : int
             Number of processors to use
 
@@ -663,9 +590,8 @@ class MSM(object):
         pool = mp.Pool(processes=nproc)
 
         ncount = np.sum(self.count)
-        multi_boots_input = list(map(lambda x: [filetmp, self.keys, self.lagt, ncount,
-                                                sliding], range(nboots)))
-        # TODO: find more elegant way to pass arguments
+        multi_boots_input = [[filetmp, self.keys, self.lagt, ncount, sliding, neigs] for \
+                x in  range(nboots)]
         result = pool.map(msm_lib.do_boots_worker, multi_boots_input)
         pool.close()
         pool.join()
@@ -1091,7 +1017,8 @@ class MSM(object):
         return time, popul  # popul #, pnorm
 
     def propagateT(self, p0=None, init=None, time=None):
-        """ Propagation of transition matrix
+        """ 
+        Propagation of transition matrix
 
         Parameters
         ----------
@@ -1182,7 +1109,8 @@ class MSM(object):
         return tcum, popul  # popul #, pnorm
 
     def acf_mode(self, modes=None):
-        """ Calculate mode autocorrelation functions.
+        """
+        Calculate mode autocorrelation functions.
 
         We use the procedure described by Buchete and Hummer [1]_.
 
