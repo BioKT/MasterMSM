@@ -391,11 +391,41 @@ import os, pickle
 #        self.assertIsNotNone(self.msm.lvecsK)
 #        self.assertEqual(len(self.msm.tauK), len(self.msm.keys) - 1)
 #        self.assertEqual(self.msm.rvecsK.shape, (len(self.msm.keys), len(self.msm.keys)))
-#
-#
-#
-#class TestMSM(unittest.TestCase):
-#    def setUp(self):
+
+
+class TestMSM(unittest.TestCase):
+    def setUp(self):
+        self.nstates = 3
+        self.trajectory = [0, 0, 0, 1, 1, 1, 0, 0, 0, 2]
+        self.traj_sim = self.trajectory +  \
+                [x for x in reversed(self.trajectory)]
+
+    def test_count(self):
+        keys = [0, 1, 2]
+        C = msm_lib.calc_count_worker([self.trajectory, 1, keys,\
+                1, True])
+        self.assertTrue(np.array_equal(C, \
+                np.array([[4, 1, 0], [1, 2, 0], [1, 0, 0]])))
+
+        keys = [0, 1]
+        C = msm_lib.calc_count_worker([self.trajectory, 1, keys,\
+                1, True])
+        self.assertTrue(np.array_equal(C, \
+                np.array([[5, 1], [1, 2]])))
+
+        keys = [0, 1, 2]
+        C = msm_lib.calc_count_worker([self.traj_sim, 1, keys,\
+                1, True])
+        self.assertTrue(np.array_equal(C, \
+                np.array([[8, 2, 1], [2, 4, 0], [1, 0, 1]])))
+
+        keys = [0, 2]
+        C = msm_lib.calc_count_worker([self.traj_sim, 1, keys,\
+                1, True])
+        self.assertTrue(np.array_equal(C, \
+                np.array([[16, 1], [1, 1]])))
+
+    #    def setUp(self):
 #        download_test_data()
 #        self.nstates = np.random.randint(3,100)
 #        distraj_1 = np.random.randint(1,self.nstates+1, size=1000).tolist()
