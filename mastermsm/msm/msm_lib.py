@@ -24,6 +24,68 @@ beta = 1./(8.314e-3*300)
 #            diff+=1
 #    return diff
 
+def calc_eigsT(neigs, evecs, errors):
+    """
+    Calculate eigenvalues and eigenvectors of transition matrix T.
+
+    Parameters
+    -----------
+    neigs : int
+        Number of eigenvalues to calculate
+    evects : bool
+        Whether eigenvectors are desired or not
+    evals : bool
+        Whether we want bootstrap errors
+
+    Returns
+    -------
+    tauT : numpy array
+        Relaxation times from T.
+    peqT : numpy array
+        Equilibrium probabilities from T.
+    rvecsT : numpy array, optional
+        Right eigenvectors of T, sorted.
+    lvecsT : numpy array, optional
+        Left eigenvectors of T, sorted.
+
+    """
+    # print "\n Calculating eigenvalues and eigenvectors of T"
+    evalsT, lvecsT, rvecsT = spla.eig(self.trans, left=True)
+
+    # sort modes
+    nkeep = len(self.keep_states)
+    elistT = []
+    for i in range(nkeep):
+        elistT.append([i, np.real(evalsT[i])])
+    # elistT.sort(key=msm_lib.esort)
+    elistT.sort(key=cmp_to_key(msm_lib.esort))
+
+    # calculate relaxation times
+    tauT = []
+    warnings.filterwarnings("ignore", category=RuntimeWarning)
+    for i in range(1, nkeep):
+        iiT, lamT = elistT[i]
+        tauT.append(-self.lagt / np.log(lamT))
+
+    # equilibrium probabilities
+    ieqT, _ = elistT[0]
+    peqT_sum = reduce(lambda x, y: x + y, map(lambda x: rvecsT[x, ieqT],
+                                              range(nkeep)))
+    peqT = rvecsT[:, ieqT] / peqT_sum
+
+    if not evecs:
+        return tauT, peqT
+    else:
+        # sort eigenvectors
+        rvecsT_sorted = np.zeros((nkeep, nkeep), float)
+        lvecsT_sorted = np.zeros((nkeep, nkeep), float)
+        for i in range(nkeep):
+            iiT, lamT = elistT[i]
+            rvecsT_sorted[:, i] = rvecsT[:, iiT]
+            lvecsT_sorted[:, i] = lvecsT[:, iiT]
+        return tauT, peqT, rvecsT_sorted, lvecsT_sorted
+
+
 def calc_eigsK(rate, evecs=False):
     """ 
     Calculate eigenvalues and eigenvectors of rate matrix K
@@ -495,12 +557,13 @@ def do_boots_worker(x):
         and the total number of transitions.
 
     """
-    #print "# Process %s running on input %s"%(mp.current_process(), x[0])
     filetmp, keys, lagt, ncount, slider, neigs = x
     nkeys = len(keys)
+    
     finp = open(filetmp, 'rb')
     trans = pickle.load(finp)
     finp.close()
+
     ltrans = len(trans)
     np.random.seed()
     ncount_boots = 0
@@ -515,13 +578,8 @@ def do_boots_worker(x):
     keep_states = list(sorted(list(nx.strongly_connected_components(D)))[0])
     keep_keys = [keys[x] for x in keep_states]
     nkeep = len(keep_keys)
-    trans = np.zeros([nkeep, nkeep], float)
-    for i in range(nkeep):
-        ni = reduce(lambda x, y: x + y, map(lambda x:
-            count[keep_states[x]][keep_states[i]], range(nkeep)))
-        for j in range(nkeep):
-            trans[j][i] = float(count[keep_states[j]][keep_states[i]])/float(ni)
 
+    trans = calc_trans(nkeep, keep_states, count)
     evalsT, rvecsT = spla.eig(trans, left=False)
     elistT = []
     for i in range(neigs):
@@ -529,10 +587,10 @@ def do_boots_worker(x):
     elistT.sort(key=cmp_to_key(esort))
 
     tauT = []
-    for i in range(1, neigs):
+    for i in range(1, neigs+1):
         _, lamT = elistT[i]
         tauT.append(-lagt/np.log(lamT))
-
+    print (elistT)
     ieqT, _ = elistT[0]
     peqT_sum = reduce(lambda x,y: x + y, map(lambda x: rvecsT[x,ieqT],
              range(nkeep)))
@@ -1141,7 +1199,6 @@ def tau_averages(tau_boots, keys):
     tau_ave = []
     tau_std = []
     tau_keep = []
-    print (tau_boots)
     for n in range(len(keys)-1):
         try:
             data = [x[n] for x in tau_boots if not np.isnan(x[n])]

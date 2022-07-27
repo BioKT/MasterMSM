@@ -13,8 +13,8 @@ import multiprocessing as mp
 from ..msm import msm_lib
 
 class SuperMSM(object):
-    """ 
-    A class for constructing the MSM
+    """
+    A class for constructing MSMs at multiple lag times
 
     Attributes
     ----------
@@ -70,27 +70,25 @@ class SuperMSM(object):
             Whether a sliding window is used in counts.
 
         """
-        # estimate count matrix
         self.msms[lagt] = MSM(self.data, keys=self.keys, lagt=lagt, sym=self.sym)
-        count = self.msms[lagt].calc_count_multi(sliding=sliding)
+        
+        # estimate count matrix
+        count = self.msms[lagt].calc_count(sliding=sliding)
         if self.sym:
             print(" symmetrizing")
             count += count.transpose()
         self.msms[lagt].count = count
 
         # check connectivity
-        self.keep_states, self.keep_keys = msm_lib.check_connect(count, self.keys)
+        keep_states, keep_keys = msm_lib.check_connect(count, self.keys)
+
+        self.msms[lagt].keep_states, self.msms[lagt].keep_keys = \
+                keep_states, keep_keys
 
         # estimate transition matrix
-        nkeep = len(self.keep_states)
-        keep_states = self.keep_states
-        count = self.msms[lagt].count
-        self.trans = msm_lib.calc_trans(nkeep, keep_states, count)
-        #if not evecs:
-        #    self.tauT, self.peqT = self.calc_eigsT()
-        #else:
-        #    self.tauT, self.peqT, self.rvecsT, self.lvecsT = \
-        #        self.calc_eigsT(evecs=True)
+        nkeep = len(self.msms[lagt].keep_states)
+        self.msms[lagt].trans = msm_lib.calc_trans(nkeep, keep_states, count)
+
 
     def convergence_test(self, sliding=True, error=True, time=None):
         """ Carry out convergence test for relaxation times.
@@ -288,7 +286,8 @@ class SuperMSM(object):
 
 
 class MSM(object):
-    """ A class for constructing an MSM at a specific lag time.
+    """
+    A class for constructing an MSM at a specific lag time.
 
     Attributes
     ----------
@@ -303,7 +302,7 @@ class MSM(object):
 
     """
 
-    def __init__(self, data=None, keys=None, lagt=None, sym=False):
+    def __init__(self, data, keys=None, lagt=None, sym=False):
         """
         Parameters
         ----------
@@ -322,6 +321,45 @@ class MSM(object):
         self.lagt = lagt
         self.sym = sym
 
+    def calc_count(self, sliding=True, nproc=None):
+        """ Calculate transition count matrix in parallel
+
+        Parameters
+        ----------
+        sliding : bool
+            Whether a sliding window is used in counts.
+        nproc : int
+            Number of processors to be used.
+
+        Returns
+        -------
+        array
+            The count matrix.
+
+        """
+        # define multiprocessing options
+        if not nproc:
+            nproc = mp.cpu_count()
+            if len(self.data) < nproc:
+                nproc = len(self.data)
+                # print "\n    ...running on %g processors"%nproc
+        elif nproc > mp.cpu_count():
+            nproc = mp.cpu_count()
+        pool = mp.Pool(processes=nproc)
+
+        # generate multiprocessing input
+        mpinput = [[x.distraj, x.dt, self.keys, self.lagt, sliding] \
+                   for x in self.data]
+
+        # run counting using multiprocessing
+        result = pool.map(msm_lib.calc_count_worker, mpinput)
+
+        pool.close()
+        pool.join()
+
+        # add up all independent counts
+        count = np.sum(result, 0)
+        return np.array(count)
 
     def do_rate(self, method='Taylor', evecs=False, init=False, report=False):
         """ Calculates the rate matrix from the transition matrix.
@@ -380,45 +418,6 @@ class MSM(object):
             self.tauK, self.peqK, self.rvecsK, self.lvecsK = \
                 self.calc_eigsK(evecs=True)
 
-    def calc_count_multi(self, sliding=True, nproc=None):
-        """ Calculate transition count matrix in parallel
-
-        Parameters
-        ----------
-        sliding : bool
-            Whether a sliding window is used in counts.
-        nproc : int
-            Number of processors to be used.
-
-        Returns
-        -------
-        array
-            The count matrix.
-
-        """
-        # define multiprocessing options
-        if not nproc:
-            nproc = mp.cpu_count()
-            if len(self.data) < nproc:
-                nproc = len(self.data)
-                # print "\n    ...running on %g processors"%nproc
-        elif nproc > mp.cpu_count():
-            nproc = mp.cpu_count()
-        pool = mp.Pool(processes=nproc)
-
-        # generate multiprocessing input
-        mpinput = [[x.distraj, x.dt, self.keys, self.lagt, sliding] \
-                   for x in self.data]
-
-        # run counting using multiprocessing
-        result = pool.map(msm_lib.calc_count_worker, mpinput)
-
-        pool.close()
-        pool.join()
-
-        # add up all independent counts
-        count = np.sum(result, 0)
-        return np.array(count)
 
     #    def calc_count_seq(self, sliding=True):
     #        """ Calculate transition count matrix sequentially
@@ -449,126 +448,27 @@ class MSM(object):
     #                except IndexError:
     #                    pass
     #        return count
-    #
-    def calc_eigsK(self, evecs=False):
-        """ Calculate eigenvalues and eigenvectors of rate matrix K
+    def calc_evals(self, neigs=1, evecs=True, errors=False):
+        """ Calculates eigenvalues and optionally eigenvectors 
+        of the transition matrix
 
         Parameters
-        -----------
-        evecs : bool
-            Whether we want the eigenvectors of the rate matrix.
-
-        Returns
-        -------
-        tauK : numpy array
-            Relaxation times from K.
-        peqK : numpy array
-            Equilibrium probabilities from K.
-        rvecsK : numpy array, optional
-            Right eigenvectors of K, sorted.
-        lvecsK : numpy array, optional
-            Left eigenvectors of K, sorted.
+        ----------
+        neigs : int
+            Number of eigenvalues to calculate
+        evects : bool
+            Whether eigenvectors are desired or not
+        evals : bool
+            Whether we want bootstrap errors
 
         """
-        evalsK, lvecsK, rvecsK = \
-            spla.eig(self.rate, left=True)
-        # sort modes
-        nkeep = len(self.keep_states)
-        elistK = []
-        for i in range(nkeep):
-            elistK.append([i, np.real(evalsK[i])])
-        elistK.sort(key=cmp_to_key(msm_lib.esort))
-
-        # calculate relaxation times from K and T
-        tauK = []
-        for i in range(1, nkeep):
-            iiK, lamK = elistK[i]
-            tauK.append(-1. / lamK)
-
-        # equilibrium probabilities
-        ieqK, _ = elistK[0]
-        peqK_sum = reduce(lambda x, y: x + y, map(lambda x: rvecsK[x, ieqK],
-                                                  range(nkeep)))
-        peqK = rvecsK[:, ieqK] / peqK_sum
-
-        if not evecs:
-            return tauK, peqK
-        else:
-            # sort eigenvectors
-            rvecsK_sorted = np.zeros((nkeep, nkeep), float)
-            lvecsK_sorted = np.zeros((nkeep, nkeep), float)
-            for i in range(nkeep):
-                iiK, lamK = elistK[i]
-                rvecsK_sorted[:, i] = rvecsK[:, iiK]
-                lvecsK_sorted[:, i] = lvecsK[:, iiK]
-            return tauK, peqK, rvecsK_sorted, lvecsK_sorted
-
-    def calc_eigsT(self, evecs=False):
-        """
-        Calculate eigenvalues and eigenvectors of transition matrix T.
-
-        Parameters
-        -----------
-        evecs : bool
-            Whether we want the eigenvectors of the transition matrix.
-
-        Returns
-        -------
-        tauT : numpy array
-            Relaxation times from T.
-        peqT : numpy array
-            Equilibrium probabilities from T.
-        rvecsT : numpy array, optional
-            Right eigenvectors of T, sorted.
-        lvecsT : numpy array, optional
-            Left eigenvectors of T, sorted.
-
-        """
-        # print "\n Calculating eigenvalues and eigenvectors of T"
-        evalsT, lvecsT, rvecsT = \
-            spla.eig(self.trans, left=True)
-
-        # sort modes
-        nkeep = len(self.keep_states)
-        elistT = []
-        for i in range(nkeep):
-            elistT.append([i, np.real(evalsT[i])])
-        # elistT.sort(key=msm_lib.esort)
-        elistT.sort(key=cmp_to_key(msm_lib.esort))
-
-        # calculate relaxation times
-        tauT = []
-        warnings.filterwarnings("ignore", category=RuntimeWarning)
-        for i in range(1, nkeep):
-            iiT, lamT = elistT[i]
-            tauT.append(-self.lagt / np.log(lamT))
-
-        # equilibrium probabilities
-        ieqT, _ = elistT[0]
-        peqT_sum = reduce(lambda x, y: x + y, map(lambda x: rvecsT[x, ieqT],
-                                                  range(nkeep)))
-        peqT = rvecsT[:, ieqT] / peqT_sum
-
-        if not evecs:
-            return tauT, peqT
-        else:
-            # sort eigenvectors
-            rvecsT_sorted = np.zeros((nkeep, nkeep), float)
-            lvecsT_sorted = np.zeros((nkeep, nkeep), float)
-            for i in range(nkeep):
-                iiT, lamT = elistT[i]
-                rvecsT_sorted[:, i] = rvecsT[:, iiT]
-                lvecsT_sorted[:, i] = lvecsT[:, iiT]
-            return tauT, peqT, rvecsT_sorted, lvecsT_sorted
+        self.tauT, self.peqT = msm_lib.calc_eigsT(neigs=neigs, errors=errors)
 
     def boots(self, nboots=20, neigs=1, nproc=None, sliding=True):
         """ Bootstrap the simulation data to calculate errors.
 
         We generate count matrices with the same number of counts
-        as the original by bootstrapping the simulation data. The
-        time series of discrete states are chopped into chunks to
-        form a pool. From the pool we randomly select samples until
-        the number of counts reaches the original.
+        as the original by bootstrapping the simulation data.
 
         Parameters
         ----------
@@ -590,18 +490,20 @@ class MSM(object):
         pool = mp.Pool(processes=nproc)
 
         ncount = np.sum(self.count)
-        multi_boots_input = [[filetmp, self.keys, self.lagt, ncount, sliding, neigs] for \
-                x in  range(nboots)]
+        multi_boots_input = [[filetmp, self.keys, self.lagt, ncount, sliding, neigs] \
+                for x in  range(nboots)]
         result = pool.map(msm_lib.do_boots_worker, multi_boots_input)
+
         pool.close()
         pool.join()
+
         tauT_boots = [x[0] for x in result]
         peqT_boots = [x[1] for x in result]
         keep_keys_boots = [x[3] for x in result]
 
-        self.peq_ave, self.peq_std = msm_lib.peq_averages(peqT_boots, keep_keys_boots, self.keys)
+        self.peq_ave, self.peq_std = msm_lib.peq_averages(peqT_boots, keep_keys_boots, \
+                self.keys)
         self.tau_ave, self.tau_std = msm_lib.tau_averages(tauT_boots, self.keys)
-        # self.trans_ave, self.trans_std = msm_lib.matrix_ave(trans_boots, keep_keys_boots, self.keys)
 
     ##    def pcca(self, lagt=None, N=2, optim=False):
     ##        """ Wrapper for carrying out PCCA clustering
@@ -639,11 +541,9 @@ class MSM(object):
     #            for l in range(nkeep):
     #                self.rate[l,j] = self.rate[l,j]*scaling
     ##        tauK, peqK, rvecsK_sorted, lvecsK_sorted = self.rate.calc_eigs(lagt=lagt, evecs=False)
-    #
-    #
+    
     def do_pfold(self, FF=None, UU=None, dot=False):
         """ Wrapper to calculate reactive fluxes and committors
-        
         
         We use the Berzhkovskii-Hummer-Szabo method, J. Chem. Phys. (2009)
 
@@ -869,8 +769,7 @@ class MSM(object):
     #
     #
     def sensitivity(self, FF=None, UU=None, dot=False):
-        """ 
-        Sensitivity analysis of the states in the network.
+        """ Sensitivity analysis of the states in the network.
 
         We use the procedure described by De Sancho, Kubas,
         Blumberger and Best [1]_.
@@ -1109,8 +1008,7 @@ class MSM(object):
         return tcum, popul  # popul #, pnorm
 
     def acf_mode(self, modes=None):
-        """
-        Calculate mode autocorrelation functions.
+        """ Calculate mode autocorrelation functions.
 
         We use the procedure described by Buchete and Hummer [1]_.
 
