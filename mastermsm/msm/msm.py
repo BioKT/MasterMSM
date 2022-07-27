@@ -16,188 +16,148 @@ class SuperMSM(object):
     """
     A class for constructing MSMs at multiple lag times
 
-    Attributes
-    ----------
-    data : list
-        A list of instances of the TimeSeries class
-    msms : dict
-        A dictionary containing MSMs for different lag times.
-    sym : bool
-        Whether we want to enforce symmetrization.
-
     """
-
-    def __init__(self, trajs, sym=False):
+    def __init__(self, trajs, sym=False, sliding=True):
         """
         Parameters
         ----------
         trajs : list
             A list of TimeSeries objects from the trajectory module
         sym : bool
-            Tells MSM whether to symmetrize count matrices or not.
+            Whether to enforze detailed balance
+        sliding : bool
+            Whether a sliding window is used in counts
 
         """
-        for tr in trajs:
-            tr.find_keys()
         self.data = trajs
-
-        # find common set of states for all trajectories
-        self.keys = msm_lib.merge_trajs(self.data)
-
         self.dt = msm_lib.max_dt(self.data)
         self._out()
         self.sym = sym
+        self.sliding = sliding
         self.msms = {}
 
     def _out(self):
         """ Output description to user """
         try:
-            print("\n Building MSM from \n", [x.file_name for x \
+            print("\n Building SuperMSM from \n", [x.file_name for x \
                     in self.data])
         except AttributeError:
             pass
-        print("     # states: %g" % (len(self.keys)))
 
-    def do_msm(self, lagt, sliding=True):
-        """ 
-        Construct MSM for specific value of lag time.
+    def do_msm(self, lagts):
+        """ Construct MSM for a set of values of the lag time
 
         Parameters
         -----------
-        lagt : float
-            The lag time.
-        sliding : bool
-            Whether a sliding window is used in counts.
+        lagts : list
+            The list of lag times
 
         """
-        self.msms[lagt] = MSM(self.data, keys=self.keys, lagt=lagt, sym=self.sym)
+        self.lagts = lagts
+        for lagt in lagts:
+            self.msms[lagt] = MSM(self.data, lagt=lagt, sym=self.sym,\
+                sliding=self.sliding)
         
-        # estimate count matrix
-        self.msms[lagt].calc_count(sliding=sliding, sym=sym)
+            # estimate count matrix
+            self.msms[lagt].calc_count()
 
-        # estimate transition matrix
-        self.msms[lagt].calc_trans()
+            # estimate transition matrix
+            self.msms[lagt].calc_trans()
 
-    def convergence_test(self, sliding=True, error=True, time=None):
-        """ Carry out convergence test for relaxation times.
-
-        Parameters
-        -----------
-        sliding : bool
-            Whether a sliding window should be used or not.
-        error : bool
-            Whether to include errors or not.
-        time : array
-            The range of times that must be used.
-
-        """
-        #        print "\n Convergence test for the MSM: looking at implied timescales"
-
-        # defining lag times to produce the MSM
-        try:
-            assert (time is None)
-            lagtimes = self.dt * np.array([1] + range(10, 100, 10))
-        except AssertionError:
-            lagtimes = np.array(time)
-
-        # create MSMs at multiple lag times
-        for lagt in lagtimes:
-            if lagt not in self.msms.keys():
-                self.msms[lagt] = MSM(self.data, self.keys, lagt, sym=self.sym)
-                self.msms[lagt].do_count(sliding=sliding)
-                self.msms[lagt].do_trans()
-                if error:
-                    self.msms[lagt].boots(nboots=50)
-            else:
-                if not hasattr(self.msms[lagt], 'tau_ave') and error:
-                    self.msms[lagt].boots(nboots=50)
-
-    def ck_test(self, init=None, sliding=True, time=None):
-        """ Carry out Chapman-Kolmogorov test.
-
-        We follow the procedure described by Prinz et al.[1]_
+    def calc_evals(self, neigs=None, evecs=True, errors=False):
+        """ Calculates eigenvalues and optionally eigenvectors 
+        of the transition matrix
 
         Parameters
-        -----------
-        init : str
-            The states from which the relaxation should be simulated.
-        sliding : bool
-            Whether a sliding window is used to count transitions.
-
-        References
-        -----
-        .. [1] J.-H. Prinz et al, "Markov models of molecular kinetics: Generation
-            and validation", J. Chem. Phys. (2011).
+        ----------
+        neigs : int
+            Number of eigenvalues to calculate
+        evects : bool
+            Whether eigenvectors are desired or not
+        evals : bool
+            Whether we want bootstrap errors
 
         """
-        nkeys = len(self.keys)
-        # defining lag times to produce the MSM
-        try:
-            assert (time is None)
-            lagtimes = self.dt * np.array([1] + range(50, 210, 25))
-        except AssertionError:
-            lagtimes = np.array(time)
+        for lagt in self.lagts:
+           self.msms[lagt].calc_evals(neigs=neigs, evecs=evecs, errors=errors)
 
-        # defining lag times to propagate
-        # logs = np.linspace(np.log10(self.dt),np.log10(np.max(lagtimes)*5),20)
-        # lagtimes_exp = 10**logs
-        init_states = [x for x in range(nkeys) if self.keys[x] in init]
-
-        # create MSMs at multiple lag times
-        pMSM = []
-        for lagt in lagtimes:
-            if lagt not in self.msms.keys():
-                self.msms[lagt] = MSM(self.data, self.keys, lagt)
-                self.msms[lagt].do_count(sliding=sliding)
-                self.msms[lagt].do_trans()
-
-            # propagate transition matrix
-            lagtimes_exp = np.logspace(np.log10(lagt), np.log10(np.max(lagtimes) * 10), num=50)
-            ltimes_exp_int = [int(lagt * math.floor(x / float(lagt))) \
-                              for x in lagtimes_exp if x > lagt]
-            time, pop = self.msms[lagt].propagateT(init=init, time=ltimes_exp_int)
-            ltime = len(time)
-
-            # keep only selected states
-            pop_relax = np.zeros(ltime)
-            for x in init:
-                ind = self.msms[lagt].keep_keys.index(x)
-                # pop_relax += pop[:,ind]
-                pop_relax += np.array([x[ind] for x in pop])
-            pMSM.append((time, pop_relax))
-
-        # calculate population from simulation data
-        logs = np.linspace(np.log10(self.dt), np.log10(np.max(lagtimes) * 10), 10)
-        lagtimes_md = 10 ** logs
-        pMD = []
-        epMD = []
-        for lagt in lagtimes_md:
-            try:
-                num = np.sum([self.msms[lagt].count[j, i] for (j, i) in \
-                              itertools.product(init_states, init_states)])
-            except KeyError:
-                self.msms[lagt] = MSM(self.data, self.keys, lagt)
-                self.msms[lagt].do_count(sliding=sliding)
-                num = np.sum([self.msms[lagt].count[j, i] for (j, i) in \
-                              itertools.product(init_states, init_states)])
-
-            den = np.sum([self.msms[lagt].count[:, i] for i in init_states])
-            try:
-                pMD.append((lagt, float(num) / den))
-            except ZeroDivisionError:
-                print(" ZeroDivisionError: pMD.append((lagt, float(num)/den)) ")
-                print(" lagt", lagt)
-                print(" num", num)
-                print(" den", den)
-                sys.exit()
-
-            num = pMD[-1][1] - pMD[-1][1] ** 2
-            den = np.sum([self.msms[lagt].count[j, i] for (i, j) in \
-                          itertools.product(init_states, init_states)])
-            epMD.append(np.sqrt(lagt / self.dt * num / den))
-        pMD = np.array(pMD)
-        epMD = np.array(epMD)
-        return pMSM, pMD, epMD
+#    def ck_test(self, init=None, lags=None, time=None):
+#        """ Carry out Chapman-Kolmogorov test.
+#
+#        We follow the procedure described by Prinz et al.[1]_
+#
+#        Parameters
+#        -----------
+#        init : str
+#            The states from which the relaxation should be simulated.
+#        lags : list
+#            List of lag times for MSM validation
+#
+#        References
+#        -----
+#        .. [1] J.-H. Prinz et al, "Markov models of molecular kinetics: Generation
+#            and validation", J. Chem. Phys. (2011).
+#
+#        """
+#        # build MSM at corresponding lag times 
+#        self.do_msm(lags)
+#
+#        # defining lag times to propagate
+#        # logs = np.linspace(np.log10(self.dt),np.log10(np.max(lagtimes)*5),20)
+#        # lagtimes_exp = 10**logs
+#        nkeys = len(self.msms[lags[0]].keys)
+#        init_states = [x for x in range(nkeys) if self.msms[lags[0]].keys[x] in init]
+#
+#        # create MSMs at multiple lag times
+#        pMSM = []
+#        maxlag = np.max(lagtimes)
+#        for lagt in lagtimes:
+#            lagtimes_exp = np.logspace(np.log10(lagt), np.log10(maxlag*10), 10)
+#            ltimes_exp_int = [int(lagt* math.floor(x/float(lagt))) \
+#                              for x in lagtimes_exp if x > lagt]
+#
+#            # propagate transition matrix
+#            time, pop = self.msms[lagt].propagateT(init=init, time=ltimes_exp_int)
+#            ltime = len(time)
+#
+#            # keep only selected states
+#            pop_relax = np.zeros(ltime)
+#            for x in init:
+#                ind = self.msms[lagt].keep_keys.index(x)
+#                # pop_relax += pop[:,ind]
+#                pop_relax += np.array([x[ind] for x in pop])
+#            pMSM.append((time, pop_relax))
+#
+#        # calculate population from simulation data
+#        logs = np.linspace(np.log10(self.dt), np.log10(maxlag* 10), 10)
+#        lagtimes_md = 10**logs
+#        pMD = []
+#        epMD = []
+#        for lagt in lagtimes_md:
+#            try:
+#                num = np.sum([self.msms[lagt].count[j,i] for (j,i) in \
+#                              itertools.product(init_states, init_states)])
+#            except KeyError:
+#                self.msms[lagt] = self.do_msm(lagt)
+#                num = np.sum([self.msms[lagt].count[j, i] for (j, i) in \
+#                              itertools.product(init_states, init_states)])
+#            den = np.sum([self.msms[lagt].count[:, i] for i in init_states])
+#            try:
+#                pMD.append((lagt, float(num) / den))
+#            except ZeroDivisionError:
+#                print(" ZeroDivisionError: pMD.append((lagt, float(num)/den)) ")
+#                print(" lagt", lagt)
+#                print(" num", num)
+#                print(" den", den)
+#                sys.exit()
+#
+#            num = pMD[-1][1] - pMD[-1][1] ** 2
+#            den = np.sum([self.msms[lagt].count[j, i] for (i, j) in \
+#                          itertools.product(init_states, init_states)])
+#            epMD.append(np.sqrt(lagt / self.dt * num / den))
+#        pMD = np.array(pMD)
+#        epMD = np.array(epMD)
+#        return pMSM, pMD, epMD
 
     def do_lbrate(self, evecs=False, error=False):
         """ Calculates the rate matrix using the lifetime based method.
@@ -272,36 +232,26 @@ class SuperMSM(object):
         if error:
             self.lbrate_error = self.lbrate / np.sqrt(count)
 
-
 class MSM(object):
     """
     A class for constructing an MSM at a specific lag time.
 
-    Attributes
-    ----------
-    keys : list of str
-        Names of states.
-    count : np array
-        Transition count matrix.
-    keep_states : list of str
-        Names of states after removing not strongly connected sets.
-    sym : bool
-        Whether we want to enforce symmetrization.
-
     """
-
-    def __init__(self, data, keys=None, lagt=None, sym=False):
+    def __init__(self, data, keys=None, lagt=None, sliding=True,\
+            sym=False):
         """
         Parameters
         ----------
         data : list
-            Set of trajectories used for the construction.
+            Set of trajectories used for the construction
         keys : list of str
-            Set of states in the model.
+            Set of states in the model
         lag : float
-            Lag time for building the MSM.
+            Lag time for building the MSM
         sym : bool
-            Whether we want to enforce symmetrization.
+            Whether we want to enforce symmetrization
+        sliding : bool
+            Whether a sliding window is used in counts
 
         """
         self.data = data
@@ -310,15 +260,22 @@ class MSM(object):
         else:
             self.keys = keys
         self.lagt = lagt
+        self.sliding = sliding
         self.sym = sym
+        self._out()
+        
+    def _out(self):
+        """ Output description to user """
+        try:
+            print("\n Building MSM at lag time %g"%self.lagt)
+        except AttributeError:
+            pass
 
-    def calc_count(self, sliding=True, nproc=None, sym=False):
+    def calc_count(self, nproc=None, sym=False):
         """ Calculate transition count matrix in parallel
 
         Parameters
         ----------
-        sliding : bool
-            Whether a sliding window is used in counts
         nproc : int
             Number of processors to be used
         sym : bool
@@ -336,7 +293,7 @@ class MSM(object):
         pool = mp.Pool(processes=nproc)
 
         # generate multiprocessing input
-        mpinput = [[x.distraj, x.dt, x.keys, self.lagt, sliding] \
+        mpinput = [[x.distraj, x.dt, x.keys, self.lagt, self.sliding] \
                    for x in self.data]
 
         # run counting using multiprocessing
@@ -414,7 +371,7 @@ class MSM(object):
                 ax[1].set_xlabel('MC steps x n$_{freq}$')
                 ax[1].set_ylabel(r'1/$\beta$')
 
-    def calc_evals(self, neigs=1, evecs=True, errors=False):
+    def calc_evals(self, neigs=None, evecs=True, errors=False):
         """ Calculates eigenvalues and optionally eigenvectors 
         of the transition matrix
 
@@ -431,55 +388,63 @@ class MSM(object):
         evals, lvecs, rvecs = msm_lib.calc_eigsT(self.trans)
 
         # relaxation times
-        self.tauT = np.array([-self.lagt/np.log(lmbd) for lmbd in evals[1:nkeep+1]])
+        if not neigs:
+            neigs = len(evals) - 1
+        self.tauT = np.array([-self.lagt/np.log(lmbd) for lmbd in evals[1:neigs+1]])
 
         # equilibrium probabilities
-        self.peqT = rvecsT[:,0]/np.sum(rvecs[:,0])
+        self.peqT = rvecs[:,0]/np.sum(rvecs[:,0])
 
-        if hasattr(self, 'rate'):
-            self.tauK, self.peqK, self.lvecsK, self.rvecsK = \
-                                msm_lib.calc_eigsK(self.rate, evecs=True)
+#        if hasattr(self, 'rate'):
+#            self.tauK, self.peqK, self.lvecsK, self.rvecsK = \
+#                                msm_lib.calc_eigsK(self.rate, evecs=True)
+        if errors:
+            self.boots(neigs=neigs)
             
-    def boots(self, nboots=20, neigs=1, nproc=None, sliding=True):
+    def boots(self, neigs=None):
         """ Bootstrap the simulation data to calculate errors.
 
         We generate count matrices with the same number of counts
-        as the original by bootstrapping the simulation data.
+        as the original by bootstrapping the simulation data
 
         Parameters
         ----------
-        nboots : int
-            Number of bootstrap samples
         neigs : int
             Number of eigenvalues to calculate
-        nproc : int
-            Number of processors to use
 
         """
+        nboots = 20
+
         # generate trajectory list for easy handling
         filetmp = msm_lib.traj_split(data=self.data, lagt=self.lagt)
 
         # multiprocessing options
-        if not nproc:
-            nproc = mp.cpu_count()
+        nproc = mp.cpu_count()
         # print "     ...running on %g processors"%nproc
         pool = mp.Pool(processes=nproc)
 
         ncount = np.sum(self.count)
-        multi_boots_input = [[filetmp, self.keys, self.lagt, ncount, sliding, neigs] \
-                for x in  range(nboots)]
+        multi_boots_input = [[filetmp, self.keys, self.lagt, ncount, \
+                self.sliding, neigs] for x in range(nboots)]
         result = pool.map(msm_lib.do_boots_worker, multi_boots_input)
 
         pool.close()
         pool.join()
 
-        tauT_boots = [x[0] for x in result]
-        peqT_boots = [x[1] for x in result]
-        keep_keys_boots = [x[3] for x in result]
+        tauT_boots = []
+        peqT_boots = []
+        keep_keys_boots = []
+        for r in result:
+            trans_boots, keep_keys  = r[0], r[1] 
+            evals, lvecs, rvecs = msm_lib.calc_eigsT(trans_boots)
+            tauT_boots.append(np.array([-self.lagt/np.log(lmbd) for \
+                    lmbd in evals[1:neigs+1]]))
+            peqT_boots.append(rvecs[:,0]/np.sum(rvecs[:,0]))
+            keep_keys_boots.append(keep_keys)
 
-        self.peq_ave, self.peq_std = msm_lib.peq_averages(peqT_boots, keep_keys_boots, \
-                self.keys)
-        self.tau_ave, self.tau_std = msm_lib.tau_averages(tauT_boots, self.keys)
+        self.peq_ave, self.peq_std = msm_lib.peq_averages(peqT_boots, \
+                keep_keys_boots, self.keys)
+        self.tau_ave, self.tau_std = msm_lib.tau_averages(tauT_boots)
 
     def do_pfold(self, FF=None, UU=None, dot=False):
         """ Wrapper to calculate reactive fluxes and committors

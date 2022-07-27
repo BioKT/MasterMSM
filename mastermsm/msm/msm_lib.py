@@ -550,22 +550,7 @@ def do_boots_worker(x):
     nkeep = len(keep_keys)
 
     trans = calc_trans(nkeep, keep_states, count)
-    evalsT, rvecsT = spla.eig(trans, left=False)
-    elistT = []
-    for i in range(neigs):
-        elistT.append([i,np.real(evalsT[i])])
-    elistT.sort(key=cmp_to_key(esort))
-
-    tauT = []
-    for i in range(1, neigs+1):
-        _, lamT = elistT[i]
-        tauT.append(-lagt/np.log(lamT))
-    print (elistT)
-    ieqT, _ = elistT[0]
-    peqT_sum = reduce(lambda x,y: x + y, map(lambda x: rvecsT[x,ieqT],
-             range(nkeep)))
-    peqT = rvecsT[:,ieqT]/peqT_sum
-    return tauT, peqT, trans, keep_keys
+    return trans, keep_keys
 
 def calc_trans(nkeep=None, keep_states=None, count=None):
     """ Calculates transition matrix.
@@ -1150,7 +1135,7 @@ def peq_averages(peq_boots, keep_keys_boots, keys):
             peq_std.append(0.)
     return peq_ave, peq_std
 
-def tau_averages(tau_boots, keys):
+def tau_averages(tau_boots):
     """ Return averages from bootstrap results
 
     Parameters
@@ -1169,7 +1154,8 @@ def tau_averages(tau_boots, keys):
     tau_ave = []
     tau_std = []
     tau_keep = []
-    for n in range(len(keys)-1):
+    ntau = len(tau_boots[0])
+    for n in range(ntau):
         try:
             data = [x[n] for x in tau_boots if not np.isnan(x[n])]
             tau_ave.append(np.mean(data))
