@@ -73,22 +73,12 @@ class SuperMSM(object):
         self.msms[lagt] = MSM(self.data, keys=self.keys, lagt=lagt, sym=self.sym)
         
         # estimate count matrix
-        count = self.msms[lagt].calc_count(sliding=sliding)
-        if self.sym:
-            print(" symmetrizing")
-            count += count.transpose()
-        self.msms[lagt].count = count
-
-        # check connectivity
-        keep_states, keep_keys = msm_lib.check_connect(count, self.keys)
-
-        self.msms[lagt].keep_states, self.msms[lagt].keep_keys = \
-                keep_states, keep_keys
+        self.msms[lagt].calc_count(sliding=sliding, sym=sym)
 
         # estimate transition matrix
+        self.msms[lagt].calc_trans()
         nkeep = len(self.msms[lagt].keep_states)
         self.msms[lagt].trans = msm_lib.calc_trans(nkeep, keep_states, count)
-
 
     def convergence_test(self, sliding=True, error=True, time=None):
         """ Carry out convergence test for relaxation times.
@@ -324,7 +314,7 @@ class MSM(object):
         self.lagt = lagt
         self.sym = sym
 
-    def calc_count(self, sliding=True, nproc=None):
+    def calc_count(self, sliding=True, nproc=None, sym=False):
         """ Calculate transition count matrix in parallel
 
         Parameters
@@ -333,11 +323,8 @@ class MSM(object):
             Whether a sliding window is used in counts
         nproc : int
             Number of processors to be used
-
-        Returns
-        -------
-        array
-            The count matrix.
+        sym : bool
+            Whether we enforce detailed balance
 
         """
         # define multiprocessing options
@@ -356,14 +343,26 @@ class MSM(object):
 
         # run counting using multiprocessing
         result = pool.map(msm_lib.calc_count_worker, mpinput)
-        print (result)
 
         pool.close()
         pool.join()
 
         # add up all independent counts
         count = np.sum(result, 0)
-        return np.array(count)
+
+        # symmetrize if needed
+        if self.sym:
+            print(" symmetrizing")
+            count += count.transpose()
+        self.msms[lagt].count = count
+
+    def calc_trans(self):
+        """ Calculates transition matrix 
+
+        """
+        # check connectivity
+        keep_states, keep_keys = msm_lib.check_connect(self.count, self.keys)
+        self.keep_states, self.keep_keys = keep_states, keep_keys
 
     def do_rate(self, method='Taylor', evecs=False, init=False, report=False):
         """ Calculates the rate matrix from the transition matrix.
