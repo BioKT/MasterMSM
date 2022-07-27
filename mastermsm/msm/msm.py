@@ -316,8 +316,11 @@ class MSM(object):
             Whether we want to enforce symmetrization.
 
         """
-        self.keys = keys
         self.data = data
+        if not keys:        
+            self.keys = msm_lib.merge_trajs(self.data)
+        else:
+            self.keys = keys
         self.lagt = lagt
         self.sym = sym
 
@@ -327,9 +330,9 @@ class MSM(object):
         Parameters
         ----------
         sliding : bool
-            Whether a sliding window is used in counts.
+            Whether a sliding window is used in counts
         nproc : int
-            Number of processors to be used.
+            Number of processors to be used
 
         Returns
         -------
@@ -348,11 +351,12 @@ class MSM(object):
         pool = mp.Pool(processes=nproc)
 
         # generate multiprocessing input
-        mpinput = [[x.distraj, x.dt, self.keys, self.lagt, sliding] \
+        mpinput = [[x.distraj, x.dt, x.keys, self.lagt, sliding] \
                    for x in self.data]
 
         # run counting using multiprocessing
         result = pool.map(msm_lib.calc_count_worker, mpinput)
+        print (result)
 
         pool.close()
         pool.join()

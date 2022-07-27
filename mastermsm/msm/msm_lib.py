@@ -440,9 +440,12 @@ def calc_count_worker(x):
     nkeys = len(keys)
     lagt = x[3]
     sliding = x[4]
+    print (dt, keys, nkeys, lagt, sliding)
 
     ltraj = len(distraj)
     lag = int(lagt/dt) # number of frames per lag time
+    if lag < 1:
+        raise ValueError("lag time shorter than timestep") 
     if sliding:
         slider = 1 # every state is initial state
     else:
@@ -459,7 +462,8 @@ def calc_count_worker(x):
             idx_j = keys.index(state_j)
         try:
             count[idx_j,idx_i] += 1
-        except UnboundLocalError:
+        except UnboundLocalError as e:
+            print (e)
             pass
 
     return count
@@ -1264,10 +1268,15 @@ def merge_trajs(data):
         Combination of keys from all trajectories.
 
     """
+    for tr in data:
+        if not hasattr(tr, 'keys'):
+            tr.find_keys()
+
     new_keys = []
     for traj in data:
         new_keys += filter(lambda x: x not in new_keys, \
                 traj.keys)
+
     return sorted(new_keys)
 
 def max_dt(data):
