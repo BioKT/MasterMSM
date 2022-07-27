@@ -440,7 +440,6 @@ def calc_count_worker(x):
     nkeys = len(keys)
     lagt = x[3]
     sliding = x[4]
-    print (dt, keys, nkeys, lagt, sliding)
 
     ltraj = len(distraj)
     lag = int(lagt/dt) # number of frames per lag time

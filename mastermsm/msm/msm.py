@@ -77,8 +77,6 @@ class SuperMSM(object):
 
         # estimate transition matrix
         self.msms[lagt].calc_trans()
-        nkeep = len(self.msms[lagt].keep_states)
-        self.msms[lagt].trans = msm_lib.calc_trans(nkeep, keep_states, count)
 
     def convergence_test(self, sliding=True, error=True, time=None):
         """ Carry out convergence test for relaxation times.
@@ -354,7 +352,7 @@ class MSM(object):
         if self.sym:
             print(" symmetrizing")
             count += count.transpose()
-        self.msms[lagt].count = count
+        self.count = count
 
     def calc_trans(self):
         """ Calculates transition matrix 
@@ -364,7 +362,10 @@ class MSM(object):
         keep_states, keep_keys = msm_lib.check_connect(self.count, self.keys)
         self.keep_states, self.keep_keys = keep_states, keep_keys
 
-    def do_rate(self, method='Taylor', evecs=False, init=False, report=False):
+        nkeep = len(self.keep_states)
+        self.trans = msm_lib.calc_trans(nkeep, keep_states, self.count)
+
+    def do_rate(self, method='Taylor', init=False, report=False):
         """ Calculates the rate matrix from the transition matrix.
 
         We use a method based on a Taylor expansion [1]_ or the maximum likelihood
@@ -372,8 +373,6 @@ class MSM(object):
 
         Parameters
         ----------
-        evecs : bool
-            Whether we want the left eigenvectors of the rate matrix.
         method : str
             Which method one wants to use. Acceptable values are 'Taylor'
             and 'MLPB'.
@@ -402,7 +401,8 @@ class MSM(object):
                 rate_init = np.random.rand(nkeep, nkeep) * 1.e-2
             else:
                 rate_init = msm_lib.calc_rate(nkeep, self.trans, self.lagt)
-            self.rate, ml, beta = msm_lib.calc_mlrate(nkeep, self.count, self.lagt, rate_init)
+            self.rate, ml, beta = msm_lib.calc_mlrate(nkeep, self.count, self.lagt,\
+                    rate_init)
             if report:
                 _, ax = plt.subplots(2, 1, sharex=True)
                 ax[0].plot(ml)
@@ -414,43 +414,6 @@ class MSM(object):
                 ax[1].set_xlabel('MC steps x n$_{freq}$')
                 ax[1].set_ylabel(r'1/$\beta$')
 
-        # print self.rate
-        if not evecs:
-            self.tauK, self.peqK = self.calc_eigsK()
-        else:
-            self.tauK, self.peqK, self.rvecsK, self.lvecsK = \
-                self.calc_eigsK(evecs=True)
-
-
-    #    def calc_count_seq(self, sliding=True):
-    #        """ Calculate transition count matrix sequentially
-    #
-    #        """
-    #        keys = self.keys
-    #        nkeys = len(keys)
-    #        count = np.zeros([nkeys,nkeys], int)
-    #
-    #        for traj in self.data:
-    #            raw = traj.states
-    #            dt = traj.dt
-    #            if sliding:
-    #                lag = 1 # every state is initial state
-    #            else:
-    #                lag = int(self.lagt/dt) # number of frames for lag time
-    #            nraw = len(raw)
-    #            for i in range(0, nraw-lag, lag):
-    #                j = i + lag
-    #                state_i = raw[i]
-    #                state_j = raw[j]
-    #                if state_i in keys:
-    #                    idx_i = keys.index(state_i)
-    #                if state_j in keys:
-    #                    idx_j = keys.index(state_j)
-    #                try:
-    #                    count[idx_j][idx_i] += 1
-    #                except IndexError:
-    #                    pass
-    #        return count
     def calc_evals(self, neigs=1, evecs=True, errors=False):
         """ Calculates eigenvalues and optionally eigenvectors 
         of the transition matrix
@@ -508,43 +471,6 @@ class MSM(object):
                 self.keys)
         self.tau_ave, self.tau_std = msm_lib.tau_averages(tauT_boots, self.keys)
 
-    ##    def pcca(self, lagt=None, N=2, optim=False):
-    ##        """ Wrapper for carrying out PCCA clustering
-    ##
-    ##        Parameters
-    ##        ----------
-    ##        lagt : float
-    ##            The lag time.
-    ##
-    ##        N : int
-    ##            The number of clusters.
-    ##
-    ##        optim : bool
-    ##            Whether optimization is desired.
-    ##
-    ##        """
-    ##
-    ##        return pcca.PCCA(parent=self, lagt=lagt, optim=optim)
-    #
-    #    def rate_scale(self, iscale=None, scaling=1):
-    #        """ Scaling columns of the rate matrix by a certain value
-    #
-    #        Parameters
-    #        ----------
-    #        states : list
-    #            The list of state keys we want to scale.
-    #        val : float
-    #            The scaling factor.
-    #
-    #        """
-    #        #print "\n scaling kiS by %g"%scaling
-    #        nkeep = len(self.keep_keys)
-    #        jscale = [self.keep_keys.index(x) for x in iscale]
-    #        for j in jscale:
-    #            for l in range(nkeep):
-    #                self.rate[l,j] = self.rate[l,j]*scaling
-    ##        tauK, peqK, rvecsK_sorted, lvecsK_sorted = self.rate.calc_eigs(lagt=lagt, evecs=False)
-    
     def do_pfold(self, FF=None, UU=None, dot=False):
         """ Wrapper to calculate reactive fluxes and committors
         
