@@ -109,7 +109,7 @@ class TimeSeries(object):
         for s in self.distraj:
             if s not in keys and s not in exclude:
                 keys.append(s)
-        self.keys = keys
+        self.keys = sorted(keys)
 
     def gc(self):
         """ 
