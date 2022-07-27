@@ -400,7 +400,7 @@ class TestMSM(unittest.TestCase):
         self.traj_sim = self.trajectory +  \
                 [x for x in reversed(self.trajectory)]
 
-    def test_count(self):
+    def test_count_lib(self):
         keys = [0, 1, 2]
         C = msm_lib.calc_count_worker([self.trajectory, 1, keys,\
                 1, True])
