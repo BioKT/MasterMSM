@@ -24,67 +24,34 @@ beta = 1./(8.314e-3*300)
 #            diff+=1
 #    return diff
 
-def calc_eigsT(neigs, evecs, errors):
+def calc_eigsT(trans):
     """
     Calculate eigenvalues and eigenvectors of transition matrix T.
 
     Parameters
-    -----------
-    neigs : int
-        Number of eigenvalues to calculate
-    evects : bool
-        Whether eigenvectors are desired or not
-    evals : bool
-        Whether we want bootstrap errors
+    ----------
+    trans : np.array
+        The transition matrix
 
     Returns
     -------
-    tauT : numpy array
-        Relaxation times from T.
-    peqT : numpy array
-        Equilibrium probabilities from T.
-    rvecsT : numpy array, optional
-        Right eigenvectors of T, sorted.
-    lvecsT : numpy array, optional
+    evals: np.array
+        Sorted eigenvalues and eigenvectors 
+    rvecs : numpy array, optional
+        Sorted right eigenvectors of T, sorted.
+    lvecs : numpy array, optional
         Left eigenvectors of T, sorted.
 
     """
-    # print "\n Calculating eigenvalues and eigenvectors of T"
-    evalsT, lvecsT, rvecsT = spla.eig(self.trans, left=True)
+    evals, lvecs, rvecs = spla.eig(trans, left=True)
 
-    # sort modes
-    nkeep = len(self.keep_states)
-    elistT = []
-    for i in range(nkeep):
-        elistT.append([i, np.real(evalsT[i])])
-    # elistT.sort(key=msm_lib.esort)
-    elistT.sort(key=cmp_to_key(msm_lib.esort))
+    # sort eigenvalues and eigenvectors
+    ievals = np.argsort(-evals)
+    evals = evals[ievals]
+    lvecs = lvecs[:,ievals]
+    rvecs = rvecs[:,ievals]
 
-    # calculate relaxation times
-    tauT = []
-    warnings.filterwarnings("ignore", category=RuntimeWarning)
-    for i in range(1, nkeep):
-        iiT, lamT = elistT[i]
-        tauT.append(-self.lagt / np.log(lamT))
-
-    # equilibrium probabilities
-    ieqT, _ = elistT[0]
-    peqT_sum = reduce(lambda x, y: x + y, map(lambda x: rvecsT[x, ieqT],
-                                              range(nkeep)))
-    peqT = rvecsT[:, ieqT] / peqT_sum
-
-    if not evecs:
-        return tauT, peqT
-    else:
-        # sort eigenvectors
-        rvecsT_sorted = np.zeros((nkeep, nkeep), float)
-        lvecsT_sorted = np.zeros((nkeep, nkeep), float)
-        for i in range(nkeep):
-            iiT, lamT = elistT[i]
-            rvecsT_sorted[:, i] = rvecsT[:, iiT]
-            lvecsT_sorted[:, i] = lvecsT[:, iiT]
-        return tauT, peqT, rvecsT_sorted, lvecsT_sorted
-
+    return evals, lvecs, rvecs
 
 def calc_eigsK(rate, evecs=False):
     """ 

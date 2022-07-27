@@ -428,8 +428,18 @@ class MSM(object):
             Whether we want bootstrap errors
 
         """
-        self.tauT, self.peqT = msm_lib.calc_eigsT(neigs=neigs, errors=errors)
+        evals, lvecs, rvecs = msm_lib.calc_eigsT(self.trans)
 
+        # relaxation times
+        self.tauT = np.array([-self.lagt/np.log(lmbd) for lmbd in evals[1:nkeep+1]])
+
+        # equilibrium probabilities
+        self.peqT = rvecsT[:,0]/np.sum(rvecs[:,0])
+
+        if hasattr(self, 'rate'):
+            self.tauK, self.peqK, self.lvecsK, self.rvecsK = \
+                                msm_lib.calc_eigsK(self.rate, evecs=True)
+            
     def boots(self, nboots=20, neigs=1, nproc=None, sliding=True):
         """ Bootstrap the simulation data to calculate errors.
 
@@ -695,8 +705,7 @@ class MSM(object):
     ##                        rank=pfold, out=out)
     #
     #        return cum_paths
-    #
-    #
+    
     def sensitivity(self, FF=None, UU=None, dot=False):
         """ Sensitivity analysis of the states in the network.
 
