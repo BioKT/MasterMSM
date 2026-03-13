@@ -53,21 +53,8 @@ jobs:
           "
 
       - name: Run tests
-        run: pytest mastermsm/test/ -v --tb=long --junit-xml=test-results.xml
+        run: pytest mastermsm/test/ -v --tb=long 2>&1 | tee pytest-output.txt; exit ${PIPESTATUS[0]}
 
-      - name: Show test results on failure
+      - name: Show test output on failure
         if: failure()
-        run: |
-          python3 -c "
-          import xml.etree.ElementTree as ET, sys
-          try:
-              tree = ET.parse('test-results.xml')
-              for tc in tree.iter('testcase'):
-                  fail = tc.find('failure') or tc.find('error')
-                  if fail is not None:
-                      print('FAILED:', tc.attrib.get('classname',''), '::', tc.attrib.get('name',''))
-                      print(fail.text)
-                      print()
-          except Exception as e:
-              print('Could not parse results:', e)
-          "
+        run: cat pytest-output.txt
