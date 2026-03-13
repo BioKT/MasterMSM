@@ -53,8 +53,8 @@ jobs:
           "
 
       - name: Run tests
-        run: pytest mastermsm/test/ -v --tb=long 2>&1 | tee pytest-output.txt; exit ${PIPESTATUS[0]}
-
-      - name: Show test output on failure
-        if: failure()
-        run: cat pytest-output.txt
+        run: |
+          pytest mastermsm/test/ -v --tb=long > pytest-output.txt 2>&1
+          RESULT=$?
+          cat pytest-output.txt
+          exit $RESULT
