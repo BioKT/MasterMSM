@@ -4,7 +4,7 @@ import numpy as np
 from mastermsm.trajectory import traj_lib, traj
 from mastermsm.msm import msm, msm_lib
 from mastermsm.fewsm import fewsm, fewsm_lib
-from test.download_data import download_osf_alaTB
+from mastermsm.test.download_data import download_osf_alaTB
 import os, pickle
 
 #class TestFewSM_Lib(unittest.TestCase):
