@@ -1,6 +1,5 @@
-[![Build Status](https://travis-ci.com/daviddesancho/MasterMSM.svg?branch=develop)](https://travis-ci.com/daviddesancho/MasterMSM)
+[![CI](https://github.com/BioKT/MasterMSM/actions/workflows/ci.yml/badge.svg?branch=develop)](https://github.com/BioKT/MasterMSM/actions/workflows/ci.yml)
 [![Documentation Status](https://readthedocs.org/projects/mastermsm/badge/?version=develop)](https://mastermsm.readthedocs.io/en/develop/?badge=develop)
-[![Codacy Badge](https://api.codacy.com/project/badge/Grade/facdc755bf3c4c269f55738117db4c38)](https://www.codacy.com/app/daviddesancho/MasterMSM?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=daviddesancho/MasterMSM&amp;utm_campaign=Badge_Grade)
 
 MasterMSM
 =========
