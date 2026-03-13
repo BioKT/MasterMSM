@@ -42,15 +42,7 @@ jobs:
           pip install -e .
 
       - name: Show package versions
-        run: |
-          python -c "
-          import numpy, scipy, mdtraj, networkx, sklearn
-          print('numpy    :', numpy.__version__)
-          print('scipy    :', scipy.__version__)
-          print('mdtraj   :', mdtraj.__version__)
-          print('networkx :', networkx.__version__)
-          print('sklearn  :', sklearn.__version__)
-          "
+        run: conda list | grep -E "numpy|scipy|mdtraj|networkx|scikit"
 
       - name: Run tests
         run: |
