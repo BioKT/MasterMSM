@@ -668,7 +668,7 @@ def calc_mlrate(nkeep, count, lagt, rate_init):
 
     """
     # initialize rate matrix and equilibrium distribution enforcing detailed balance
-    p_prev = np.sum(count, axis=0)/np.float(np.sum(count))
+    p_prev = np.sum(count, axis=0)/float(np.sum(count))
     rate_prev = detailed_balance(nkeep, rate_init, p_prev)
     ml_prev = likelihood(nkeep, rate_prev, count, lagt)
 
@@ -721,7 +721,7 @@ def calc_mlrate(nkeep, count, lagt, rate_init):
             ml_cum.append(ml_prev)
             temp_cum.append(1./beta)
             print ("\n END of cycle %g"%ncycle)
-            print ("   acceptance :%g"%(np.float(accept)/nsteps))
+            print ("   acceptance :%g"%(float(accept)/nsteps))
             accept = 0
             print (rate_prev)
             print ("   L old =", ml_ref,"; L new:", ml_prev)
