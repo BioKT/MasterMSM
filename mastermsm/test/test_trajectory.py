@@ -1,17 +1,16 @@
 import unittest
+import os
 import mdtraj as md
 import numpy as np
 from mastermsm.trajectory import traj_lib, traj
-from test.download_data import download_osf_alaTB
-from test.download_data import download_osf_ala5
-import os
+from mastermsm.test.download_data import download_osf_alaTB, download_osf_ala5, _DATA_DIR
 
 class TestTimeSeries(unittest.TestCase):
     def setUp(self):
         download_osf_alaTB()
 
-        top = 'test/data/alaTB.gro'
-        xtc = 'test/data/alaTB.xtc'
+        top = os.path.join(_DATA_DIR, 'alaTB.gro')
+        xtc = os.path.join(_DATA_DIR, 'alaTB.xtc')
 
         self.ts = traj.TimeSeries(xtc=xtc, top=top)
         self.tss = [traj.TimeSeries(xtc=xtc, top=top) \
@@ -108,8 +107,8 @@ class TestTimeSeries(unittest.TestCase):
 class TestMDtraj(unittest.TestCase):
     def setUp(self):
         download_osf_alaTB()
-        self.gro = 'test/data/alaTB.gro'
-        self.xtc = 'test/data/alaTB.xtc'
+        self.gro = os.path.join(_DATA_DIR, 'alaTB.gro')
+        self.xtc = os.path.join(_DATA_DIR, 'alaTB.xtc')
         self.mdtraj = traj_lib.load_mdtraj(xtc=self.xtc, top=self.gro)
         self.mdtrajs = [traj_lib.load_mdtraj(xtc=self.xtc, \
                 top=self.gro) for i in range(2)]
@@ -213,8 +212,8 @@ class TestMDtraj(unittest.TestCase):
 class UseMDtraj(unittest.TestCase):
     def setUp(self):
         download_osf_alaTB()
-        top = 'test/data/alaTB.gro'
-        xtc = 'test/data/alaTB.xtc'
+        top = os.path.join(_DATA_DIR, 'alaTB.gro')
+        xtc = os.path.join(_DATA_DIR, 'alaTB.xtc')
         self.traj = traj.TimeSeries(xtc=xtc, top=top)
         self.trajs = [traj.TimeSeries(xtc=xtc, top=top) \
                 for i in range(2)]
@@ -229,8 +228,8 @@ class UseMDtraj(unittest.TestCase):
 class TestFeaturizer_alaTB(unittest.TestCase):
     def setUp(self):
         download_osf_alaTB()
-        top = 'test/data/alaTB.gro'
-        xtc = 'test/data/alaTB.xtc'
+        top = os.path.join(_DATA_DIR, 'alaTB.gro')
+        xtc = os.path.join(_DATA_DIR, 'alaTB.xtc')
         self.ts = traj.TimeSeries(xtc=xtc, top=top)
         self.ts2 = [traj.TimeSeries(xtc=xtc, top=top) \
                 for i in range(2)]
@@ -262,8 +261,8 @@ class TestFeaturizer_alaTB(unittest.TestCase):
 class TestFeaturizer_ala5(unittest.TestCase):
     def setUp(self):
         download_osf_ala5()
-        top = 'test/data/ala5.gro'
-        xtc = 'test/data/ala5.xtc'
+        top = os.path.join(_DATA_DIR, 'ala5.gro')
+        xtc = os.path.join(_DATA_DIR, 'ala5.xtc')
         self.ts = traj.TimeSeries(xtc=xtc, top=top)
         self.ts2 = [traj.TimeSeries(xtc=xtc, top=top) \
                 for i in range(2)]
@@ -295,8 +294,8 @@ class TestFeaturizer_ala5(unittest.TestCase):
 class TestDimRed_alaTB(unittest.TestCase):
     def setUp(self):
         download_osf_alaTB()
-        top = 'test/data/alaTB.gro'
-        xtc = 'test/data/alaTB.xtc'
+        top = os.path.join(_DATA_DIR, 'alaTB.gro')
+        xtc = os.path.join(_DATA_DIR, 'alaTB.xtc')
         self.ts = traj.TimeSeries(xtc=xtc, top=top)
         feat = traj.Featurizer(self.ts)
         feat.add_torsions(shift=False)

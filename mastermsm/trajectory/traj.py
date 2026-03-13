@@ -51,7 +51,7 @@ class TimeSeries(object):
         """
         if distraj is not None:
             # A discrete trajectory is provided
-            self.distraj, self.dt = self._read_dtraj(distraj=distraj, dt=dt)
+            self.distraj, self.dt = self._read_distraj(distraj=distraj, dt=dt)
         elif xtc is not None:
             # An MD trajectory is provided
             self.file_name = xtc 
@@ -287,7 +287,10 @@ class Discretizer(object):
             Number of dimensions from feature space to do the clustering.
 
         """
-        import hdbscan
+        try:
+            import hdbscan
+        except ImportError:
+            raise ImportError("hdbscan is required for this method: pip install hdbscan")
         X = np.vstack([tr.features[:,:dim] for tr in self.timeseries])
         if not ms:
             ms = mcs

@@ -3,7 +3,7 @@ import mdtraj as md
 import numpy as np
 from mastermsm.trajectory import traj_lib, traj
 from mastermsm.msm import msm, msm_lib
-from test.download_data import download_osf_alaTB
+from mastermsm.test.download_data import download_osf_alaTB
 import os, pickle
 
 ## thermal energy (kJ/mol)

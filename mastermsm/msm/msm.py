@@ -218,7 +218,7 @@ class SuperMSM(object):
         # calculate lifetime based rates
         lbrate = np.zeros((nkeys, nkeys), float)
         for i in range(nkeys):
-            kk = self.keys[k]
+            kk = self.keys[i]
             ni = np.sum([count[x, i] for x in range(nkeys) if x != i])
             if ni > 0:
                 for j in range(nkeys):
@@ -793,7 +793,7 @@ class MSM(object):
             return
         else:
             sum_pini = np.sum(pini)
-            pini_norm = [np.float(x) / sum_pini for x in pini]
+            pini_norm = [float(x) / sum_pini for x in pini]
 
         # propagate rate matrix : parallel version
         popul = []
@@ -882,7 +882,7 @@ class MSM(object):
             return
         else:
             sum_pini = np.sum(pini)
-            pini_norm = [np.float(x) / sum_pini for x in pini]
+            pini_norm = [float(x) / sum_pini for x in pini]
 
         # propagate transition matrix : parallel version
         popul = []

@@ -542,7 +542,7 @@ def do_boots_worker(x):
         itrans = np.random.randint(ltrans)
         count_inp = [trans[itrans][0], trans[itrans][1], keys, lagt, slider]
         c = calc_count_worker(count_inp)
-        count += np.matrix(c)
+        count += c
         ncount_boots += np.sum(c)
     D = nx.DiGraph(count)
     keep_states = list(sorted(list(nx.strongly_connected_components(D)))[0])
