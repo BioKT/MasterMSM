@@ -24,6 +24,35 @@ beta = 1./(8.314e-3*300)
 #            diff+=1
 #    return diff
 
+def calc_eigsT(trans):
+    """
+    Calculate eigenvalues and eigenvectors of transition matrix T.
+
+    Parameters
+    ----------
+    trans : np.array
+        The transition matrix
+
+    Returns
+    -------
+    evals: np.array
+        Sorted eigenvalues and eigenvectors 
+    rvecs : numpy array, optional
+        Sorted right eigenvectors of T, sorted.
+    lvecs : numpy array, optional
+        Left eigenvectors of T, sorted.
+
+    """
+    evals, lvecs, rvecs = spla.eig(trans, left=True)
+
+    # sort eigenvalues and eigenvectors
+    ievals = np.argsort(-evals)
+    evals = evals[ievals]
+    lvecs = lvecs[:,ievals]
+    rvecs = rvecs[:,ievals]
+
+    return evals, lvecs, rvecs
+
 def calc_eigsK(rate, evecs=False):
     """ 
     Calculate eigenvalues and eigenvectors of rate matrix K
@@ -76,8 +105,8 @@ def calc_eigsK(rate, evecs=False):
         return tauK, peqK
     else:
         # sort eigenvectors
-        rvecsK_sorted = np.zeros((nkeys, nkeys), float)
-        lvecsK_sorted = np.zeros((nkeys, nkeys), float)
+        rvecsK_sorted = np.zeros((nkeys, nkeys), complex)
+        lvecsK_sorted = np.zeros((nkeys, nkeys), complex)
         for i in range(nkeys):
             iiK, lamK = elistK[i]
             rvecsK_sorted[:,i] = rvecsK[:,iiK]
@@ -265,7 +294,7 @@ def mat_mul_v(m, v):
 #            if K[target,i] > 0:
 #                kon += K[target,i]*peq[i]
 #    return kon
-#
+
 def run_commit(states, K, peq, FF, UU):
     """ Calculate committors and reactive flux
 
@@ -359,11 +388,12 @@ def calc_count_worker(x):
     Parameters
     ----------
     x : list
-        List containing input for each mp worker. Includes:
-        distraj :the time series of states
-        dt : the timestep for that trajectory
-        keys : the keys used in the assignment
-        lagt : the lag time for construction
+        List containing input for each parallel worker. Includes:
+            distraj : the time series of states
+            dt : the timestep for that trajectory
+            keys : the keys used in the assignment
+            lagt : the lag time for construction
+            sliding : sliding windows 
 
     Returns
     -------
@@ -380,6 +410,8 @@ def calc_count_worker(x):
 
     ltraj = len(distraj)
     lag = int(lagt/dt) # number of frames per lag time
+    if lag < 1:
+        raise ValueError("lag time shorter than timestep") 
     if sliding:
         slider = 1 # every state is initial state
     else:
@@ -395,9 +427,11 @@ def calc_count_worker(x):
         if state_j in keys:
             idx_j = keys.index(state_j)
         try:
-            count[idx_j][idx_i] += 1
-        except UnboundLocalError:
+            count[idx_j,idx_i] += 1
+        except UnboundLocalError as e:
+            print (e)
             pass
+
     return count
 
 def calc_lifetime(x):
@@ -464,6 +498,7 @@ def traj_split(data=None, lagt=None, fdboots=None):
     ltraj = [len(x[0])*x[1] for x in trajs]
     ltraj_median = np.median(ltraj)
     timetot = np.sum(ltraj) # total simulation time
+
     while ltraj_median > timetot/20. and ltraj_median > 10.*lagt:
         trajs_new = []
         #cut trajectories in chunks
@@ -474,6 +509,7 @@ def traj_split(data=None, lagt=None, fdboots=None):
         trajs = trajs_new
         ltraj = [len(x[0])*x[1] for x in trajs]
         ltraj_median = np.median(ltraj)
+
     # save trajs
     fd, filetmp = tempfile.mkstemp()
     file = os.fdopen(fd, 'wb')
@@ -491,13 +527,13 @@ def do_boots_worker(x):
         and the total number of transitions.
 
     """
-
-    #print "# Process %s running on input %s"%(mp.current_process(), x[0])
-    filetmp, keys, lagt, ncount, slider = x
+    filetmp, keys, lagt, ncount, slider, neigs = x
     nkeys = len(keys)
+    
     finp = open(filetmp, 'rb')
     trans = pickle.load(finp)
     finp.close()
+
     ltrans = len(trans)
     np.random.seed()
     ncount_boots = 0
@@ -506,35 +542,15 @@ def do_boots_worker(x):
         itrans = np.random.randint(ltrans)
         count_inp = [trans[itrans][0], trans[itrans][1], keys, lagt, slider]
         c = calc_count_worker(count_inp)
-        count += np.matrix(c)
+        count += c
         ncount_boots += np.sum(c)
-        #print ncount_boots, "< %g"%ncount
     D = nx.DiGraph(count)
-    #keep_states = sorted(nx.strongly_connected_components(D)[0])
-    keep_states = list(sorted(list(nx.strongly_connected_components(D)),
-                key = len, reverse=True)[0])
-    keep_keys = list(map(lambda x: keys[x], keep_states))
+    keep_states = list(sorted(list(nx.strongly_connected_components(D)))[0])
+    keep_keys = [keys[x] for x in keep_states]
     nkeep = len(keep_keys)
-    trans = np.zeros([nkeep, nkeep], float)
-    for i in range(nkeep):
-        ni = reduce(lambda x, y: x + y, map(lambda x:
-            count[keep_states[x]][keep_states[i]], range(nkeep)))
-        for j in range(nkeep):
-            trans[j][i] = float(count[keep_states[j]][keep_states[i]])/float(ni)
-    evalsT, rvecsT = spla.eig(trans, left=False)
-    elistT = []
-    for i in range(nkeep):
-        elistT.append([i,np.real(evalsT[i])])
-    elistT.sort(key=cmp_to_key(esort))
-    tauT = []
-    for i in range(1,nkeep):
-        _, lamT = elistT[i]
-        tauT.append(-lagt/np.log(lamT))
-    ieqT, _ = elistT[0]
-    peqT_sum = reduce(lambda x,y: x + y, map(lambda x: rvecsT[x,ieqT],
-             range(nkeep)))
-    peqT = rvecsT[:,ieqT]/peqT_sum
-    return tauT, peqT, trans, keep_keys
+
+    trans = calc_trans(nkeep, keep_states, count)
+    return trans, keep_keys
 
 def calc_trans(nkeep=None, keep_states=None, count=None):
     """ Calculates transition matrix.
@@ -652,7 +668,7 @@ def calc_mlrate(nkeep, count, lagt, rate_init):
 
     """
     # initialize rate matrix and equilibrium distribution enforcing detailed balance
-    p_prev = np.sum(count, axis=0)/np.float(np.sum(count))
+    p_prev = np.sum(count, axis=0)/float(np.sum(count))
     rate_prev = detailed_balance(nkeep, rate_init, p_prev)
     ml_prev = likelihood(nkeep, rate_prev, count, lagt)
 
@@ -705,7 +721,7 @@ def calc_mlrate(nkeep, count, lagt, rate_init):
             ml_cum.append(ml_prev)
             temp_cum.append(1./beta)
             print ("\n END of cycle %g"%ncycle)
-            print ("   acceptance :%g"%(np.float(accept)/nsteps))
+            print ("   acceptance :%g"%(float(accept)/nsteps))
             accept = 0
             print (rate_prev)
             print ("   L old =", ml_ref,"; L new:", ml_prev)
@@ -1119,7 +1135,7 @@ def peq_averages(peq_boots, keep_keys_boots, keys):
             peq_std.append(0.)
     return peq_ave, peq_std
 
-def tau_averages(tau_boots, keys):
+def tau_averages(tau_boots):
     """ Return averages from bootstrap results
 
     Parameters
@@ -1138,7 +1154,8 @@ def tau_averages(tau_boots, keys):
     tau_ave = []
     tau_std = []
     tau_keep = []
-    for n in range(len(keys)-1):
+    ntau = len(tau_boots[0])
+    for n in range(ntau):
         try:
             data = [x[n] for x in tau_boots if not np.isnan(x[n])]
             tau_ave.append(np.mean(data))
@@ -1147,7 +1164,6 @@ def tau_averages(tau_boots, keys):
         except IndexError:
             continue
     return tau_ave, tau_std
-
 
 def matrix_ave(mat_boots, keep_keys_boots, keys):
     """ Return averages from bootstrap results
@@ -1193,3 +1209,75 @@ def matrix_ave(mat_boots, keep_keys_boots, keys):
         mat_ave.append(mat_ave_keep)
         mat_std.append(mat_std_keep)
     return mat_ave, mat_std
+
+def merge_trajs(data):
+    """ 
+    Merge all trajectories into a consistent set.
+
+    Returns
+    -------
+    new_keys : list
+        Combination of keys from all trajectories.
+
+    """
+    for tr in data:
+        if not hasattr(tr, 'keys'):
+            tr.find_keys()
+
+    new_keys = []
+    for traj in data:
+        new_keys += filter(lambda x: x not in new_keys, \
+                traj.keys)
+
+    return sorted(new_keys)
+
+def max_dt(data):
+    """ 
+    Find maximum dt in trajectories.
+
+    Parameters
+    ----------
+    data : list
+        List of trajectory objects.
+
+    Returns
+    -------
+    float
+        The maximum value of the time-step within the trajectories.
+
+    """
+    return np.max([x.dt for x in data])
+
+def check_connect(count, keys):
+    """ Check connectivity of count matrix.
+
+    Parameters
+    ----------
+    count : np.array
+        Count matrix
+    keys : list
+        Name of states.
+
+    Returns
+    -------
+    keep_states : list
+        Indexes of states from the largest strongly connected set.
+    keep_keys : list
+        Keys for the largest strongly connected set.
+
+    References
+    -----
+    We use the Tarjan algorithm as implemented in NetworkX. [1]_
+
+    .. [1] R. Tarjan, "Depth-first search and linear graph algorithms",
+        SIAM Journal of Computing (1972).
+
+    """
+    D = nx.DiGraph(count)
+    keep_states = list(sorted(list(nx.strongly_connected_components(D)),
+                              key=len, reverse=True)[0])
+    keep_states.sort()
+    keep_keys = [keys[x] for x in keep_states]
+    return keep_states, keep_keys
+
+

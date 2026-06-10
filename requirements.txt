@@ -3,5 +3,4 @@ scipy
 matplotlib
 networkx
 mdtraj
-hdbscan
 scikit-learn

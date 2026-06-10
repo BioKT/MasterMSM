@@ -6,408 +6,74 @@ This file is part of the MasterMSM package.
 import copy
 import sys
 import math
-import hdbscan
 import numpy as np
-from sklearn.preprocessing import StandardScaler
-from sklearn.decomposition import PCA
 import mdtraj as md
 import matplotlib.pyplot as plt
 
-def discrete_rama(phi, psi, seq=None, bounds=None, states=['A', 'E', 'L']):
-    """ Assign a set of phi, psi angles to coarse states.
-
-    Parameters
-   ----------
-    phi : list
-        A list of Phi Ramachandran angles.
-    psi : list
-        A list of Psi Ramachandran angles.
-    seq : list
-        Sequence of states.
-    bounds : list of lists
-        Alternative bounds for transition based assignment.
-    states : list
-        The states that will be used in the assignment.
-
-    Returns
-    -------
-    cstates : list
-        The sequence of coarse states.
-
-    Notes
-    -----
-    Here we follow Buchete and Hummer for the assignment procedure [1]_ .
-
-    .. [1] N. V. Buchete and G. Hummer, "Coarse master equations for peptide folding dynamics", J. Phys. Chem. B. (2008).
-
-    """
-    if bounds is None:
-        TBA_bounds = {}
-        if 'A' in states:
-            TBA_bounds['A'] = [ -100., -40., -50., -10. ]
-        if 'E' in states:
-            TBA_bounds['E'] = [ -180., -40., 125.,165. ]
-        if 'L' in states:
-            TBA_bounds['L'] = [ 50., 100., -40.,70.0 ]
-
-    res_idx = 0
-    if len(phi[0]) != len(psi[0]):
-        print (" Different number of phi and psi dihedrals")
-        print (" STOPPING HERE")
-        sys.exit()
-
-    cstates = []
-    prev_s_string = ""
-    ndih = len(phi[0])
-    for f,y in zip(phi[1],psi[1]):
-        s_string = []
-        for n in range(ndih):
-            s, _ = _state(f[n]*180/math.pi, y[n]*180/math.pi, TBA_bounds)
-        #if s == "O" and len(prev_s_string) > 0:
-            if s == "O":
-                try:
-                    s_string += prev_s_string[n]
-                except IndexError:
-                    s_string += "O"
-            else:
-                s_string += s
-        cstates.append(''.join(s_string))
-        prev_s_string = s_string
-        res_idx += 1
-    return cstates
-
-def discrete_ramagrid(phi, psi, nbins):
-    """ Finely partition the Ramachandran map into a grid of states.
-
-    Parameters
-   ----------
-    phi : list
-        A list of Phi Ramachandran angles.
-    psi : list
-        A list of Psi Ramachandran angles.
-    nbins : int
-        The number of bins in the grid in each dimension.
-
-    Returns
-    -------
-    cstates : list
-        The sequence of coarse states.
-
-    """
-    cstates = []
-    for f, y in zip(phi[1], psi[1]):
-        s = _stategrid(f, y, nbins)
-        cstates.append(s)
-    return cstates
-
-#stats_out = open(stats_file,"w")
-#cum = 0
-#for s in stats_list:
-#    cum+=s[1]
-#    #stats_out.write("%s %8i %8i %12.6f\n"%\
-#    #   (s[0],s[1],cum,qave[s[0]]/float(s[1])))
-#    stats_out.write("%s %8i %8i\n"%\
-#        (s[0],s[1],cum))
-#
-#stats_out.close()
-#state_out.close()
-#
-#def isnative(native_string, string):
-#    s = ""
-#    for i in range(len(string)):
-#        if string[i]==native_string[i]:
-#            s+="1"
-#        else:
-#            s+="0"
-#    return s
-#
-def _inrange( x, lo, hi ):
-        if x > lo and x < hi:
-                return 1
-        else:
-                return 0
-
-def _inbounds(bounds,phi, psi):
-    if _inrange( phi,bounds[0],bounds[1]) and _inrange( psi,bounds[2],bounds[3]):
-            return 1
-    if len(bounds) > 4:
-            if _inrange( phi,bounds[4],bounds[5]) and _inrange( psi,bounds[6],bounds[7]):
-                    return 1
-    if len(bounds) > 8:
-            if _inrange( phi,bounds[8],bounds[9]) and _inrange( psi,bounds[10],bounds[11]):
-                    return 1
-    if len(bounds) > 12:
-            if _inrange( phi,bounds[12],bounds[13]) and _inrange( psi,bounds[14],bounds[15]):
-                    return 1
-    return 0
-
-def _state(phi,psi,bounds):
-    """ Finds coarse state for a pair of phi-psi dihedrals
+def load_mdtraj(top=None, xtc=None, stride=None):
+    """ Loads trajectories using mdtraj.
 
     Parameters
     ----------
-    phi : float
-        Phi dihedral angle
-    psi : float
-        Psi dihedral angle
-    bounds : dict
-        Dictionary containing list of states and their respective bounds
+    top: str
+        The topology file, may be a PDB or GRO file.
+    xtc : str
+        The trajectory filename.
 
     Returns
     -------
-    k : string
-        Key for assigned state
+    mdtrajs : list
+        A list of mdtraj Trajectory objects.
 
     """
-#    if type == "GLY":
-#        for k in g_bounds.keys():
-#            if inbounds( g_bounds[k], (phi,psi) ):
-#                return k, []
-#        # else
-#        return 'O', [ (phi,psi) ]
-#    if type == "prePRO":
-#        for k in pp_bounds.keys():
-#            if inbounds( pp_bounds[k], (phi,psi) ):
-#                return k, []
-#        # else
-#        return 'O', [ (phi,psi) ]
-#    else:
-    for k in bounds.keys():
-        if _inbounds(bounds[k], phi, psi ):
-            return k, []
-    # else
-    return 'O', [ (phi,psi) ]
+    return md.load(xtc, top=top, stride=stride)
 
-#def stats_sort(x,y):
-#    xx = x[1]
-#    yy = y[1]
-#    return yy-xx
-#
-##if len(sys.argv)<5:
-##   sys.stdout.write(Usage)
-##   sys.exit(0)
-#
-#torsion_file = sys.argv[1]
-##q_file = sys.argv[2]
-#state_file = sys.argv[2]
-#stats_file = sys.argv[3]
-
-def _stategrid(phi, psi, nbins):
-    """ Finds coarse state for a pair of phi-psi dihedrals
+def compute_rama(traj, shift=False, sincos=False):
+    """ Computes Ramachandran angles 
 
     Parameters
     ----------
-    phi : float
-        Phi dihedral angle
-    psi : float
-        Psi dihedral angle
-    nbins : int
-        Number of bins in each dimension of the grid
+    traj : md.trajectory
+        An MDtraj trajectory object
+    shift : bool
+        Whether we want to shift the torsions or not
+    sincos : bool
+        Whether we are calculating the sines and cosines 
 
     Returns
     -------
-    k : int
-        Index of bin
+    phi : array
+        An array with phi torsions
+    psi : array
+        An array with psi torsions
 
     """
-    #print phi, psi
-    #print "column :", int(0.5*(phi + math.pi)/math.pi*nbins)
-    #print "row :", int(0.5*(psi + math.pi)/math.pi*nbins)
-    ibin = int(0.5*nbins*(phi/math.pi + 1.)) + int(0.5*nbins*(psi/math.pi + 1))*nbins
-    return ibin
-
-def discrete_backbone_torsion(mcs, ms, phi=None, psi=None, \
-                              pcs=None, dPCA=False):
-    """
-    Discretize backbone torsion angles
-
-    Assign a set of phi, psi angles (or their corresponding
-    dPCA variables if dPCA=True) to coarse states
-    by using the HDBSCAN algorithm.
-
-    Parameters
-    ----------
-    phi : list
-        A list of Phi Ramachandran angles
-    psi : list
-        A list of Psi Ramachandran angles
-    pcs : matrix
-        Matrix containing principal components obtained
-        from PCA of dihedral angles
-    mcs : int
-        min_cluster_size for HDBSCAN
-    ms : int
-        min_samples for HDBSCAN
-
-    """
-    if dPCA:
-        X = pcs
+    _, phi = md.compute_phi(traj.mdt)
+    _, psi = md.compute_psi(traj.mdt)
+    if shift:
+        return _shift(phi, psi)
+    elif sincos:
+        return np.column_stack([np.sin(phi), np.cos(phi)]), \
+                np.column_stack([np.sin(psi), np.cos(psi)])
     else:
-        # shift and combine dihedrals
-        if len(phi[0]) != len(psi[0]): 
-            raise ValueError("Inconsistent dimensions for angles")
+        return phi, psi
 
-        ndih = len(phi[0])
-        phi_shift, psi_shift = [], []
-        for f, y in zip(phi[1], psi[1]):
-            for n in range(ndih):
-                phi_shift.append(f[n])
-                psi_shift.append(y[n])
-        np.savetxt("phi_psi.dat", np.column_stack((phi_shift, psi_shift)))
-        psi_shift, phi_shift = _shift(psi_shift, phi_shift)
-        data = np.column_stack((phi_shift, psi_shift))
-        np.savetxt("phi_psi_shifted.dat", data)
-    X = StandardScaler().fit_transform(data)
-
-    # Set values for clustering parameters
-    if mcs is None:
-        mcs = int(np.sqrt(len(X)))
-        print("Setting minimum cluster size to: %g" % mcs)
-    if ms  is None:
-        ms  = mcs
-        print("Setting min samples to: %g" % ms)
-
-    hdb = hdbscan.HDBSCAN(min_cluster_size=mcs, min_samples=ms).fit(X)
-    hdb.condensed_tree_.plot(select_clusters=True)
-
-    #plt.savefig("alatb-hdbscan-tree.png",dpi=300,transparent=True)
-
-#    n_micro_clusters = len(set(hb.labels_)) - (1 if -1 in hb.labels_ else 0
-#    if n_micro_clusters > 0:
-#        print("HDBSCAN mcs value set to %g"%mcs, n_micro_clusters,'clusters.')
-#        break
-#    elif mcs < 400:
-#        mcs += 25
-#    else:
-#        sys.exit("Cannot find any valid HDBSCAN mcs value")
-#    #n_noise = list(labels).count(-1)
-
-#    ## plot clusters
-#    colors = ['royalblue', 'maroon', 'forestgreen', 'mediumorchid', \
-#    'tan', 'deeppink', 'olive', 'goldenrod', 'lightcyan', 'lightgray']
-#    vectorizer = np.vectorize(lambda x: colors[x % len(colors)])
-#    fig, ax = plt.subplots(figsize=(7,7))
-#    assign = hb.labels_ >= 0
-#    ax.scatter(X[assign,0],X[assign,1], c=hb.labels_[assign])
-#    ax.set_xlim(-np.pi, np.pi)
-#    ax.set_ylim(-np.pi, np.pi)
-#    plt.savefig('alaTB_hdbscan.png', dpi=300, transparent=True)
-#
-#    # remove noise from microstate trajectory and apply TBA (Buchete et al. JPCB 2008)
-#    labels = _filter_states(hb.labels_)
-#
-#    # remove from clusters points with small (<0.1) probability
-#    for i in range(len(labels)):
-#        if hb.probabilities_[i] < 0.1:
-#            labels[i] = -1
-
-    return hdb.labels_
-
-def dPCA(angles):
-    """
-    Compute PCA of dihedral angles
-
-    We follow the methods described in A. Altis et al. 
-    *J. Chem. Phys.*  244111 (2007)
+def compute_contacts(traj, scheme=None, log=False):
+    """ Computes inter-residue contacts
 
     Parameters
     ----------
-    angles : angles ordered by columns
-    
-    Returns
-    -------
-    X_transf : dPCA components to retrieve 80%
-        of variance ordered by columns
-    
-    """
-    shape = np.shape(angles)
-    #print (shape)
-    X = np.zeros((shape[0] , \
-                  shape[1]+shape[1]))
-    for i, ang in enumerate(angles):
-        p = 0
-        for phi in ang:
-            X[i][p], X[i][p+1] = np.cos(phi), np.sin(phi)
-            p += 2
-    X_std = StandardScaler().fit_transform(X)
-    sklearn_pca = PCA(n_components=2*shape[1])
-    
-    X_transf = sklearn_pca.fit_transform(X_std)
-    expl = sklearn_pca.explained_variance_ratio_
-    print("Ratio of variance retrieved by each component:", expl)
-
-    cum_var = 0.0
-    i = 0
-    while cum_var < 0.8:
-        cum_var += expl[i]
-        i += 1
-
-    ## Save cos and sin of dihedral angles along the trajectory
-    #h5file = "data/out/%g_traj_angles.h5"%t
-    #with h5py.File(h5file, "w") as hf:
-    #    hf.create_dataset("angles_trajectory", data=X)
-    ## Plot cumulative variance retrieved by new components (i.e. those from PCA)
-    #plt.figure()  #plt.plot(np.cumsum(sklearn_pca.explained_variance_ratio_))
-    #plt.xlabel('number of components')  #plt.ylabel('cumulative explained variance')
-    #plt.savefig('cum_variance_%g.png'%t)
-
-    #counts, ybins, xbins, image = plt.hist2d(X_transf[:,0], X_transf[:,1], \
-    #    bins=len(X_transf[:,0]), cmap='binary_r', alpha=0.2)#bins=[np.linspace(-np.pi,np.pi,20), np.linspace(-np.pi,np.pi,30)]
-    ##countmax = np.amax(counts)
-    ##counts = np.log(countmax) - np.log(counts)
-    ##print(counts, countmax)
-    #plt.contour(np.transpose(counts), extent=[xbins.min(), xbins.max(), ybins.min(), ybins.max()], \
-    #              linewidths=1, colors='gray')
-    #plt.scatter(X_transf[:,0],X_transf[:,1])# c=counts)
-    #fig, ax = plt.subplots(1,1, figsize=(8,8), sharex=True, sharey=True)
-    #ax.contour(np.transpose(counts), extent=[xbins.min(), xbins.max(), ybins.min(), ybins.max()], \
-    #              linewidths=1, colors='gray')
-    #ax.plot(X_transf[:,0],X_transf[:,1], 'o', ms=0.2, color='C%g'%t)
-    #plt.tight_layout()
-    #plt.savefig('dpca_%g.png'%t)
-
-    return X_transf[:,:i]
-
-def discrete_contacts_hdbscan(mcs, ms, mdt_all):
-    """
-    HDBSCAN discretization based on contacts
-
-    Parameters
-    ----------
-    mdt : object
-        mdtraj trajectory
-    mcs : int
-        min_cluster_size for HDBSCAN
-    ms : int
-        min_samples for HDBSCAN
-
-    Returns
-    -------
-    labels : list
-        Indexes corresponding to the clustering
+    traj : md.trajectory
+        An MDtraj trajectory object
+    log : bool
+        Whether distances are in log scale
 
     """
-
-    dists_all = []
-    for mdt in mdt_all:
-        dists = md.compute_contacts(mdt, contacts='all', periodic=True)
-        for dist in dists[0]:
-            dists_all.append(dist)
-
-    X = StandardScaler().fit_transform(dists_all) #dists[0]
-    if mcs is None: mcs = int(np.sqrt(len(X)))
-    if ms  is None: ms  = 100
-    hdb = hdbscan.HDBSCAN(min_cluster_size=mcs, min_samples=ms)
-    hdb.fit(X)
-    hdb.condensed_tree_.plot(select_clusters=True)
-    plt.savefig("hdbscan-tree.png",dpi=300,transparent=True)
-
-    # In case not enough states are produced, exit
-    if (len(np.unique(hdb.labels_))<=2):
-        raise Exception("Cannot generate clusters from contacts")
-
-    dtraj = _filter_states(hdb.labels_)
-    return dtraj
+    distances, pairs = md.compute_contacts(traj, scheme=scheme)
+    if not log:
+        return distances
+    else:
+        return np.log(distances)
 
 def _filter_states(states):
     """
@@ -425,12 +91,10 @@ def _filter_states(states):
                 pass
     return fs
 
-def _shift(psi, phi):
-    psi_s, phi_s = copy.deepcopy(phi), copy.deepcopy(psi)
+def _shift(phi, psi):
+    phi_s, psi_s = copy.deepcopy(phi), copy.deepcopy(psi)
     for i in range(len(phi_s)):
-        if phi_s[i] < -2:
-            phi_s[i] += 2*np.pi
+        phi_s[i] = [x + 2*np.pi if x < 0 else x for x in phi_s[i]]
     for i in range(len(psi_s)):
-        if psi_s[i] > 2:
-            psi_s[i] -= 2*np.pi
+        psi_s[i] = [x + 2*np.pi if (x <-2) else x for x in psi_s[i]]
     return phi_s, psi_s

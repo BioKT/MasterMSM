@@ -1,5 +1,5 @@
+[![CI](https://github.com/BioKT/MasterMSM/actions/workflows/ci.yml/badge.svg?branch=develop)](https://github.com/BioKT/MasterMSM/actions/workflows/ci.yml)
 [![Documentation Status](https://readthedocs.org/projects/mastermsm/badge/?version=develop)](https://mastermsm.readthedocs.io/en/develop/?badge=develop)
-[![Codacy Badge](https://app.codacy.com/project/badge/Grade/90d86f571f5c416b910a9dc4d1d8c569)](https://www.codacy.com/gh/BioKT/MasterMSM/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=BioKT/MasterMSM&amp;utm_campaign=Badge_Grade)
 
 MasterMSM
 =========
