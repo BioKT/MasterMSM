@@ -403,6 +403,9 @@ class MSM(object):
                 ax[1].set_xlabel('MC steps x n$_{freq}$')
                 ax[1].set_ylabel(r'1/$\beta$')
 
+        self.tauK, self.peqK, self.rvecsK, self.lvecsK = \
+            msm_lib.calc_eigsK(self.rate, evecs=True)
+
     def calc_evals(self, neigs=None, evecs=True, errors=False):
         """ Calculates eigenvalues and optionally eigenvectors 
         of the transition matrix
@@ -422,10 +425,10 @@ class MSM(object):
         # relaxation times
         if not neigs:
             neigs = len(evals) - 1
-        self.tauT = np.array([-self.lagt/np.log(lmbd) for lmbd in evals[1:neigs+1]])
+        self.tauT = np.real(np.array([-self.lagt/np.log(lmbd) for lmbd in evals[1:neigs+1]]))
 
         # equilibrium probabilities
-        self.peqT = rvecs[:,0]/np.sum(rvecs[:,0])
+        self.peqT = np.real(rvecs[:,0]/np.sum(rvecs[:,0]))
 
         if evecs:
             self.lvecsT = lvecs
