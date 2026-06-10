@@ -35,7 +35,7 @@ MSM module
 
 
 FEWSM module
------------
+------------
 .. currentmodule:: mastermsm
 
 .. autosummary::
