@@ -101,83 +101,78 @@ class SuperMSM(object):
             if error:
                 self.msms[lt].boots()
 
-#    def ck_test(self, init=None, lags=None, time=None):
-#        """ Carry out Chapman-Kolmogorov test.
-#
-#        We follow the procedure described by Prinz et al.[1]_
-#
-#        Parameters
-#        -----------
-#        init : str
-#            The states from which the relaxation should be simulated.
-#        lags : list
-#            List of lag times for MSM validation
-#
-#        References
-#        -----
-#        .. [1] J.-H. Prinz et al, "Markov models of molecular kinetics: Generation
-#            and validation", J. Chem. Phys. (2011).
-#
-#        """
-#        # build MSM at corresponding lag times 
-#        self.do_msm(lags)
-#
-#        # defining lag times to propagate
-#        # logs = np.linspace(np.log10(self.dt),np.log10(np.max(lagtimes)*5),20)
-#        # lagtimes_exp = 10**logs
-#        nkeys = len(self.msms[lags[0]].keys)
-#        init_states = [x for x in range(nkeys) if self.msms[lags[0]].keys[x] in init]
-#
-#        # create MSMs at multiple lag times
-#        pMSM = []
-#        maxlag = np.max(lagtimes)
-#        for lagt in lagtimes:
-#            lagtimes_exp = np.logspace(np.log10(lagt), np.log10(maxlag*10), 10)
-#            ltimes_exp_int = [int(lagt* math.floor(x/float(lagt))) \
-#                              for x in lagtimes_exp if x > lagt]
-#
-#            # propagate transition matrix
-#            time, pop = self.msms[lagt].propagateT(init=init, time=ltimes_exp_int)
-#            ltime = len(time)
-#
-#            # keep only selected states
-#            pop_relax = np.zeros(ltime)
-#            for x in init:
-#                ind = self.msms[lagt].keep_keys.index(x)
-#                # pop_relax += pop[:,ind]
-#                pop_relax += np.array([x[ind] for x in pop])
-#            pMSM.append((time, pop_relax))
-#
-#        # calculate population from simulation data
-#        logs = np.linspace(np.log10(self.dt), np.log10(maxlag* 10), 10)
-#        lagtimes_md = 10**logs
-#        pMD = []
-#        epMD = []
-#        for lagt in lagtimes_md:
-#            try:
-#                num = np.sum([self.msms[lagt].count[j,i] for (j,i) in \
-#                              itertools.product(init_states, init_states)])
-#            except KeyError:
-#                self.msms[lagt] = self.do_msm(lagt)
-#                num = np.sum([self.msms[lagt].count[j, i] for (j, i) in \
-#                              itertools.product(init_states, init_states)])
-#            den = np.sum([self.msms[lagt].count[:, i] for i in init_states])
-#            try:
-#                pMD.append((lagt, float(num) / den))
-#            except ZeroDivisionError:
-#                print(" ZeroDivisionError: pMD.append((lagt, float(num)/den)) ")
-#                print(" lagt", lagt)
-#                print(" num", num)
-#                print(" den", den)
-#                sys.exit()
-#
-#            num = pMD[-1][1] - pMD[-1][1] ** 2
-#            den = np.sum([self.msms[lagt].count[j, i] for (i, j) in \
-#                          itertools.product(init_states, init_states)])
-#            epMD.append(np.sqrt(lagt / self.dt * num / den))
-#        pMD = np.array(pMD)
-#        epMD = np.array(epMD)
-#        return pMSM, pMD, epMD
+    def ck_test(self, time=None, init=None):
+        """ Chapman-Kolmogorov test comparing MSM predictions with direct MD.
+
+        Builds MSMs at each lag time in `time`, propagates from `init` states,
+        and compares the predicted conditional return probability with the
+        value directly measured from the count matrices.
+
+        Follows the procedure described by Prinz et al.[1]_
+
+        Parameters
+        ----------
+        time : list
+            Lag times at which to build MSMs for validation.
+        init : list
+            State labels used as initial conditions (e.g. ['E']).
+
+        Returns
+        -------
+        pMSM : list
+            List of (time_array, pop_array) tuples, one per lag time in `time`.
+        pMD : ndarray, shape (n, 2)
+            Direct MD reference: columns are [lag_time, P(init->init)].
+        epMD : ndarray, shape (n,)
+            Binomial standard errors on pMD.
+
+        References
+        ----------
+        .. [1] J.-H. Prinz et al, "Markov models of molecular kinetics: Generation
+            and validation", J. Chem. Phys. (2011).
+
+        """
+        maxlag = np.max(time)
+
+        # Ensure MSMs exist and have transition matrices
+        for lt in time:
+            if lt not in self.msms or not hasattr(self.msms[lt], 'tauT'):
+                self.do_msm(lt)
+                self.msms[lt].do_trans(evecs=False)
+
+        # MSM predictions: propagate T from init states, one curve per lag time
+        pMSM = []
+        for lt in time:
+            msm = self.msms[lt]
+            logs = np.linspace(np.log10(lt), np.log10(maxlag * 10), 15)
+            t_prop = sorted(set([int(lt * math.floor(x / float(lt)))
+                                  for x in 10 ** logs if x >= lt]))
+            tcum, popul = msm.propagateT(init=init, time=t_prop)
+            pop_init = np.zeros(len(tcum))
+            for k, p in enumerate(popul):
+                for s in init:
+                    if s in msm.keep_keys:
+                        pop_init[k] += p[msm.keep_keys.index(s)]
+            pMSM.append((np.array(tcum), pop_init))
+
+        # MD reference: conditional return probability from count matrices
+        pMD_list = []
+        epMD_list = []
+        for lt in time:
+            msm = self.msms[lt]
+            init_idx = [msm.keys.index(s) for s in init if s in msm.keys]
+            if not init_idx:
+                continue
+            num = float(np.sum([msm.count[j, i]
+                                for (j, i) in itertools.product(init_idx, init_idx)]))
+            den = float(np.sum([msm.count[:, i] for i in init_idx]))
+            if den > 0:
+                p_val = num / den
+                err = np.sqrt(p_val * (1.0 - p_val) / den) if den > 1 else 0.0
+                pMD_list.append([lt, p_val])
+                epMD_list.append(err)
+
+        return pMSM, np.array(pMD_list), np.array(epMD_list)
 
     def do_lbrate(self, evecs=False, error=False):
         """ Calculates the rate matrix using the lifetime based method.
@@ -995,7 +990,7 @@ class MSM(object):
             lmin = np.min([len(x) for x in acf_cum])
 
             acf_ave[m] = []
-            for l in range(lmin):
+            for l in range(1, lmin):  # skip zero-lag (trivially 1 after normalisation)
                 num = np.sum([x[l] for x in acf_cum])
                 denom = np.sum([len(x) - l for x in acf_cum])
                 acf_ave[m].append(num / denom)
