@@ -1,5 +1,5 @@
-[![CI](https://github.com/BioKT/MasterMSM/actions/workflows/ci.yml/badge.svg?branch=develop)](https://github.com/BioKT/MasterMSM/actions/workflows/ci.yml)
-[![Documentation Status](https://readthedocs.org/projects/mastermsm/badge/?version=develop)](https://mastermsm.readthedocs.io/en/develop/?badge=develop)
+[![CI](https://github.com/BioKT/MasterMSM/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/BioKT/MasterMSM/actions/workflows/ci.yml)
+[![Documentation Status](https://readthedocs.org/projects/mastermsm/badge/?version=latest)](https://mastermsm.readthedocs.io/en/latest/?badge=latest)
 
 MasterMSM
 =========
@@ -26,22 +26,33 @@ This code has been written by David De Sancho with help from Anne Aguirre.
 
 Installation
 ------------
-    git clone http://github.com/daviddesancho/MasterMSM destination/MasterMSM
-    cd destination/mastermsm
-    python setup.py install --user
+Requires Python >= 3.10. Install from source:
 
-External libraries
-------------------
-    mdtraj : https://mdtraj.org
+    git clone https://github.com/BioKT/MasterMSM
+    cd MasterMSM
+    pip install .
+
+For development (editable install):
+
+    pip install -e .
+
+Dependencies
+------------
+*   numpy
+*   scipy
+*   matplotlib
+*   networkx
+*   mdtraj (https://mdtraj.org)
+*   scikit-learn
 
 Citation
 --------
     @article{mastermsm,
     author = "David De Sancho and Anne Aguirre",
-    title = "{MasterMSM: A Package for Constructing Master Equation    Models of Molecular Dynamics}",
+    title = "{MasterMSM: A Package for Constructing Master Equation Models of Molecular Dynamics}",
     year = "2019",
     month = "6",
-    journal = "J. Chem. Inf. Model."
+    journal = "J. Chem. Inf. Model.",
     url = "https://doi.org/10.1021/acs.jcim.9b00468",
     doi = "10.1021/acs.jcim.9b00468"
     }
