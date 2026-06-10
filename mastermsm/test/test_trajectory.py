@@ -16,8 +16,8 @@ class TestTimeSeries(unittest.TestCase):
         self.tss = [traj.TimeSeries(xtc=xtc, top=top) \
                 for i in range(2)]
 
-        self.dis = traj.TimeSeries(dtraj=[0,1,1,0])
-        self.dis_multi = traj.TimeSeries(dtraj=[[0,1,1,0], \
+        self.dis = traj.TimeSeries(distraj=[0,1,1,0])
+        self.dis_multi = traj.TimeSeries(distraj=[[0,1,1,0], \
                 [1,0,0,1]])
 
 #class TestMDTrajLib(unittest.TestCase):

@@ -10,7 +10,7 @@ def read(fname):
 
 setup(
 		name='MasterMSM',
-		version='0.1dev',
+		version='0.2.0',
 		description='Algorithms to construct master equation / Markov state models',
 		url='http://github.com/daviddesancho/MasterMSM',
 		author='David De Sancho',
@@ -19,11 +19,22 @@ setup(
         	packages=find_packages(),
 		keywords= "markov state model",
 		long_description=read('README.md'),
+		python_requires='>=3.10',
+		install_requires=[
+			'numpy',
+			'scipy',
+			'matplotlib',
+			'networkx',
+			'mdtraj',
+			'scikit-learn',
+		],
 		classifiers = ["""\
-				Development Status :: 1 - Planning
+				Development Status :: 3 - Alpha
 				Operating System :: POSIX :: Linux
 				Operating System :: MacOS
-				Programming Language :: Python :: 2.7
+				Programming Language :: Python :: 3.10
+				Programming Language :: Python :: 3.11
+				Programming Language :: Python :: 3.12
 				Topic :: Scientific/Engineering :: Bio-Informatics
 				Topic :: Scientific/Engineering :: Chemistry
 				"""]

@@ -105,8 +105,8 @@ def calc_eigsK(rate, evecs=False):
         return tauK, peqK
     else:
         # sort eigenvectors
-        rvecsK_sorted = np.zeros((nkeys, nkeys), float)
-        lvecsK_sorted = np.zeros((nkeys, nkeys), float)
+        rvecsK_sorted = np.zeros((nkeys, nkeys), complex)
+        lvecsK_sorted = np.zeros((nkeys, nkeys), complex)
         for i in range(nkeys):
             iiK, lamK = elistK[i]
             rvecsK_sorted[:,i] = rvecsK[:,iiK]

@@ -35,6 +35,7 @@ class SuperMSM(object):
         self.sym = sym
         self.sliding = sliding
         self.msms = {}
+        self.keys = msm_lib.merge_trajs(self.data)
 
     def _out(self):
         """ Output description to user """
@@ -293,7 +294,7 @@ class MSM(object):
         pool = mp.Pool(processes=nproc)
 
         # generate multiprocessing input
-        mpinput = [[x.distraj, x.dt, x.keys, self.lagt, self.sliding] \
+        mpinput = [[x.distraj, x.dt, self.keys, self.lagt, self.sliding] \
                    for x in self.data]
 
         # run counting using multiprocessing
