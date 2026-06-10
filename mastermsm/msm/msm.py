@@ -50,10 +50,12 @@ class SuperMSM(object):
 
         Parameters
         -----------
-        lagts : list
-            The list of lag times
+        lagts : int or list
+            A single lag time or a list of lag times
 
         """
+        if isinstance(lagts, (int, float)):
+            lagts = [lagts]
         self.lagts = lagts
         for lagt in lagts:
             self.msms[lagt] = MSM(self.data, lagt=lagt, sym=self.sym,\
@@ -66,7 +68,7 @@ class SuperMSM(object):
             self.msms[lagt].calc_trans()
 
     def calc_evals(self, neigs=None, evecs=True, errors=False):
-        """ Calculates eigenvalues and optionally eigenvectors 
+        """ Calculates eigenvalues and optionally eigenvectors
         of the transition matrix
 
         Parameters
@@ -81,6 +83,23 @@ class SuperMSM(object):
         """
         for lagt in self.lagts:
            self.msms[lagt].calc_evals(neigs=neigs, evecs=evecs, errors=errors)
+
+    def convergence_test(self, time=None, error=False):
+        """ Build MSMs at multiple lag times for an implied timescales test.
+
+        Parameters
+        ----------
+        time : list
+            Lag times at which to build MSMs.
+        error : bool
+            Whether to bootstrap errors on timescales and populations.
+
+        """
+        for lt in time:
+            self.do_msm(lt)
+            self.msms[lt].do_trans(evecs=False)
+            if error:
+                self.msms[lt].boots()
 
 #    def ck_test(self, init=None, lags=None, time=None):
 #        """ Carry out Chapman-Kolmogorov test.
@@ -313,7 +332,7 @@ class MSM(object):
         self.count = count
 
     def calc_trans(self):
-        """ Calculates transition matrix 
+        """ Calculates transition matrix
 
         """
         # check connectivity
@@ -322,6 +341,18 @@ class MSM(object):
 
         nkeep = len(self.keep_states)
         self.trans = msm_lib.calc_trans(nkeep, keep_states, self.count)
+
+    def do_trans(self, evecs=True):
+        """ Calculate transition matrix and eigendecomposition.
+
+        Parameters
+        ----------
+        evecs : bool
+            Whether to store eigenvectors.
+
+        """
+        self.calc_trans()
+        self.calc_evals(evecs=evecs)
 
     def do_rate(self, method='Taylor', init=False, report=False):
         """ Calculates the rate matrix from the transition matrix.
@@ -396,9 +427,10 @@ class MSM(object):
         # equilibrium probabilities
         self.peqT = rvecs[:,0]/np.sum(rvecs[:,0])
 
-#        if hasattr(self, 'rate'):
-#            self.tauK, self.peqK, self.lvecsK, self.rvecsK = \
-#                                msm_lib.calc_eigsK(self.rate, evecs=True)
+        if evecs:
+            self.lvecsT = lvecs
+            self.rvecsT = rvecs
+
         if errors:
             self.boots(neigs=neigs)
             
@@ -416,12 +448,14 @@ class MSM(object):
         """
         nboots = 20
 
+        if neigs is None:
+            neigs = len(self.keep_states) - 1
+
         # generate trajectory list for easy handling
         filetmp = msm_lib.traj_split(data=self.data, lagt=self.lagt)
 
         # multiprocessing options
         nproc = mp.cpu_count()
-        # print "     ...running on %g processors"%nproc
         pool = mp.Pool(processes=nproc)
 
         ncount = np.sum(self.count)
@@ -436,7 +470,7 @@ class MSM(object):
         peqT_boots = []
         keep_keys_boots = []
         for r in result:
-            trans_boots, keep_keys  = r[0], r[1] 
+            trans_boots, keep_keys  = r[0], r[1]
             evals, lvecs, rvecs = msm_lib.calc_eigsT(trans_boots)
             tauT_boots.append(np.array([-self.lagt/np.log(lmbd) for \
                     lmbd in evals[1:neigs+1]]))
