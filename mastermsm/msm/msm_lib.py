@@ -544,7 +544,9 @@ def do_boots_worker(x):
         count += c
         ncount_boots += np.sum(c)
     D = nx.DiGraph(count)
-    keep_states = list(sorted(list(nx.strongly_connected_components(D)))[0])
+    keep_states = list(sorted(list(nx.strongly_connected_components(D)),
+                              key=len, reverse=True)[0])
+    keep_states.sort()
     keep_keys = [keys[x] for x in keep_states]
     nkeep = len(keep_keys)
 
