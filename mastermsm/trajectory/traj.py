@@ -33,7 +33,7 @@ class TimeSeries(object):
 
     """
     def __init__(self, top=None, xtc=None, dt=None, \
-            distraj=None, stride=None):
+            distraj=None, stride=None, traj=None):
         """
         Parameters
         ----------
@@ -43,12 +43,16 @@ class TimeSeries(object):
             The time step.
         top : string
             The topology file, may be a PDB or GRO file.
-        xtc : string
-            The trajectory filename.
+        xtc : string or list
+            The trajectory filename(s).
         stride : int
             Only read every stride-th frame
-            
+        traj : string or list
+            Alias for xtc (deprecated).
+
         """
+        if traj is not None and xtc is None:
+            xtc = traj
         if distraj is not None:
             # A discrete trajectory is provided
             self.distraj, self.dt = self._read_distraj(distraj=distraj, dt=dt)
@@ -111,8 +115,27 @@ class TimeSeries(object):
                 keys.append(s)
         self.keys = sorted(keys)
 
+    def discretize(self, states=None):
+        """ Discretize an MD trajectory using Ramachandran dihedral angles.
+
+        Assigns each frame to a coarse state label based on (phi, psi) angles,
+        using the Buchete-Hummer procedure. Unassigned frames inherit the state
+        of the previous frame (or 'O' for the first frame). The result is stored
+        in self.distraj as a list of strings (one character per dihedral pair
+        per frame).
+
+        Parameters
+        ----------
+        states : list
+            Ordered list of state labels to assign. Supported: 'A' (alpha-helix),
+            'E' (extended/beta), 'L' (left-handed alpha).
+
+        """
+        phi, psi = traj_lib.compute_rama(self)
+        self.distraj = traj_lib.discrete_rama(phi, psi, states=states)
+
     def gc(self):
-        """ 
+        """
         Gets rid of the mdtraj attribute
 
         """
