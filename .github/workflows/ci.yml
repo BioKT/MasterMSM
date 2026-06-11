@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [master, develop]
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   test:
     name: Python ${{ matrix.python-version }} / ${{ matrix.os }}
@@ -45,8 +48,4 @@ jobs:
         run: conda list | grep -E "numpy|scipy|mdtraj|networkx|scikit"
 
       - name: Run tests
-        run: |
-          pytest mastermsm/test/ -v --tb=long > pytest-output.txt 2>&1
-          RESULT=$?
-          cat pytest-output.txt
-          exit $RESULT
+        run: pytest mastermsm/test/ -v --tb=long
