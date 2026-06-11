@@ -65,9 +65,9 @@ class FEWSM(msm.MSM):
         keep_states = self.parent.keep_states
         macros[0] = list(range(len(keep_states)))
         for n in range(1, N):
-            if method is "robust":
+            if method == "robust":
                 macro_new, _ = fewsm_lib.split_sigma(macros, lvecs[:,n])
-            elif method is "sign":
+            elif method == "sign":
                 macro_new, _ = fewsm_lib.split_sign(macros, lvecs[:,n])
             macros = copy.deepcopy(macro_new)
         print ("\n Initial membership of microstates to macrostates:")
