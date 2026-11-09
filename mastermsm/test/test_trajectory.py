@@ -305,3 +305,58 @@ class TestDimRed_alaTB(unittest.TestCase):
         dr.whiten()
         self.assertLess(np.abs(np.mean(self.ts.features[:,0])), 1e-6)
         self.assertLess(np.abs(np.mean(self.ts.features[:,1])), 1e-6)
+
+class TestDimRed_TICA(unittest.TestCase):
+    """ TICA checked against an analytic AR(1)/OU process """
+    def _ou(self, n=200000, a=0.95, seed=0):
+        rng = np.random.RandomState(seed)
+        x = np.zeros((n, 2))
+        s = np.sqrt(1 - a**2)
+        for i in range(1, n):
+            x[i] = a*x[i-1] + s*rng.randn(2)
+        # mix slow and fast coordinates so TICA must unmix them
+        return x
+
+    def _ts(self, x):
+        ts = traj.TimeSeries()
+        ts.features = x
+        ts.dt = 1.0
+        return ts
+
+    def test_timescale(self):
+        # two independent AR(1): eigenvalues a1^lag and a2^lag
+        rng = np.random.RandomState(1)
+        n, a = 200000, np.array([0.99, 0.9])
+        x = np.zeros((n, 2))
+        e = rng.randn(n, 2)*np.sqrt(1 - a**2)
+        for i in range(1, n):
+            x[i] = a*x[i-1] + e[i]
+        x = x.dot(np.array([[1., 0.5], [0.3, 1.]]))   # mix
+        ts = self._ts(x)
+        dr = traj.DimRed(ts)
+        dr.doTICA(lag=5, n=2)
+        np.testing.assert_allclose(dr.tica_eigenvalues, a**5, atol=0.02)
+        np.testing.assert_allclose(dr.tica_timescales, \
+                -5/np.log(a**5), rtol=0.15)
+        self.assertEqual(ts.features.shape, (n, 2))
+
+    def test_whitened_projection(self):
+        ts = self._ts(self._ou(n=50000))
+        dr = traj.DimRed(ts)
+        dr.doTICA(lag=3, n=2)
+        self.assertLess(np.abs(ts.features.mean(axis=0)).max(), 0.05)
+
+    def test_multiple_trajs(self):
+        tss = [self._ts(self._ou(n=20000, seed=s)) for s in (2, 3)]
+        dr = traj.DimRed(tss)
+        dr.doTICA(lag=2, n=1)
+        for t in tss:
+            self.assertEqual(t.features.shape, (20000, 1))
+
+    def test_bad_lag(self):
+        ts = self._ts(self._ou(n=100))
+        dr = traj.DimRed(ts)
+        with self.assertRaises(ValueError):
+            dr.doTICA(lag=0)
+        with self.assertRaises(ValueError):
+            dr.doTICA(lag=100)
