@@ -251,6 +251,89 @@ class DimRed(object):
         for i, tr in enumerate(self.timeseries):
             tr.features = Xt[i]
 
+    def doTICA(self, lag=None, n=2):
+        """
+        Runs time-lagged independent component analysis (TICA) on
+        feature space.
+
+        Covariance matrices are estimated from all pairs of frames
+        (t, t+lag) within each trajectory (pairs never straddle two
+        trajectories) and symmetrized, i.e. dynamics are assumed to
+        be reversible. The independent components are the solutions
+        of the generalized eigenvalue problem
+        C(lag) v = lambda C(0) v.
+
+        Parameters
+        ----------
+        lag : int
+            Lag time in number of frames (must be positive).
+        n : int
+            Number of independent components to retain.
+
+        Notes
+        -----
+        Features are replaced by their projection onto the first n
+        components, as in doPCA. The following attributes are stored:
+        tica_mean, tica_eigenvalues, tica_eigenvectors (columns, all
+        components) and tica_timescales (in units of the time step,
+        times tr.dt if available).
+
+        """
+        from scipy.linalg import eigh
+        if lag is None or int(lag) != lag or lag < 1:
+            raise ValueError("lag must be a positive integer (frames)")
+        lag = int(lag)
+        X = [np.asarray(tr.features) for tr in self.timeseries]
+        dim = X[0].shape[1]
+        if any(x.shape[1] != dim for x in X):
+            raise ValueError("all trajectories must have the same "
+                    "number of features")
+        if any(x.shape[0] <= lag for x in X):
+            raise ValueError("lag (%i frames) is not shorter than "
+                    "every trajectory"%lag)
+        if n < 1 or n > dim:
+            raise ValueError("n must be between 1 and %i"%dim)
+
+        # pairs (x_t, x_{t+lag}) within each trajectory
+        X0 = np.vstack([x[:-lag] for x in X])
+        Xt = np.vstack([x[lag:] for x in X])
+        N = X0.shape[0]
+
+        # symmetrized mean and covariances
+        mean = 0.5*(X0.mean(axis=0) + Xt.mean(axis=0))
+        X0 = X0 - mean
+        Xt = Xt - mean
+        c0 = 0.5*(X0.T.dot(X0) + Xt.T.dot(Xt))/N
+        ctau = X0.T.dot(Xt)/N
+        ctau = 0.5*(ctau + ctau.T)
+
+        # generalized symmetric eigenproblem (c0 must be pos. def.)
+        try:
+            evals, evecs = eigh(ctau, c0)
+        except np.linalg.LinAlgError:
+            raise ValueError("C(0) is not positive definite; features "
+                    "are linearly dependent or constant")
+        idx = np.argsort(evals)[::-1]
+        evals = evals[idx]
+        evecs = evecs[:, idx]
+
+        dt = getattr(self.timeseries[0], 'dt', None)
+        unit = lag*dt if dt is not None else lag
+        with np.errstate(divide='ignore', invalid='ignore'):
+            ts = np.where((evals > 0) & (evals < 1), \
+                    -unit/np.log(evals), np.nan)
+
+        self.tica_mean = mean
+        self.tica_eigenvalues = evals
+        self.tica_eigenvectors = evecs
+        self.tica_timescales = ts
+
+        print (" Run TICA on %i components, lag = %i frames"%(n, lag))
+        print ("     Eigenvalues: \n", evals[:n])
+        print ("     Implied timescales: \n", ts[:n])
+        for tr in self.timeseries:
+            tr.features = (np.asarray(tr.features) - mean).dot(evecs[:, :n])
+
 class Discretizer(object):
     """
     A class for discretizing molecular trajectories.
