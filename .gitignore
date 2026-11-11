@@ -6,3 +6,5 @@ examples/bistable_potential/data/
 examples/mueller_potential/data/
 examples/alanine_dipeptide/data/
 examples/alanine_pentapeptide/data/
+coverage.xml
+.coverage
