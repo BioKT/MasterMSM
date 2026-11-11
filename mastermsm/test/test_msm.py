@@ -207,7 +207,10 @@ class TestMSMLib(unittest.TestCase):
         peq_test = np.random.rand(nkeep_test)
         db_rate = msm_lib.detailed_balance(nkeep_test,rate,peq_test)
         new_rate, new_peq = msm_lib.mc_move(nkeep_test, db_rate, peq_test)
-        self.assertFalse(np.array_equal(db_rate, new_rate))
+        # a move changes either the rate matrix or peq, never both
+        rate_changed = not np.array_equal(db_rate, new_rate)
+        peq_changed = not np.array_equal(peq_test, new_peq)
+        self.assertTrue(rate_changed != peq_changed)
         self.assertEqual(db_rate.shape, new_rate.shape)
         self.assertEqual(peq_test.shape, new_peq.shape)
 
