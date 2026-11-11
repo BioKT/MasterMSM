@@ -597,3 +597,381 @@ class TestRamaBounds(unittest.TestCase):
         with self.assertRaises(ValueError):
             traj.discretize_protocol(trs, {'cluster': 'kmeans',
                                            'check': False})
+
+
+# ---------------------------------------------------------------------
+# Tests for code added on develop since master (TICA, protocols,
+# Ramachandran bounds), covering branches the tests above leave out.
+# ---------------------------------------------------------------------
+import io
+import sys
+import contextlib
+from types import SimpleNamespace
+from unittest import mock
+
+
+def _quiet(f, *args, **kwargs):
+    """ Call f with stdout silenced (doTICA and friends print). """
+    with contextlib.redirect_stdout(io.StringIO()):
+        return f(*args, **kwargs)
+
+
+def _alaTB(n=1):
+    download_osf_alaTB()
+    top = os.path.join(_DATA_DIR, 'alaTB.gro')
+    xtc = os.path.join(_DATA_DIR, 'alaTB.xtc')
+    trs = [traj.TimeSeries(xtc=xtc, top=top) for i in range(n)]
+    return trs[0] if n == 1 else trs
+
+
+class TestDimRed_TICA_extra(unittest.TestCase):
+    """ Input validation, estimator and output conventions of doTICA """
+    def _ts(self, x, dt=None):
+        ts = traj.TimeSeries()
+        ts.features = x
+        if dt is not None:
+            ts.dt = dt
+        return ts
+
+    def _ar1(self, n=50000, a=(0.98, 0.8), seed=0):
+        rng = np.random.RandomState(seed)
+        a = np.asarray(a)
+        x = np.zeros((n, len(a)))
+        e = rng.randn(n, len(a))*np.sqrt(1 - a**2)
+        for i in range(1, n):
+            x[i] = a*x[i-1] + e[i]
+        return x.dot(np.array([[1., 0.5], [0.3, 1.]]))
+
+    def test_bad_lag_values(self):
+        dr = traj.DimRed(self._ts(self._ar1(n=200)))
+        for lag in [None, -1, 2.5]:
+            with self.assertRaises(ValueError):
+                _quiet(dr.doTICA, lag=lag)
+
+    def test_bad_n(self):
+        dr = traj.DimRed(self._ts(self._ar1(n=200)))
+        for n in [0, 3]:
+            with self.assertRaises(ValueError):
+                _quiet(dr.doTICA, lag=1, n=n)
+
+    def test_mismatched_features(self):
+        rng = np.random.RandomState(0)
+        tss = [self._ts(rng.randn(100, 2)), self._ts(rng.randn(100, 3))]
+        with self.assertRaises(ValueError):
+            _quiet(traj.DimRed(tss).doTICA, lag=1, n=1)
+
+    def test_lag_longer_than_one_traj(self):
+        rng = np.random.RandomState(0)
+        tss = [self._ts(rng.randn(100, 2)), self._ts(rng.randn(10, 2))]
+        with self.assertRaises(ValueError):
+            _quiet(traj.DimRed(tss).doTICA, lag=10, n=1)
+
+    def test_constant_feature_raises(self):
+        rng = np.random.RandomState(0)
+        x = np.column_stack([rng.randn(1000), np.ones(1000)])
+        with self.assertRaises(ValueError):
+            _quiet(traj.DimRed(self._ts(x)).doTICA, lag=1, n=1)
+
+    @unittest.expectedFailure
+    def test_collinear_features_raise(self):
+        # KNOWN ISSUE: an exact linear combination of features makes
+        # C(0) singular, but roundoff lets the Cholesky factorization
+        # succeed for some data, and a spurious component is returned
+        # instead of the documented ValueError.
+        for seed in range(20):
+            rng = np.random.RandomState(seed)
+            b = rng.randn(5000, 2)
+            x = np.column_stack([b, b[:, 0] + 2*b[:, 1]])
+            with self.assertRaises(ValueError):
+                _quiet(traj.DimRed(self._ts(x)).doTICA, lag=1, n=1)
+
+    def test_projection_and_normalization(self):
+        x = self._ar1()
+        ts = self._ts(x.copy())
+        dr = traj.DimRed(ts)
+        _quiet(dr.doTICA, lag=5, n=2)
+        # stored eigenvectors reproduce the projection
+        np.testing.assert_allclose(ts.features, \
+                (x - dr.tica_mean).dot(dr.tica_eigenvectors[:, :2]))
+        # components are C(0)-orthonormal: unit variance, uncorrelated
+        np.testing.assert_allclose(np.cov(ts.features.T), np.eye(2), \
+                atol=0.02)
+        ev = dr.tica_eigenvalues
+        self.assertTrue(np.all(np.diff(ev) <= 0))
+        self.assertTrue(np.all(ev <= 1 + 1e-10))
+
+    def test_timescale_units(self):
+        x = self._ar1()
+        out = {}
+        for dt in [None, 1.0, 2.0]:
+            dr = traj.DimRed(self._ts(x.copy(), dt=dt))
+            _quiet(dr.doTICA, lag=5, n=2)
+            out[dt] = dr.tica_timescales
+        # without dt, timescales are in frames (same as dt = 1)
+        np.testing.assert_allclose(out[None], out[1.0])
+        np.testing.assert_allclose(out[2.0], 2*out[1.0])
+
+    def test_nonpositive_eigenvalues_give_nan(self):
+        # white noise: about half the eigenvalues are negative
+        rng = np.random.RandomState(0)
+        dr = traj.DimRed(self._ts(rng.randn(5000, 4)))
+        _quiet(dr.doTICA, lag=1, n=4)
+        ev, ts = dr.tica_eigenvalues, dr.tica_timescales
+        self.assertTrue(np.any(ev <= 0))
+        self.assertTrue(np.all(np.isnan(ts[ev <= 0])))
+        self.assertTrue(np.all(np.isfinite(ts[(ev > 0) & (ev < 1)])))
+
+    def test_pairs_do_not_straddle_trajectories(self):
+        # reference estimator built pair by pair, per trajectory
+        rng = np.random.RandomState(4)
+        xs = [rng.randn(60, 2) + 3., rng.randn(90, 2) - 3.]
+        lag = 3
+        x0 = np.array([x[t] for x in xs for t in range(len(x) - lag)])
+        xt = np.array([x[t+lag] for x in xs \
+                for t in range(len(x) - lag)])
+        m = 0.5*(x0.mean(0) + xt.mean(0))
+        x0, xt = x0 - m, xt - m
+        c0 = 0.5*(x0.T.dot(x0) + xt.T.dot(xt))/len(x0)
+        ct = x0.T.dot(xt)/len(x0)
+        ct = 0.5*(ct + ct.T)
+        ref = np.sort(np.linalg.eigvals(np.linalg.solve(c0, ct)).real)
+        dr = traj.DimRed([self._ts(x.copy()) for x in xs])
+        _quiet(dr.doTICA, lag=lag, n=2)
+        np.testing.assert_allclose(np.sort(dr.tica_eigenvalues), ref)
+        # a single concatenated trajectory gives a different answer
+        dr1 = traj.DimRed(self._ts(np.vstack(xs)))
+        _quiet(dr1.doTICA, lag=lag, n=2)
+        self.assertFalse(np.allclose(np.sort(dr1.tica_eigenvalues), ref))
+
+
+class TestDiscretizer_extra(unittest.TestCase):
+    def _ts(self, n=3000, seed=0):
+        rng = np.random.RandomState(seed)
+        ts = traj.TimeSeries()
+        ts.features = np.vstack([rng.randn(n//2, 2) - 3, \
+                rng.randn(n - n//2, 2) + 3])
+        return ts
+
+    def test_single_timeseries_is_wrapped(self):
+        ts = self._ts()
+        self.assertEqual(traj.Discretizer(ts).timeseries, [ts])
+
+    def test_kmeans_random_state(self):
+        runs = []
+        for i in range(2):
+            ts = self._ts()
+            disc = traj.Discretizer(ts)
+            disc.kmeans(k=8, dim=2, random_state=7)
+            runs.append((np.asarray(ts.distraj), disc.k_centers))
+        np.testing.assert_array_equal(runs[0][0], runs[1][0])
+        # centers agree to roundoff only (threaded reductions)
+        np.testing.assert_allclose(runs[0][1], runs[1][1], atol=1e-12)
+
+    def test_hdbscan_missing(self):
+        disc = traj.Discretizer(self._ts())
+        with mock.patch.dict(sys.modules, {'hdbscan': None}):
+            with self.assertRaises(ImportError):
+                disc.hdbscan(mcs=50, dim=2)
+
+    def test_hdbscan_labels_filled(self):
+        try:
+            import hdbscan
+        except ImportError:
+            self.skipTest("hdbscan not installed")
+        tss = [self._ts(seed=s) for s in (0, 1)]
+        disc = traj.Discretizer(tss)
+        disc.hdbscan(mcs=100, dim=2)
+        self.assertEqual(disc.hdb_nclusters, 2)
+        self.assertTrue(0 < disc.frac_assigned <= 1)
+        for ts in tss:
+            self.assertEqual(len(ts.distraj), 3000)
+            self.assertGreaterEqual(min(ts.distraj), 0)
+
+
+class TestProtocol_extra(unittest.TestCase):
+    def _ts(self, n=2000, seed=0):
+        rng = np.random.RandomState(seed)
+        ts = traj.TimeSeries()
+        ts.features = rng.randn(n, 2)
+        return ts
+
+    def test_repr_and_default_names(self):
+        ts = self._ts()
+        res = traj.discretize_protocol(ts, {'cluster': ('kmeans', \
+                {'k': 3, 'dim': 2})}, seed=0)
+        self.assertEqual(res.name, 'protocol')
+        self.assertEqual(repr(res), \
+                "Discretization('protocol', n_states=3, "\
+                "frac_assigned=1.000)")
+
+    def test_seed_does_not_mutate_spec(self):
+        kw = {'k': 3, 'dim': 2}
+        spec = {'cluster': ('kmeans', kw)}
+        res = traj.discretize_protocol(self._ts(), spec, seed=1)
+        self.assertEqual(kw, {'k': 3, 'dim': 2})
+        self.assertEqual(res.spec, spec)
+
+    def test_unknown_feature(self):
+        ts = _alaTB()
+        with self.assertRaises(ValueError):
+            traj.discretize_protocol(ts, {'features': [('nope', {})], \
+                    'cluster': 'kmeans'})
+
+    def test_features_spec_replaces_existing_features(self):
+        ts = _alaTB()
+        traj.Featurizer(ts).add_torsions(shift=False)
+        x0 = ts.features.copy()
+        spec = {'features': [('torsions', {'sincos': True})],
+                'cluster': ('kmeans', {'k': 5, 'dim': 4})}
+        res = traj.discretize_protocol(ts, spec, seed=0)
+        self.assertEqual(res.timeseries[0].features.shape, \
+                (ts.mdt.n_frames, 4))
+        np.testing.assert_array_equal(ts.features, x0)
+
+    def test_existing_features_are_copied(self):
+        ts = self._ts()
+        x0 = ts.features.copy()
+        res = traj.discretize_protocol(ts, {'whiten': False, \
+                'cluster': ('kmeans', {'k': 2, 'dim': 2})}, seed=0)
+        new = res.timeseries[0]
+        self.assertIsNot(new.features, ts.features)
+        np.testing.assert_array_equal(new.features, x0)
+
+    def test_compare_protocols_independent(self):
+        ts = self._ts()
+        x0 = ts.features.copy()
+        spec = {'cluster': ('kmeans', {'k': 4, 'dim': 2})}
+        out = traj.compare_protocols(ts, {'a': spec, 'b': spec}, seed=0)
+        self.assertEqual(out['a'].name, 'a')
+        self.assertIsNot(out['a'].timeseries[0], out['b'].timeseries[0])
+        np.testing.assert_array_equal(out['a'].timeseries[0].distraj, \
+                out['b'].timeseries[0].distraj)
+        np.testing.assert_array_equal(ts.features, x0)
+        self.assertFalse(hasattr(ts, 'distraj'))
+
+
+class TestRama_extra(unittest.TestCase):
+    """ State assignment, bounds checks and user interaction """
+    def test_discrete_rama_states_and_shapes(self):
+        # one dihedral: A, unassigned (inherits A), E
+        phi = np.radians([[-60.], [0.], [-120.]])
+        psi = np.radians([[-40.], [0.], [150.]])
+        self.assertEqual(traj_lib.discrete_rama(phi, psi, \
+                states=['A', 'E']), ['A', 'A', 'E'])
+        # without E, the last frame is unassigned and inherits A
+        self.assertEqual(traj_lib.discrete_rama(phi, psi, \
+                states=['A']), ['A', 'A', 'A'])
+        with self.assertRaises(ValueError):
+            traj_lib.discrete_rama(phi, np.zeros((3, 2)))
+
+    def test_multi_region_bounds(self):
+        b = {'A': [-100., -50., -60., -20., 50., 100., 20., 60.]}
+        phi = np.radians([[-70.], [70.], [0.]])
+        psi = np.radians([[-40.], [40.], [0.]])
+        self.assertEqual(traj_lib.discrete_rama(phi, psi, bounds=b), \
+                ['A', 'A', 'A'])
+        pops = traj_lib.rama_populations(phi, psi, b)
+        self.assertAlmostEqual(pops['A'], 2/3.)
+        self.assertAlmostEqual(pops['O'], 1/3.)
+
+    def test_populations_match_state_assignment(self):
+        # overlapping and multi-region bounds, order matters
+        b = {'A': [-130., -40., -50., 20.],
+             'B': [-90., 0., -20., 40., 30., 100., -40., 70.],
+             'E': [-180., -40., 125., 180.]}
+        rng = np.random.RandomState(0)
+        f = rng.uniform(-180, 180, 5000)
+        y = rng.uniform(-180, 180, 5000)
+        # include points exactly on edges (open intervals)
+        f[:3], y[:3] = [-40., -130., 0.], [-30., -50., 0.]
+        labels = [traj_lib._state(a, c, b)[0] for a, c in zip(f, y)]
+        pops = traj_lib.rama_populations(np.radians(f), \
+                np.radians(y), b)
+        for k in ['A', 'B', 'E', 'O']:
+            self.assertAlmostEqual(pops[k], labels.count(k)/5000.)
+        self.assertEqual(labels[:3], ['O', 'O', 'O'])
+
+    def test_overlaps_multi_region(self):
+        # A's two rectangles overlap each other (same state: ignored);
+        # A's second rectangle overlaps B
+        b = {'A': [-100, 0, -50, 0, -50, 50, -20, 10],
+             'B': [40, 90, 0, 50]}
+        self.assertEqual(traj_lib._overlaps(b), [('A', 'B')])
+        self.assertEqual(traj_lib._overlaps( \
+                {'A': [-100, 0, -50, 0, -50, 50, -20, 10]}), [])
+
+    def test_confirm_reports_overlap(self):
+        b = {'A': [-100, 0, -50, 0], 'B': [-50, 50, -10, 10]}
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            traj_lib.confirm_bounds(np.zeros(3), np.zeros(3), b, \
+                    input_fn=lambda p: 'y', plot=False)
+        self.assertIn("A and B overlap", out.getvalue())
+
+    def test_interactive_kernel(self):
+        try:
+            import IPython
+        except ImportError:
+            self.skipTest("IPython not installed")
+        with mock.patch('IPython.get_ipython', \
+                return_value=SimpleNamespace(kernel=object())):
+            with mock.patch.object(traj_lib.sys, 'stdin', None):
+                self.assertTrue(traj_lib._interactive())
+
+    def test_interactive_stdin(self):
+        tty = mock.Mock(isatty=lambda: True)
+        pipe = mock.Mock(isatty=lambda: False)
+        # no IPython at all, and IPython without a kernel
+        for mods in [{'IPython': None}, {}]:
+            with mock.patch.dict(sys.modules, mods):
+                with mock.patch('IPython.get_ipython', \
+                        return_value=None, create=True) \
+                        if not mods else contextlib.nullcontext():
+                    for stdin, expect in [(tty, True), (pipe, False), \
+                            (None, False)]:
+                        with mock.patch.object(traj_lib.sys, 'stdin', \
+                                stdin):
+                            self.assertEqual(traj_lib._interactive(), \
+                                    expect)
+
+    def test_timeseries_discretize_uses_confirmed_bounds(self):
+        ts = _alaTB()
+        new = {'A': [-180., 0., -100., 50.]}
+        with mock.patch.object(traj_lib, 'confirm_bounds', \
+                return_value=new) as cb:
+            ts.discretize(states=['A', 'E'])
+        cb.assert_called_once()
+        self.assertEqual(cb.call_args[0][2], \
+                traj_lib.default_bounds(['A', 'E']))
+        self.assertEqual(ts.bounds, new)
+        phi, psi = traj_lib.compute_rama(ts)
+        self.assertEqual(ts.distraj, \
+                traj_lib.discrete_rama(phi, psi, bounds=new))
+
+    def test_discretizer_rama_pools_trajectories(self):
+        trs = _alaTB(n=2)
+        new = {'E': [-180., 0., 100., 180.]}
+        with mock.patch.object(traj_lib, 'confirm_bounds', \
+                return_value=new) as cb:
+            disc = traj.Discretizer(trs)
+            disc.rama()
+        cb.assert_called_once()
+        phi, psi, b0 = cb.call_args[0]
+        n = sum(tr.mdt.n_frames for tr in trs)
+        self.assertEqual(len(phi), n)
+        self.assertEqual(len(psi), n)
+        self.assertEqual(b0, traj_lib.default_bounds())
+        self.assertEqual(disc.bounds, new)
+        for tr in trs:
+            self.assertEqual(tr.bounds, new)
+            self.assertEqual(set(''.join(tr.distraj)) - {'O'}, {'E'})
+
+    def test_protocol_rama_checks_by_default(self):
+        ts = _alaTB()
+        new = {'A': [-180., 0., -100., 50.]}
+        with mock.patch.object(traj_lib, 'confirm_bounds', \
+                return_value=new) as cb:
+            res = traj.discretize_protocol(ts, {'rama': ['A']})
+        cb.assert_called_once()
+        self.assertEqual(res.bounds, new)
+        self.assertFalse(hasattr(ts, 'bounds'))
