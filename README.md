@@ -1,4 +1,5 @@
 [![CI](https://github.com/BioKT/MasterMSM/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/BioKT/MasterMSM/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/BioKT/MasterMSM/branch/master/graph/badge.svg)](https://codecov.io/gh/BioKT/MasterMSM)
 [![Documentation Status](https://readthedocs.org/projects/mastermsm/badge/?version=latest)](https://mastermsm.readthedocs.io/en/latest/?badge=latest)
 
 MasterMSM
