@@ -449,9 +449,10 @@ class TestProtocol(unittest.TestCase):
         top = os.path.join(_DATA_DIR, 'alaTB.gro')
         xtc = os.path.join(_DATA_DIR, 'alaTB.xtc')
         ts = traj.TimeSeries(xtc=xtc, top=top)
-        res = traj.discretize_protocol(ts, {'rama': ['A', 'E']})
+        res = traj.discretize_protocol(ts, {'rama': ['A', 'E'],
+                                            'check': False})
         self.assertFalse(hasattr(ts, 'distraj'))
-        ts.discretize(states=['A', 'E'])
+        ts.discretize(states=['A', 'E'], check=False)
         self.assertEqual(res.timeseries[0].distraj, ts.distraj)
         self.assertLessEqual(res.n_states, 2)
 
@@ -480,3 +481,119 @@ class TestProtocol(unittest.TestCase):
         res = traj.discretize_protocol(ts, spec)
         self.assertGreater(res.frac_assigned, 0.5)
         self.assertEqual(len(res.timeseries[0].distraj), 5000)
+
+
+class TestRamaBounds(unittest.TestCase):
+    """ Interactive confirmation of Ramachandran bounds. """
+    def setUp(self):
+        # (phi, psi) in degrees: two A points, one E, one L, one O
+        pts = np.array([[-60., -40.], [-70., -30.], [-120., 150.],
+                        [60., 40.], [0., 0.]])
+        self.phi = np.radians(pts[:, :1])
+        self.psi = np.radians(pts[:, 1:])
+
+    @staticmethod
+    def _answers(*answers):
+        it = iter(answers)
+        return lambda prompt: next(it)
+
+    def test_default_bounds(self):
+        b = traj_lib.default_bounds(['A', 'E'])
+        self.assertEqual(sorted(b), ['A', 'E'])
+        self.assertEqual(b['A'], [-130., -40., -50., 20.])
+        b['A'][0] = 0.
+        self.assertEqual(traj_lib.default_bounds(['A'])['A'][0], -130.)
+        with self.assertRaises(ValueError):
+            traj_lib.default_bounds(['X'])
+
+    def test_validate_bounds(self):
+        for bad in [[], [1, 2, 3], [10, -10, 0, 10],
+                    [-200, 0, 0, 10], ['a', 1, 2, 3]]:
+            with self.assertRaises(ValueError):
+                traj_lib._validate_bounds(bad)
+        self.assertEqual(traj_lib._validate_bounds(['1', 2, 3, 4]),
+                         [1., 2., 3., 4.])
+
+    def test_populations(self):
+        pops = traj_lib.rama_populations(self.phi, self.psi,
+                                         traj_lib.default_bounds())
+        self.assertAlmostEqual(pops['A'], 0.4)
+        self.assertAlmostEqual(pops['E'], 0.2)
+        self.assertAlmostEqual(pops['L'], 0.2)
+        self.assertAlmostEqual(pops['O'], 0.2)
+
+    def test_overlaps(self):
+        b = {'A': [-100, 0, -50, 0], 'B': [-50, 50, -10, 10]}
+        self.assertEqual(traj_lib._overlaps(b), [('A', 'B')])
+        self.assertEqual(traj_lib._overlaps(traj_lib.default_bounds()),
+                         [])
+
+    def test_accept(self):
+        b0 = traj_lib.default_bounds(['A', 'E'])
+        for ans in ['', 'y', 'YES']:
+            b = traj_lib.confirm_bounds(self.phi, self.psi, b0,
+                    input_fn=self._answers(ans), plot=False)
+            self.assertEqual(b, b0)
+
+    def test_redefine(self):
+        b0 = traj_lib.default_bounds(['A', 'E'])
+        # reject, give bad then good A, keep E, then accept
+        b = traj_lib.confirm_bounds(self.phi, self.psi, b0,
+                input_fn=self._answers('maybe', 'n', '10, -10, 0, 1',
+                                       '-90 0 -60 0', '', 'y'),
+                plot=False)
+        self.assertEqual(b['A'], [-90., 0., -60., 0.])
+        self.assertEqual(b['E'], b0['E'])
+        self.assertEqual(b0['A'], [-130., -40., -50., 20.])
+
+    def test_plot(self):
+        from unittest import mock
+        import matplotlib
+        matplotlib.use('Agg')
+        with mock.patch.object(traj_lib.plt, 'show') as show:
+            b = traj_lib.confirm_bounds(self.phi, self.psi,
+                    traj_lib.default_bounds(),
+                    input_fn=self._answers('n', '', '', '', 'y'))
+        self.assertEqual(show.call_count, 2)
+        self.assertEqual(sorted(b), ['A', 'E', 'L'])
+
+    def test_noninteractive_warns(self):
+        from unittest import mock
+        b0 = traj_lib.default_bounds(['A'])
+        with mock.patch.object(traj_lib, '_interactive',
+                               return_value=False):
+            with self.assertWarns(UserWarning):
+                b = traj_lib.confirm_bounds(self.phi, self.psi, b0,
+                                            plot=False)
+        self.assertEqual(b, b0)
+
+    def test_no_stdin_warns(self):
+        def no_stdin(prompt):
+            raise EOFError
+        with self.assertWarns(UserWarning):
+            traj_lib.confirm_bounds(self.phi, self.psi,
+                    traj_lib.default_bounds(), input_fn=no_stdin,
+                    plot=False)
+
+    def test_discretizer_custom_bounds(self):
+        download_osf_alaTB()
+        top = os.path.join(_DATA_DIR, 'alaTB.gro')
+        xtc = os.path.join(_DATA_DIR, 'alaTB.xtc')
+        trs = [traj.TimeSeries(xtc=xtc, top=top) for i in range(2)]
+        bounds = {'A': [-180., 0., -100., 50.],
+                  'E': [-180., 0., 100., 180.]}
+        disc = traj.Discretizer(trs)
+        disc.rama(bounds=bounds, check=False)
+        phi, psi = traj_lib.compute_rama(trs[0])
+        ref = traj_lib.discrete_rama(phi, psi, bounds=bounds)
+        self.assertEqual(disc.bounds, bounds)
+        for tr in trs:
+            self.assertEqual(tr.bounds, bounds)
+            self.assertEqual(tr.distraj, ref)
+        res = traj.discretize_protocol(trs, {'rama': bounds,
+                                             'check': False})
+        self.assertEqual(res.bounds, bounds)
+        self.assertEqual(res.timeseries[0].distraj, ref)
+        with self.assertRaises(ValueError):
+            traj.discretize_protocol(trs, {'cluster': 'kmeans',
+                                           'check': False})
