@@ -283,6 +283,14 @@ class DimRed(object):
         n : int
             Number of independent components to retain.
 
+        Raises
+        ------
+        ValueError
+            For a bad lag or n, or if C(0) is singular: a feature
+            is constant, or features are linearly dependent (the
+            smallest eigenvalue of their correlation matrix is below
+            1e-10).
+
         Notes
         -----
         Features are replaced by their projection onto the first n
@@ -319,6 +327,22 @@ class DimRed(object):
         c0 = 0.5*(X0.T.dot(X0) + Xt.T.dot(Xt))/N
         ctau = X0.T.dot(Xt)/N
         ctau = 0.5*(ctau + ctau.T)
+
+        # C(0) must be well conditioned. Roundoff can let a singular
+        # C(0) through the Cholesky step in eigh, so check explicitly,
+        # using the correlation matrix (independent of feature units)
+        var = np.diag(c0)
+        sd = np.sqrt(np.clip(var, 0, None))
+        const = sd <= 1e-8*np.maximum(np.abs(mean), sd)
+        if np.any(const):
+            raise ValueError("features %s are constant"\
+                    %list(np.where(const)[0]))
+        corr = c0/np.outer(sd, sd)
+        lmin = np.linalg.eigvalsh(corr)[0]
+        if lmin < 1e-10:
+            raise ValueError("C(0) is singular (smallest eigenvalue "
+                    "of the feature correlation matrix is %.1e); "
+                    "features are linearly dependent"%lmin)
 
         # generalized symmetric eigenproblem (c0 must be pos. def.)
         try:

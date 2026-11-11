@@ -672,12 +672,27 @@ class TestDimRed_TICA_extra(unittest.TestCase):
         with self.assertRaises(ValueError):
             _quiet(traj.DimRed(self._ts(x)).doTICA, lag=1, n=1)
 
-    @unittest.expectedFailure
+    def test_float_constant_feature_raises(self):
+        # mean of a non-representable constant leaves a ~1e-17 spread
+        rng = np.random.RandomState(0)
+        x = np.column_stack([rng.randn(1000), np.full(1000, 0.1)])
+        with self.assertRaises(ValueError):
+            _quiet(traj.DimRed(self._ts(x)).doTICA, lag=1, n=1)
+
+    def test_feature_units_do_not_matter(self):
+        # very different scales must not look singular
+        x = self._ar1()*np.array([1e6, 1e-4])
+        dr = traj.DimRed(self._ts(x))
+        _quiet(dr.doTICA, lag=5, n=2)
+        dr1 = traj.DimRed(self._ts(self._ar1()))
+        _quiet(dr1.doTICA, lag=5, n=2)
+        np.testing.assert_allclose(dr.tica_eigenvalues, \
+                dr1.tica_eigenvalues, rtol=1e-6)
+
     def test_collinear_features_raise(self):
-        # KNOWN ISSUE: an exact linear combination of features makes
-        # C(0) singular, but roundoff lets the Cholesky factorization
-        # succeed for some data, and a spurious component is returned
-        # instead of the documented ValueError.
+        # an exact linear combination makes C(0) singular; roundoff
+        # can let the Cholesky step in eigh succeed, so doTICA must
+        # check explicitly (it used to pass for some seeds)
         for seed in range(20):
             rng = np.random.RandomState(seed)
             b = rng.randn(5000, 2)
