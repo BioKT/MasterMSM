@@ -77,18 +77,28 @@ def compute_contacts(traj, scheme=None, log=False):
 
 def _filter_states(states):
     """
-    Filters to remove not-assigned frames when using dbscan or hdbscan
-    
+    Fills not-assigned frames (negative labels) when using dbscan or
+    hdbscan. Each unassigned frame inherits the label of the previous
+    assigned frame; unassigned frames at the start of the trajectory,
+    which have no previous frame, inherit the first assigned label.
+    The output always has the same length as the input.
+
+    Raises
+    ------
+    ValueError
+        If no frame is assigned.
+
     """
+    states = list(states)
+    first = next((s for s in states if s >= 0), None)
+    if first is None:
+        raise ValueError("no frame was assigned to any cluster")
     fs = []
+    prev = first
     for s in states:
         if s >= 0:
-                fs.append(s)
-        else:
-            try:
-                fs.append(fs[-1])
-            except IndexError:
-                pass
+            prev = s
+        fs.append(prev)
     return fs
 
 def _shift(phi, psi):

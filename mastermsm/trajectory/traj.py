@@ -354,7 +354,25 @@ class Discretizer(object):
         else:
             self.timeseries = timeseries
 
-    def kmeans(self, k=50, dim=2):
+    def rama(self, states=None):
+        """
+        Assign frames to coarse states from the Ramachandran angles,
+        following the Buchete-Hummer procedure. This is the
+        counterpart of kmeans and hdbscan for torsion-based
+        discretization, and acts on each TimeSeries through its
+        discretize method. Labels are strings, one character per
+        dihedral pair.
+
+        Parameters
+        ----------
+        states : list
+            State labels to use, from 'A', 'E' and 'L'. Default is all.
+
+        """
+        for tr in self.timeseries:
+            tr.discretize(states=states)
+
+    def kmeans(self, k=50, dim=2, random_state=None):
         """
         Run kmeans on the feature space
 
@@ -364,11 +382,14 @@ class Discretizer(object):
             Number of k-centers
         dim: int
             Number of dimensions from feature space to do the clustering.
+        random_state : int
+            Seed for the k-means initialization (for reproducibility).
+            Default is to use the global numpy random state.
 
         """
         from sklearn.cluster import KMeans
         X = np.vstack([tr.features[:,:dim] for tr in self.timeseries])
-        kmeans = KMeans(n_clusters=k).fit(X)
+        kmeans = KMeans(n_clusters=k, random_state=random_state).fit(X)
         self.k_centers = kmeans.cluster_centers_
         for tr in self.timeseries:
             tr.distraj = kmeans.predict(tr.features[:,:dim])
@@ -404,7 +425,200 @@ class Discretizer(object):
                  prediction_data=True).fit(X)
         self.hdb_clusters = [x for x in np.unique(hdb.labels_) if (x != -1)]
         self.hdb_nclusters = len(self.hdb_clusters)
+        n_assigned, n_frames = 0, 0
         for tr in self.timeseries:
             labels, _ = hdbscan.approximate_predict(hdb, \
                     tr.features[:,:dim])
+            n_assigned += int(np.sum(labels >= 0))
+            n_frames += len(labels)
             tr.distraj = traj_lib._filter_states(labels)
+        # fraction of frames inside a cluster (the rest inherit labels)
+        self.frac_assigned = n_assigned/float(n_frames)
+
+
+class Discretization(object):
+    """
+    The outcome of running a discretization protocol.
+
+    Attributes
+    ----------
+    name : str
+        Name of the protocol.
+    spec : dict
+        The protocol specification that generated it.
+    timeseries : list
+        Copies of the input TimeSeries objects, with the discrete
+        trajectory in ``distraj`` (and the final feature space in
+        ``features``, when the protocol uses one). The inputs are
+        never modified.
+    n_states : int
+        Number of distinct states visited.
+    frac_assigned : float
+        Fraction of frames assigned to a state by the clustering
+        itself (1.0 except for density-based methods, where the
+        rest inherit the previous label).
+
+    """
+    def __init__(self, name, spec, timeseries, frac_assigned=1.0):
+        self.name = name
+        self.spec = spec
+        self.timeseries = timeseries
+        self.frac_assigned = frac_assigned
+        self.n_states = len(set(s for tr in timeseries \
+                for s in tr.distraj))
+
+    def __repr__(self):
+        return "Discretization(%r, n_states=%i, frac_assigned=%.3f)"\
+                %(self.name, self.n_states, self.frac_assigned)
+
+
+def _run_step(spec, key):
+    """ Returns (name, kwargs) for an optional protocol step. """
+    step = spec.get(key)
+    if step is None:
+        return None, {}
+    if isinstance(step, str):
+        return step, {}
+    name, kwargs = step
+    return name, dict(kwargs)
+
+
+def discretize_protocol(timeseries, spec, name=None, seed=None):
+    """
+    Runs a discretization protocol on TimeSeries objects without
+    modifying them, so that different protocols can be applied to
+    the same data and compared.
+
+    A protocol is a dictionary. Buchete-Hummer discretization from
+    the Ramachandran angles is selected with ``rama``; every other
+    protocol is a chain of featurization, dimensionality reduction
+    and clustering. All keys are optional except that a protocol
+    must have either ``rama`` or ``cluster``::
+
+        {'rama': ['A', 'E']}
+
+        {'features': [('torsions', {'sincos': True})],
+         'whiten': True,
+         'reduce': ('tica', {'lag': 200, 'n': 4}),
+         'cluster': ('kmeans', {'k': 100, 'dim': 4})}
+
+    Parameters
+    ----------
+    timeseries : TimeSeries or list
+        The trajectories to discretize.
+    spec : dict
+        The protocol. Keys:
+
+        * ``rama``: list of states for Buchete-Hummer assignment.
+        * ``features``: list of (name, kwargs) with name 'torsions'
+          or 'contacts'. If absent, the ``features`` already present
+          in the TimeSeries objects are used (copied).
+        * ``whiten``: bool, standardize features (default True when
+          there is a ``reduce`` or ``cluster`` step).
+        * ``reduce``: (name, kwargs) with name 'pca' or 'tica', or
+          None for no dimensionality reduction. Arguments are those
+          of ``DimRed.doPCA`` and ``DimRed.doTICA`` (the TICA lag
+          is in frames).
+        * ``cluster``: (name, kwargs) with name 'kmeans' or
+          'hdbscan'; arguments are those of the ``Discretizer``
+          methods.
+    name : str
+        Label for the result.
+    seed : int
+        Seed for k-means (overrides ``random_state`` in the spec).
+
+    Returns
+    -------
+    Discretization
+        With the discretized copies of the input trajectories.
+
+    """
+    import copy
+    if not isinstance(timeseries, list):
+        timeseries = [timeseries]
+    spec = dict(spec)
+    known = {'rama', 'features', 'whiten', 'reduce', 'cluster'}
+    unknown = set(spec) - known
+    if unknown:
+        raise ValueError("unknown protocol keys: %s"%sorted(unknown))
+    if ('rama' in spec) == ('cluster' in spec):
+        raise ValueError("protocol needs exactly one of 'rama' or "\
+                "'cluster'")
+    if name is None:
+        name = 'rama' if 'rama' in spec else 'protocol'
+
+    # shallow copies share the (large) mdtraj object, but all
+    # attributes we set are rebound, so the originals stay intact
+    trs = [copy.copy(tr) for tr in timeseries]
+
+    if 'rama' in spec:
+        Discretizer(trs).rama(states=spec['rama'])
+        return Discretization(name, spec, trs)
+
+    if 'features' in spec:
+        for tr in trs:
+            if hasattr(tr, 'features'):
+                del tr.features
+        feat = Featurizer(trs)
+        adders = {'torsions': feat.add_torsions, \
+                'contacts': feat.add_contacts}
+        for fname, kwargs in spec['features']:
+            if fname not in adders:
+                raise ValueError("unknown feature '%s'"%fname)
+            adders[fname](**kwargs)
+    else:
+        for tr in trs:
+            if not hasattr(tr, 'features'):
+                raise ValueError("no 'features' in protocol and "
+                        "none in the TimeSeries")
+            tr.features = np.array(tr.features)
+
+    dr = DimRed(trs)
+    if spec.get('whiten', True):
+        dr.whiten()
+
+    rname, kwargs = _run_step(spec, 'reduce')
+    if rname == 'pca':
+        dr.doPCA(**kwargs)
+    elif rname == 'tica':
+        dr.doTICA(**kwargs)
+    elif rname is not None:
+        raise ValueError("unknown reduction '%s'"%rname)
+
+    cname, kwargs = _run_step(spec, 'cluster')
+    disc = Discretizer(trs)
+    frac = 1.0
+    if cname == 'kmeans':
+        if seed is not None:
+            kwargs['random_state'] = seed
+        disc.kmeans(**kwargs)
+    elif cname == 'hdbscan':
+        disc.hdbscan(**kwargs)
+        frac = disc.frac_assigned
+    else:
+        raise ValueError("unknown clustering '%s'"%cname)
+    return Discretization(name, spec, trs, frac_assigned=frac)
+
+
+def compare_protocols(timeseries, protocols, seed=None):
+    """
+    Runs several discretization protocols on the same data.
+
+    Parameters
+    ----------
+    timeseries : TimeSeries or list
+        The trajectories to discretize (not modified).
+    protocols : dict
+        Maps a protocol name to its specification, as in
+        ``discretize_protocol``.
+    seed : int
+        Seed for k-means, so that runs are reproducible.
+
+    Returns
+    -------
+    dict
+        Maps each protocol name to its ``Discretization``.
+
+    """
+    return {name: discretize_protocol(timeseries, spec, name=name, \
+            seed=seed) for name, spec in protocols.items()}

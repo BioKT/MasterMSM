@@ -360,3 +360,123 @@ class TestDimRed_TICA(unittest.TestCase):
             dr.doTICA(lag=0)
         with self.assertRaises(ValueError):
             dr.doTICA(lag=100)
+
+class TestFilterStates(unittest.TestCase):
+    def test_fills_with_previous(self):
+        out = traj_lib._filter_states([0, -1, -1, 1, -1, 2])
+        self.assertEqual(out, [0, 0, 0, 1, 1, 2])
+
+    def test_leading_unassigned_keeps_length(self):
+        # frames before the first assignment inherit the first label
+        out = traj_lib._filter_states(np.array([-1, -1, 3, 3, -1, 4]))
+        self.assertEqual(out, [3, 3, 3, 3, 3, 4])
+
+    def test_none_assigned(self):
+        with self.assertRaises(ValueError):
+            traj_lib._filter_states([-1, -1])
+
+class TestProtocol(unittest.TestCase):
+    """ Discretization protocols on synthetic and real data """
+    def _two_well(self, n=20000, seed=0):
+        rng = np.random.RandomState(seed)
+        s = np.cumsum(rng.rand(n) < 0.002) % 2    # slow switching
+        x = np.column_stack([3.*s - 1.5, np.zeros(n)]) \
+                + 0.3*rng.randn(n, 2)
+        ts = traj.TimeSeries()
+        ts.features = x
+        ts.dt = 1.0
+        return ts, s
+
+    def test_kmeans_recovers_wells_and_is_nondestructive(self):
+        ts, s = self._two_well()
+        x0 = ts.features.copy()
+        spec = {'whiten': False, 'cluster': ('kmeans', {'k': 2, 'dim': 2})}
+        res = traj.discretize_protocol(ts, spec, name='km', seed=0)
+        np.testing.assert_array_equal(ts.features, x0)
+        self.assertFalse(hasattr(ts, 'distraj'))
+        self.assertEqual(res.n_states, 2)
+        self.assertEqual(res.frac_assigned, 1.0)
+        d = np.asarray(res.timeseries[0].distraj)
+        agree = max(np.mean(d == s), np.mean(d != s))
+        self.assertGreater(agree, 0.99)
+
+    def test_seed_reproducible(self):
+        ts, _ = self._two_well()
+        spec = {'cluster': ('kmeans', {'k': 10, 'dim': 2})}
+        a = traj.discretize_protocol(ts, spec, seed=3)
+        b = traj.discretize_protocol(ts, spec, seed=3)
+        np.testing.assert_array_equal(a.timeseries[0].distraj, \
+                b.timeseries[0].distraj)
+
+    def test_tica_then_kmeans_multiple_trajs(self):
+        tss = [self._two_well(n=10000, seed=i)[0] for i in (1, 2)]
+        spec = {'reduce': ('tica', {'lag': 10, 'n': 1}),
+                'cluster': ('kmeans', {'k': 2, 'dim': 1})}
+        res = traj.discretize_protocol(tss, spec, seed=0)
+        for tr, new in zip(tss, res.timeseries):
+            self.assertEqual(tr.features.shape, (10000, 2))
+            self.assertEqual(new.features.shape, (10000, 1))
+            self.assertEqual(len(new.distraj), 10000)
+
+    def test_compare_protocols(self):
+        ts, _ = self._two_well(n=5000)
+        protocols = {
+            'pca': {'reduce': ('pca', {'n': 2}),
+                    'cluster': ('kmeans', {'k': 4, 'dim': 2})},
+            'raw': {'whiten': False,
+                    'cluster': ('kmeans', {'k': 2, 'dim': 2})}}
+        out = traj.compare_protocols(ts, protocols, seed=0)
+        self.assertEqual(sorted(out), ['pca', 'raw'])
+        self.assertEqual(out['pca'].n_states, 4)
+        self.assertEqual(out['raw'].n_states, 2)
+
+    def test_bad_specs(self):
+        ts, _ = self._two_well(n=100)
+        for spec in [{}, {'rama': ['A'], 'cluster': 'kmeans'},
+                     {'cluster': 'nope'},
+                     {'reduce': 'nope', 'cluster': 'kmeans'},
+                     {'cluster': 'kmeans', 'typo': 1}]:
+            with self.assertRaises(ValueError):
+                traj.discretize_protocol(ts, spec)
+
+    def test_no_features(self):
+        ts = traj.TimeSeries()
+        with self.assertRaises(ValueError):
+            traj.discretize_protocol(ts, {'cluster': 'kmeans'})
+
+    def test_rama_matches_timeseries_discretize(self):
+        download_osf_alaTB()
+        top = os.path.join(_DATA_DIR, 'alaTB.gro')
+        xtc = os.path.join(_DATA_DIR, 'alaTB.xtc')
+        ts = traj.TimeSeries(xtc=xtc, top=top)
+        res = traj.discretize_protocol(ts, {'rama': ['A', 'E']})
+        self.assertFalse(hasattr(ts, 'distraj'))
+        ts.discretize(states=['A', 'E'])
+        self.assertEqual(res.timeseries[0].distraj, ts.distraj)
+        self.assertLessEqual(res.n_states, 2)
+
+    def test_featurized_protocol_leaves_input_clean(self):
+        download_osf_alaTB()
+        top = os.path.join(_DATA_DIR, 'alaTB.gro')
+        xtc = os.path.join(_DATA_DIR, 'alaTB.xtc')
+        ts = traj.TimeSeries(xtc=xtc, top=top)
+        spec = {'features': [('torsions', {'sincos': True})],
+                'reduce': ('pca', {'n': 2}),
+                'cluster': ('kmeans', {'k': 10, 'dim': 2})}
+        res = traj.discretize_protocol(ts, spec, seed=0)
+        self.assertFalse(hasattr(ts, 'features'))
+        self.assertFalse(hasattr(ts, 'distraj'))
+        self.assertEqual(len(res.timeseries[0].distraj), ts.mdt.n_frames)
+        self.assertEqual(res.n_states, 10)
+
+    def test_hdbscan_fraction_assigned(self):
+        try:
+            import hdbscan
+        except ImportError:
+            self.skipTest("hdbscan not installed")
+        ts, _ = self._two_well(n=5000)
+        spec = {'whiten': False,
+                'cluster': ('hdbscan', {'mcs': 100, 'dim': 2})}
+        res = traj.discretize_protocol(ts, spec)
+        self.assertGreater(res.frac_assigned, 0.5)
+        self.assertEqual(len(res.timeseries[0].distraj), 5000)
