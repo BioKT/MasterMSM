@@ -120,9 +120,12 @@ class TimeSeries(object):
 
         Assigns each frame to a coarse state label based on (phi, psi) angles,
         using the Buchete-Hummer procedure. Unassigned frames inherit the state
-        of the previous frame (or 'O' for the first frame). The result is stored
-        in self.distraj as a list of strings (one character per dihedral pair
-        per frame), and the bounds used in self.bounds.
+        of the previous frame; leading frames recorded before every dihedral
+        has visited a core are dropped. The result is stored in self.distraj
+        as a list of strings (one character per dihedral pair per frame),
+        and the bounds used in self.bounds. The per-dihedral fraction of
+        unassigned frames is stored in self.unassigned and the number of
+        dropped frames in self.ndrop.
 
         Parameters
         ----------
@@ -145,7 +148,9 @@ class TimeSeries(object):
         if check:
             bounds = traj_lib.confirm_bounds(phi, psi, bounds)
         self.bounds = bounds
-        self.distraj = traj_lib.discrete_rama(phi, psi, bounds=bounds)
+        self.distraj, self.unassigned, self.ndrop = \
+            traj_lib.discrete_rama(phi, psi, bounds=bounds,
+                                   return_unassigned=True)
 
     def gc(self):
         """
@@ -400,7 +405,9 @@ class Discretizer(object):
         self.bounds = bounds
         for tr, (phi, psi) in zip(self.timeseries, rama):
             tr.bounds = bounds
-            tr.distraj = traj_lib.discrete_rama(phi, psi, bounds=bounds)
+            tr.distraj, tr.unassigned, tr.ndrop = \
+                traj_lib.discrete_rama(phi, psi, bounds=bounds,
+                                       return_unassigned=True)
 
     def kmeans(self, k=50, dim=2, random_state=None):
         """
