@@ -115,24 +115,37 @@ class TimeSeries(object):
                 keys.append(s)
         self.keys = sorted(keys)
 
-    def discretize(self, states=None):
+    def discretize(self, states=None, bounds=None, check=True):
         """ Discretize an MD trajectory using Ramachandran dihedral angles.
 
         Assigns each frame to a coarse state label based on (phi, psi) angles,
         using the Buchete-Hummer procedure. Unassigned frames inherit the state
         of the previous frame (or 'O' for the first frame). The result is stored
         in self.distraj as a list of strings (one character per dihedral pair
-        per frame).
+        per frame), and the bounds used in self.bounds.
 
         Parameters
         ----------
         states : list
             Ordered list of state labels to assign. Supported: 'A' (alpha-helix),
-            'E' (extended/beta), 'L' (left-handed alpha).
+            'E' (extended/beta), 'L' (left-handed alpha). Ignored if
+            bounds is given.
+        bounds : dict, optional
+            Maps state labels to [phi_min, phi_max, psi_min, psi_max]
+            in degrees (more groups of four add regions). Default is
+            the Buchete-Hummer bounds for states.
+        check : bool
+            Plot the Ramachandran map with the bounds and ask the user
+            to accept or redefine them (see traj_lib.confirm_bounds).
 
         """
         phi, psi = traj_lib.compute_rama(self)
-        self.distraj = traj_lib.discrete_rama(phi, psi, states=states)
+        if bounds is None:
+            bounds = traj_lib.default_bounds(states)
+        if check:
+            bounds = traj_lib.confirm_bounds(phi, psi, bounds)
+        self.bounds = bounds
+        self.distraj = traj_lib.discrete_rama(phi, psi, bounds=bounds)
 
     def gc(self):
         """
@@ -354,23 +367,40 @@ class Discretizer(object):
         else:
             self.timeseries = timeseries
 
-    def rama(self, states=None):
+    def rama(self, states=None, bounds=None, check=True):
         """
         Assign frames to coarse states from the Ramachandran angles,
         following the Buchete-Hummer procedure. This is the
         counterpart of kmeans and hdbscan for torsion-based
-        discretization, and acts on each TimeSeries through its
-        discretize method. Labels are strings, one character per
-        dihedral pair.
+        discretization. Labels are strings, one character per
+        dihedral pair. The same bounds are used for all
+        trajectories and stored in self.bounds.
 
         Parameters
         ----------
         states : list
             State labels to use, from 'A', 'E' and 'L'. Default is all.
+            Ignored if bounds is given.
+        bounds : dict, optional
+            Maps state labels to [phi_min, phi_max, psi_min, psi_max]
+            in degrees. Default is the Buchete-Hummer bounds.
+        check : bool
+            Plot the Ramachandran map pooled over all trajectories
+            with the bounds, and ask the user to accept or redefine
+            them (see traj_lib.confirm_bounds).
 
         """
-        for tr in self.timeseries:
-            tr.discretize(states=states)
+        rama = [traj_lib.compute_rama(tr) for tr in self.timeseries]
+        if bounds is None:
+            bounds = traj_lib.default_bounds(states)
+        if check:
+            phi = np.concatenate([np.ravel(f) for f, _ in rama])
+            psi = np.concatenate([np.ravel(y) for _, y in rama])
+            bounds = traj_lib.confirm_bounds(phi, psi, bounds)
+        self.bounds = bounds
+        for tr, (phi, psi) in zip(self.timeseries, rama):
+            tr.bounds = bounds
+            tr.distraj = traj_lib.discrete_rama(phi, psi, bounds=bounds)
 
     def kmeans(self, k=50, dim=2, random_state=None):
         """
@@ -497,6 +527,9 @@ def discretize_protocol(timeseries, spec, name=None, seed=None):
 
         {'rama': ['A', 'E']}
 
+        {'rama': {'A': [-130, -40, -50, 20],
+                  'E': [-180, -40, 125, 180]}, 'check': False}
+
         {'features': [('torsions', {'sincos': True})],
          'whiten': True,
          'reduce': ('tica', {'lag': 200, 'n': 4}),
@@ -509,7 +542,12 @@ def discretize_protocol(timeseries, spec, name=None, seed=None):
     spec : dict
         The protocol. Keys:
 
-        * ``rama``: list of states for Buchete-Hummer assignment.
+        * ``rama``: list of states for Buchete-Hummer assignment,
+          or a dict of bounds in degrees (see ``Discretizer.rama``).
+        * ``check``: bool, only with ``rama``. Show the Ramachandran
+          map and ask the user to accept or redefine the bounds
+          (default True). The accepted bounds are stored in the
+          result's ``bounds`` attribute.
         * ``features``: list of (name, kwargs) with name 'torsions'
           or 'contacts'. If absent, the ``features`` already present
           in the TimeSeries objects are used (copied).
@@ -537,13 +575,16 @@ def discretize_protocol(timeseries, spec, name=None, seed=None):
     if not isinstance(timeseries, list):
         timeseries = [timeseries]
     spec = dict(spec)
-    known = {'rama', 'features', 'whiten', 'reduce', 'cluster'}
+    known = {'rama', 'check', 'features', 'whiten', 'reduce', \
+            'cluster'}
     unknown = set(spec) - known
     if unknown:
         raise ValueError("unknown protocol keys: %s"%sorted(unknown))
     if ('rama' in spec) == ('cluster' in spec):
         raise ValueError("protocol needs exactly one of 'rama' or "\
                 "'cluster'")
+    if 'check' in spec and 'rama' not in spec:
+        raise ValueError("'check' only applies to 'rama' protocols")
     if name is None:
         name = 'rama' if 'rama' in spec else 'protocol'
 
@@ -552,8 +593,15 @@ def discretize_protocol(timeseries, spec, name=None, seed=None):
     trs = [copy.copy(tr) for tr in timeseries]
 
     if 'rama' in spec:
-        Discretizer(trs).rama(states=spec['rama'])
-        return Discretization(name, spec, trs)
+        rama = spec['rama']
+        disc = Discretizer(trs)
+        if isinstance(rama, dict):
+            disc.rama(bounds=rama, check=spec.get('check', True))
+        else:
+            disc.rama(states=rama, check=spec.get('check', True))
+        res = Discretization(name, spec, trs)
+        res.bounds = disc.bounds
+        return res
 
     if 'features' in spec:
         for tr in trs:
