@@ -115,7 +115,7 @@ class TimeSeries(object):
                 keys.append(s)
         self.keys = sorted(keys)
 
-    def discretize(self, states=None, bounds=None, check=True):
+    def discretize(self, states=None, bounds=None, check=False):
         """ Discretize an MD trajectory using Ramachandran dihedral angles.
 
         Assigns each frame to a coarse state label based on (phi, psi) angles,
@@ -140,6 +140,7 @@ class TimeSeries(object):
         check : bool
             Plot the Ramachandran map with the bounds and ask the user
             to accept or redefine them (see traj_lib.confirm_bounds).
+            Default False.
 
         """
         phi, psi = traj_lib.compute_rama(self)
@@ -372,7 +373,7 @@ class Discretizer(object):
         else:
             self.timeseries = timeseries
 
-    def rama(self, states=None, bounds=None, check=True):
+    def rama(self, states=None, bounds=None, check=False):
         """
         Assign frames to coarse states from the Ramachandran angles,
         following the Buchete-Hummer procedure. This is the
@@ -392,7 +393,7 @@ class Discretizer(object):
         check : bool
             Plot the Ramachandran map pooled over all trajectories
             with the bounds, and ask the user to accept or redefine
-            them (see traj_lib.confirm_bounds).
+            them (see traj_lib.confirm_bounds). Default False.
 
         """
         rama = [traj_lib.compute_rama(tr) for tr in self.timeseries]
@@ -553,7 +554,7 @@ def discretize_protocol(timeseries, spec, name=None, seed=None):
           or a dict of bounds in degrees (see ``Discretizer.rama``).
         * ``check``: bool, only with ``rama``. Show the Ramachandran
           map and ask the user to accept or redefine the bounds
-          (default True). The accepted bounds are stored in the
+          (default False). The bounds used are stored in the
           result's ``bounds`` attribute.
         * ``features``: list of (name, kwargs) with name 'torsions'
           or 'contacts'. If absent, the ``features`` already present
@@ -603,9 +604,9 @@ def discretize_protocol(timeseries, spec, name=None, seed=None):
         rama = spec['rama']
         disc = Discretizer(trs)
         if isinstance(rama, dict):
-            disc.rama(bounds=rama, check=spec.get('check', True))
+            disc.rama(bounds=rama, check=spec.get('check', False))
         else:
-            disc.rama(states=rama, check=spec.get('check', True))
+            disc.rama(states=rama, check=spec.get('check', False))
         res = Discretization(name, spec, trs)
         res.bounds = disc.bounds
         return res

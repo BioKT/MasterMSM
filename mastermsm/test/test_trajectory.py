@@ -626,3 +626,19 @@ class TestDiscreteRama(unittest.TestCase):
     def test_never_assigned_raises(self):
         with self.assertRaises(ValueError):
             self._run([[-60, 0], [-60, 0]], [[-40, 180], [-40, 180]])
+
+
+class TestRamaCheckDefault(unittest.TestCase):
+    """ Bounds confirmation is opt-in, so scripts never block. """
+
+    def test_default_does_not_confirm(self):
+        from unittest import mock
+        download_osf_alaTB()
+        top = os.path.join(_DATA_DIR, 'alaTB.gro')
+        xtc = os.path.join(_DATA_DIR, 'alaTB.xtc')
+        with mock.patch.object(traj_lib, 'confirm_bounds') as cb:
+            ts = traj.TimeSeries(xtc=xtc, top=top)
+            ts.discretize(states=['A', 'E'])
+            traj.Discretizer([ts]).rama(states=['A', 'E'])
+            traj.discretize_protocol([ts], {'rama': ['A', 'E']})
+        cb.assert_not_called()
