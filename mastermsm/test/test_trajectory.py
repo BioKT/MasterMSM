@@ -954,7 +954,7 @@ class TestRama_extra(unittest.TestCase):
         new = {'A': [-180., 0., -100., 50.]}
         with mock.patch.object(traj_lib, 'confirm_bounds', \
                 return_value=new) as cb:
-            ts.discretize(states=['A', 'E'])
+            ts.discretize(states=['A', 'E'], check=True)
         cb.assert_called_once()
         self.assertEqual(cb.call_args[0][2], \
                 traj_lib.default_bounds(['A', 'E']))
@@ -969,7 +969,7 @@ class TestRama_extra(unittest.TestCase):
         with mock.patch.object(traj_lib, 'confirm_bounds', \
                 return_value=new) as cb:
             disc = traj.Discretizer(trs)
-            disc.rama()
+            disc.rama(check=True)
         cb.assert_called_once()
         phi, psi, b0 = cb.call_args[0]
         n = sum(tr.mdt.n_frames for tr in trs)
@@ -981,12 +981,58 @@ class TestRama_extra(unittest.TestCase):
             self.assertEqual(tr.bounds, new)
             self.assertEqual(set(''.join(tr.distraj)) - {'O'}, {'E'})
 
-    def test_protocol_rama_checks_by_default(self):
+    def test_protocol_rama_check(self):
         ts = _alaTB()
         new = {'A': [-180., 0., -100., 50.]}
         with mock.patch.object(traj_lib, 'confirm_bounds', \
                 return_value=new) as cb:
-            res = traj.discretize_protocol(ts, {'rama': ['A']})
+            res = traj.discretize_protocol(ts, {'rama': ['A'],
+                                                'check': True})
         cb.assert_called_once()
         self.assertEqual(res.bounds, new)
         self.assertFalse(hasattr(ts, 'bounds'))
+
+
+class TestDiscreteRama(unittest.TestCase):
+    """ Transition-based assignment on synthetic angles (degrees). """
+
+    def _run(self, phi_deg, psi_deg):
+        phi = np.radians(np.array(phi_deg, dtype=float))
+        psi = np.radians(np.array(psi_deg, dtype=float))
+        return traj_lib.discrete_rama(phi, psi, return_unassigned=True)
+
+    def test_leading_frames_dropped(self):
+        # dihedral 0: O, A, O, E ; dihedral 1: O, O, E, O
+        # A = (-60,-40), E = (-120,150), O = (0,180)
+        phi = [[0, 0], [-60, 0], [0, -120], [-120, 0]]
+        psi = [[180, 180], [-40, 180], [180, 150], [150, 180]]
+        cstates, unassigned, ndrop = self._run(phi, psi)
+        self.assertEqual(ndrop, 2)
+        self.assertEqual(cstates, ['AE', 'EE'])
+        np.testing.assert_allclose(unassigned, [0.5, 0.75])
+        self.assertNotIn('O', ''.join(cstates))
+
+    def test_default_return(self):
+        phi = np.radians([[-60.], [-120.]])
+        psi = np.radians([[-40.], [150.]])
+        self.assertEqual(traj_lib.discrete_rama(phi, psi), ['A', 'E'])
+
+    def test_never_assigned_raises(self):
+        with self.assertRaises(ValueError):
+            self._run([[-60, 0], [-60, 0]], [[-40, 180], [-40, 180]])
+
+
+class TestRamaCheckDefault(unittest.TestCase):
+    """ Bounds confirmation is opt-in, so scripts never block. """
+
+    def test_default_does_not_confirm(self):
+        from unittest import mock
+        download_osf_alaTB()
+        top = os.path.join(_DATA_DIR, 'alaTB.gro')
+        xtc = os.path.join(_DATA_DIR, 'alaTB.xtc')
+        with mock.patch.object(traj_lib, 'confirm_bounds') as cb:
+            ts = traj.TimeSeries(xtc=xtc, top=top)
+            ts.discretize(states=['A', 'E'])
+            traj.Discretizer([ts]).rama(states=['A', 'E'])
+            traj.discretize_protocol([ts], {'rama': ['A', 'E']})
+        cb.assert_not_called()
