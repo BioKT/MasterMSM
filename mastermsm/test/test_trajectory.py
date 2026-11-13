@@ -597,3 +597,32 @@ class TestRamaBounds(unittest.TestCase):
         with self.assertRaises(ValueError):
             traj.discretize_protocol(trs, {'cluster': 'kmeans',
                                            'check': False})
+
+
+class TestDiscreteRama(unittest.TestCase):
+    """ Transition-based assignment on synthetic angles (degrees). """
+
+    def _run(self, phi_deg, psi_deg):
+        phi = np.radians(np.array(phi_deg, dtype=float))
+        psi = np.radians(np.array(psi_deg, dtype=float))
+        return traj_lib.discrete_rama(phi, psi, return_unassigned=True)
+
+    def test_leading_frames_dropped(self):
+        # dihedral 0: O, A, O, E ; dihedral 1: O, O, E, O
+        # A = (-60,-40), E = (-120,150), O = (0,180)
+        phi = [[0, 0], [-60, 0], [0, -120], [-120, 0]]
+        psi = [[180, 180], [-40, 180], [180, 150], [150, 180]]
+        cstates, unassigned, ndrop = self._run(phi, psi)
+        self.assertEqual(ndrop, 2)
+        self.assertEqual(cstates, ['AE', 'EE'])
+        np.testing.assert_allclose(unassigned, [0.5, 0.75])
+        self.assertNotIn('O', ''.join(cstates))
+
+    def test_default_return(self):
+        phi = np.radians([[-60.], [-120.]])
+        psi = np.radians([[-40.], [150.]])
+        self.assertEqual(traj_lib.discrete_rama(phi, psi), ['A', 'E'])
+
+    def test_never_assigned_raises(self):
+        with self.assertRaises(ValueError):
+            self._run([[-60, 0], [-60, 0]], [[-40, 180], [-40, 180]])

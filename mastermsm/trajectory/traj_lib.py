@@ -379,10 +379,14 @@ def confirm_bounds(phi, psi, bounds, input_fn=None, plot=True):
                 except ValueError as e:
                     print("  invalid: %s"%e)
 
-def discrete_rama(phi, psi, bounds=None, states=None):
+def discrete_rama(phi, psi, bounds=None, states=None,
+                  return_unassigned=False):
     """ Assign Ramachandran angles to coarse states.
 
-    Follows the Buchete-Hummer assignment procedure.
+    Follows the Buchete-Hummer transition-based assignment: frames
+    outside every core inherit the state of the previous frame.
+    Leading frames, recorded before every dihedral has visited a core,
+    have no previous state and are dropped.
 
     Parameters
     ----------
@@ -394,11 +398,26 @@ def discrete_rama(phi, psi, bounds=None, states=None):
         Custom bounds dict. Default uses standard A/E/L regions.
     states : list, optional
         State labels to include. Defaults to all defined labels.
+    return_unassigned : bool, optional
+        Also return the fraction of frames outside every core, per
+        dihedral, and the number of leading frames dropped.
 
     Returns
     -------
     cstates : list
-        Per-frame state string (one character per dihedral pair).
+        Per-frame state string (one character per dihedral pair), with
+        the leading unassigned frames removed.
+    unassigned : array, optional
+        Fraction of frames (over the full input) outside every core,
+        one value per dihedral. Only if return_unassigned is True.
+    ndrop : int, optional
+        Number of leading frames dropped. Only if return_unassigned
+        is True.
+
+    Raises
+    ------
+    ValueError
+        If some dihedral never visits any core.
 
     References
     ----------
@@ -412,16 +431,29 @@ def discrete_rama(phi, psi, bounds=None, states=None):
     if psi.shape[1] != ndih:
         raise ValueError("phi and psi have different numbers of dihedrals")
 
+    raw = [[_state(f[n] * 180. / math.pi, y[n] * 180. / math.pi,
+                   bounds)[0] for n in range(ndih)]
+           for f, y in zip(phi, psi)]
+    raw = np.array(raw, dtype='<U1').reshape(len(raw), ndih)
+    unassigned = np.mean(raw == 'O', axis=0)
+
+    # first frame at which each dihedral is in a core
+    assigned = raw != 'O'
+    if not np.all(assigned.any(axis=0)):
+        never = np.where(~assigned.any(axis=0))[0].tolist()
+        raise ValueError("dihedral(s) %s never visit any core" % never)
+    ndrop = int(np.max(np.argmax(assigned, axis=0)))
+
+    # inherit over the full history, then drop the leading frames
     cstates = []
     prev_s_string = ['O'] * ndih
-    for f, y in zip(phi, psi):
-        s_string = []
-        for n in range(ndih):
-            s, _ = _state(f[n] * 180. / math.pi, y[n] * 180. / math.pi, bounds)
-            if s == 'O':
-                s_string.append(prev_s_string[n])
-            else:
-                s_string.append(s)
+    for row in raw:
+        s_string = [prev_s_string[n] if s == 'O' else s
+                    for n, s in enumerate(row)]
         cstates.append(''.join(s_string))
         prev_s_string = s_string
+    cstates = cstates[ndrop:]
+
+    if return_unassigned:
+        return cstates, unassigned, ndrop
     return cstates

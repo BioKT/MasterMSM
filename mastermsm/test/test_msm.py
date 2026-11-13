@@ -489,3 +489,33 @@ class TestMSM(unittest.TestCase):
 #        modes = [key for key in acf_ave.keys()]
 #
 #        self.assertIsInstance(acf_ave[modes[0]][0], float)
+
+
+class TestEigsTau(unittest.TestCase):
+    """ Eigenvalue sorting and relaxation times from T. """
+
+    def test_complex_pair(self):
+        # cyclic, non-reversible column-stochastic T
+        T = np.array([[.8, 0., .2], [.2, .8, 0.], [0., .2, .8]])
+        evals, _, _ = msm_lib.calc_eigsT(T)
+        self.assertAlmostEqual(evals[0].real, 1.)
+        tau = msm_lib.calc_tauT(evals, 2.)
+        self.assertEqual(len(tau), 2)
+        expected = -2. / np.log(abs(0.7 + 0.1j * np.sqrt(3.)))
+        np.testing.assert_allclose(tau, [expected, expected])
+        self.assertTrue(np.isrealobj(tau))
+
+    def test_negative_eigenvalue(self):
+        T = np.array([[.1, .9], [.9, .1]])
+        evals, _, _ = msm_lib.calc_eigsT(T)
+        tau = msm_lib.calc_tauT(evals, 1.)
+        np.testing.assert_allclose(tau, [-1. / np.log(.8)])
+
+    def test_sorted_by_modulus(self):
+        # reversible T with eigenvalues 1, 0.5, -0.9
+        evals_in = np.array([1., 0.5, -0.9])
+        rng = np.random.default_rng(0)
+        Q, _ = np.linalg.qr(rng.normal(size=(3, 3)))
+        A = Q @ np.diag(evals_in) @ Q.T
+        evals, _, _ = msm_lib.calc_eigsT(A)
+        np.testing.assert_allclose(np.real(evals), [1., -0.9, 0.5])

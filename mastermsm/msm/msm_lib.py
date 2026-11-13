@@ -36,22 +36,49 @@ def calc_eigsT(trans):
     Returns
     -------
     evals: np.array
-        Sorted eigenvalues and eigenvectors 
-    rvecs : numpy array, optional
-        Sorted right eigenvectors of T, sorted.
-    lvecs : numpy array, optional
-        Left eigenvectors of T, sorted.
+        Eigenvalues, sorted by decreasing modulus (complex in general).
+    lvecs : numpy array
+        Left eigenvectors of T, in the same order.
+    rvecs : numpy array
+        Right eigenvectors of T, in the same order.
 
     """
     evals, lvecs, rvecs = spla.eig(trans, left=True)
 
-    # sort eigenvalues and eigenvectors
-    ievals = np.argsort(-evals)
+    # sort by decreasing modulus; ties (conjugate pairs) by real part
+    ievals = np.lexsort((-np.real(evals), -np.abs(evals)))
     evals = evals[ievals]
     lvecs = lvecs[:,ievals]
     rvecs = rvecs[:,ievals]
 
     return evals, lvecs, rvecs
+
+def calc_tauT(evals, lagt):
+    """
+    Relaxation times from the eigenvalues of a transition matrix.
+
+    Uses tau = -lagt/ln|lambda|. Complex-conjugate pairs (from
+    non-reversible estimates) and negative eigenvalues decay with
+    rate ln|lambda|; both members of a pair are kept, so the output
+    has len(evals) - 1 entries. The stationary eigenvalue (first)
+    is skipped.
+
+    Parameters
+    ----------
+    evals : np.array
+        Eigenvalues sorted by decreasing modulus, as from calc_eigsT.
+    lagt : float
+        Lag time.
+
+    Returns
+    -------
+    tau : np.array
+        Relaxation times (real).
+
+    """
+    mod = np.abs(np.asarray(evals)[1:])
+    with np.errstate(divide='ignore'):
+        return -lagt / np.log(mod)
 
 def calc_eigsK(rate, evecs=False):
     """ 

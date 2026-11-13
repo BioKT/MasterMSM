@@ -420,7 +420,7 @@ class MSM(object):
         # relaxation times
         if not neigs:
             neigs = len(evals) - 1
-        self.tauT = np.real(np.array([-self.lagt/np.log(lmbd) for lmbd in evals[1:neigs+1]]))
+        self.tauT = msm_lib.calc_tauT(evals, self.lagt)[:neigs]
 
         # equilibrium probabilities
         self.peqT = np.real(rvecs[:,0]/np.sum(rvecs[:,0]))
@@ -470,8 +470,8 @@ class MSM(object):
         for r in result:
             trans_boots, keep_keys  = r[0], r[1]
             evals, lvecs, rvecs = msm_lib.calc_eigsT(trans_boots)
-            tauT_boots.append(np.array([-self.lagt/np.log(lmbd) for \
-                    lmbd in evals[1:neigs+1]]))
+            tauT_boots.append(
+                msm_lib.calc_tauT(evals, self.lagt)[:neigs])
             peqT_boots.append(rvecs[:,0]/np.sum(rvecs[:,0]))
             keep_keys_boots.append(keep_keys)
 
