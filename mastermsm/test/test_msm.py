@@ -4,7 +4,8 @@ import numpy as np
 from mastermsm.trajectory import traj_lib, traj
 from mastermsm.msm import msm, msm_lib
 from mastermsm.test.download_data import download_osf_alaTB
-import os, pickle
+import os, pickle, io, contextlib, warnings
+from scipy.linalg import expm, logm
 
 # thermal energy (kJ/mol)
 beta = 1./(8.314e-3*300)
@@ -213,6 +214,74 @@ class TestMSMLib(unittest.TestCase):
         self.assertTrue(rate_changed != peq_changed)
         self.assertEqual(db_rate.shape, new_rate.shape)
         self.assertEqual(peq_test.shape, new_peq.shape)
+
+    def test_mc_move_all_rates(self):
+        """ Every independent (lower triangle) rate can be perturbed. """
+        np.random.seed(0)
+        n = 4
+        peq = np.array([0.4, 0.3, 0.2, 0.1])
+        rate = np.zeros((n, n))
+        rate[np.tril_indices(n, -1)] = 1.
+        rate = msm_lib.detailed_balance(n, rate, peq)
+        moved = set()
+        for _ in range(2000):
+            new_rate, _ = msm_lib.mc_move(n, rate, peq)
+            for j, i in np.argwhere(new_rate != rate):
+                moved.add((int(j), int(i)))
+        self.assertEqual(moved, set(zip(*map(list, np.tril_indices(n, -1)))))
+
+    def test_mc_move_rate_step(self):
+        """ Rate steps follow the magnitude (units) of the rates. """
+        n = 4
+        peq = np.array([0.4, 0.3, 0.2, 0.1])
+        for k in (1e-3, 1., 1e3):
+            np.random.seed(0)
+            rate = np.zeros((n, n))
+            rate[np.tril_indices(n, -1)] = k
+            rate = msm_lib.detailed_balance(n, rate, peq)
+            scale = 0.1*np.mean(rate[rate > 0.])
+            steps = []
+            for _ in range(500):
+                new_rate, _ = msm_lib.mc_move(n, rate, peq)
+                if not np.array_equal(new_rate, rate):
+                    steps.append(np.abs(new_rate - rate).max())
+            self.assertLessEqual(np.max(steps), 0.5*scale)
+            self.assertGreater(np.max(steps), 0.4*scale)
+        with self.assertRaises(ValueError):
+            msm_lib.mc_move(n, np.zeros((n, n)), peq)
+
+    def test_calc_mlrate_known_model(self):
+        """ MLPB recovers a known 3-state rate matrix from exact counts. """
+        np.random.seed(0)
+        n, lagt = 3, 10.
+        peq = np.array([0.5, 0.3, 0.2])
+        rate = np.zeros((n, n))
+        rate[np.tril_indices(n, -1)] = [0.02, 0.005, 0.01]
+        rate = msm_lib.detailed_balance(n, rate, peq)
+        trans = expm(rate*lagt)
+        count = np.rint(trans*peq*1e6).astype(int)
+        rate_init = msm_lib.calc_rate(n, trans.copy(), lagt)
+        ml_init = msm_lib.likelihood(n,
+                msm_lib.detailed_balance(n, rate_init.copy(), peq), count, lagt)
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")  # no divide by zero in annealing
+            with contextlib.redirect_stdout(io.StringIO()):
+                res_rate, res_ml, res_temp = msm_lib.calc_mlrate(n, count,
+                        lagt, rate_init)
+        np.testing.assert_allclose(res_rate.sum(axis=0), 0., atol=1e-12)
+        # detailed balance: K[j,i] p[i] = K[i,j] p[j]
+        flux = res_rate*peq
+        np.testing.assert_allclose(flux, flux.T, rtol=0.05)
+        np.testing.assert_allclose(res_rate, rate, rtol=0.1)
+        ml_true = msm_lib.likelihood(n, rate, count, lagt)
+        ml_res = msm_lib.likelihood(n, res_rate, count, lagt)
+        self.assertLess(ml_res, ml_init)
+        self.assertLess((ml_res - ml_true)/ml_true, 1e-4)
+        # annealing temperatures stay within [0, 1]
+        self.assertEqual(len(res_ml), len(res_temp))
+        self.assertTrue(np.all(np.isfinite(res_temp)))
+        self.assertGreaterEqual(np.min(res_temp), 0.)
+        self.assertLessEqual(np.max(res_temp), 1.)
 
     def test_calc_eigsK(self):
         nstates = np.random.randint(2,100)
@@ -519,3 +588,255 @@ class TestEigsTau(unittest.TestCase):
         A = Q @ np.diag(evals_in) @ Q.T
         evals, _, _ = msm_lib.calc_eigsT(A)
         np.testing.assert_allclose(np.real(evals), [1., -0.9, 0.5])
+
+
+def _markov_chain(T, n, seed):
+    """ Sample n frames from column-stochastic T, starting in state 0. """
+    rng = np.random.default_rng(seed)
+    cum = np.cumsum(T, axis=0)
+    u = rng.random(n - 1)
+    s = [0]
+    for x in u:
+        s.append(int(np.searchsorted(cum[:, s[-1]], x)))
+    return s
+
+
+class TestMSMWorkflow(unittest.TestCase):
+    """ MSM object on a two-state chain with known kinetics. """
+
+    p, q = 0.05, 0.10   # rates 0->1 and 1->0 per step
+
+    @classmethod
+    def setUpClass(cls):
+        p, q = cls.p, cls.q
+        cls.T = np.array([[1 - p, q], [p, 1 - q]])
+        cls.lam = 1 - p - q
+        cls.trajs = [traj.TimeSeries(distraj=_markov_chain(cls.T, 20000, s),
+                                     dt=1.) for s in (1, 2)]
+        cls.msm = msm.MSM(cls.trajs, lagt=1)
+        cls.msm.calc_count()
+        cls.msm.calc_trans()
+        cls.msm.calc_evals()
+
+    def test_trans(self):
+        np.testing.assert_allclose(self.msm.trans.sum(axis=0), 1.)
+        np.testing.assert_allclose(self.msm.trans, self.T, atol=0.01)
+
+    def test_calc_evals(self):
+        m = self.msm
+        self.assertEqual(len(m.tauT), 1)
+        # tauT consistent with the estimated T ...
+        lam_est = np.sort(np.linalg.eigvals(m.trans))[0]
+        np.testing.assert_allclose(m.tauT, [-1. / np.log(lam_est)])
+        # ... and close to the generating model
+        np.testing.assert_allclose(m.tauT, [-1. / np.log(self.lam)],
+                                   rtol=0.1)
+        np.testing.assert_allclose(m.peqT, [self.q, self.p] /
+                                   np.float64(self.p + self.q), atol=0.02)
+        self.assertAlmostEqual(np.sum(m.peqT), 1.)
+        self.assertEqual(m.lvecsT.shape, (2, 2))
+
+    def test_calc_evals_neigs(self):
+        m = msm.MSM(self.trajs, lagt=1)
+        m.count = self.msm.count
+        m.calc_trans()
+        m.calc_evals(neigs=1, evecs=False)
+        self.assertEqual(len(m.tauT), 1)
+        self.assertFalse(hasattr(m, 'lvecsT'))
+
+    def test_boots(self):
+        m = self.msm
+        m.boots()
+        self.assertEqual(len(m.tau_ave), 1)
+        self.assertTrue(np.all(np.isfinite(m.tau_std)))
+        self.assertGreater(m.tau_std[0], 0.)
+        np.testing.assert_allclose(m.tau_ave, m.tauT, rtol=0.1)
+        self.assertAlmostEqual(np.sum(m.peq_ave), 1.)
+        np.testing.assert_allclose(m.peq_ave, m.peqT, atol=0.02)
+
+    def test_do_rate_taylor(self):
+        m = self.msm
+        m.do_rate(method='Taylor')
+        np.testing.assert_allclose(m.rate.sum(axis=0), 0., atol=1e-12)
+        np.testing.assert_allclose(m.rate, m.trans - np.eye(2))
+        lam_est = np.sort(np.linalg.eigvals(m.trans))[0]
+        np.testing.assert_allclose(m.tauK, [1. / (1. - lam_est)])
+        np.testing.assert_allclose(m.peqK, m.peqT)
+
+    def test_do_rate_mlpb(self):
+        np.random.seed(0)
+        m = msm.MSM(self.trajs, lagt=1)
+        m.count = self.msm.count
+        m.calc_trans()
+        m.calc_evals()
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            with contextlib.redirect_stdout(io.StringIO()):
+                m.do_rate(method='MLPB')
+        np.testing.assert_allclose(m.rate.sum(axis=0), 0., atol=1e-12)
+        # for two states the ML generator is the matrix log of T
+        np.testing.assert_allclose(m.rate, logm(m.trans).real, rtol=0.05)
+        np.testing.assert_allclose(m.peqK, m.peqT, atol=0.01)
+        np.testing.assert_allclose(m.tauK, m.tauT, rtol=0.05)
+
+    def test_do_rate_mlpb_disconnected(self):
+        """ MLPB uses only the counts of the connected set. """
+        np.random.seed(0)
+        m = msm.MSM(self.trajs, keys=[2, 0, 1], lagt=1)
+        count = np.zeros((3, 3), int)   # state 2 is never visited
+        count[1:, 1:] = self.msm.count
+        m.count = count
+        m.calc_trans()
+        self.assertEqual(m.keep_keys, [0, 1])
+        with contextlib.redirect_stdout(io.StringIO()):
+            m.do_rate(method='MLPB')
+        self.assertEqual(m.rate.shape, (2, 2))
+        np.testing.assert_allclose(m.rate, logm(m.trans).real, rtol=0.05)
+
+    def test_propagate(self):
+        m = self.msm
+        m.do_rate()
+        for prop in (m.propagateT, m.propagateK):
+            t, pop = prop(init=[0], time=[1, 10, 1000])
+            pop = np.array(pop)
+            self.assertEqual(pop.shape, (3, 2))
+            np.testing.assert_allclose(pop.sum(axis=1), 1.)
+            np.testing.assert_allclose(pop[-1], m.peqT, atol=1e-6)
+        # one step of T from state 0 is the first column of T
+        _, pop = m.propagateT(init=[0], time=[1])
+        np.testing.assert_allclose(pop[0], m.trans[:, 0])
+
+    def test_acf_mode(self):
+        acf = self.msm.acf_mode()
+        self.assertEqual(list(acf.keys()), [1])
+        lag = np.arange(1, 6)
+        np.testing.assert_allclose(acf[1][:5], self.lam ** lag, atol=0.03)
+
+
+class TestMSMCommittor(unittest.TestCase):
+    """ Committors and sensitivity on a symmetric linear chain 0-1-2. """
+
+    @classmethod
+    def setUpClass(cls):
+        T = np.array([[.9, .05, 0.], [.1, .9, .1], [0., .05, .9]])
+        cls.trajs = [traj.TimeSeries(distraj=_markov_chain(T, 20000, 3),
+                                     dt=1.)]
+        cls.msm = msm.MSM(cls.trajs, lagt=1)
+        cls.msm.calc_count()
+        cls.msm.do_trans()
+        cls.msm.do_rate()
+
+    def test_do_pfold(self):
+        m = self.msm
+        m.do_pfold(FF=[2], UU=[0])
+        self.assertAlmostEqual(m.pfold[0], 0.)
+        self.assertAlmostEqual(m.pfold[2], 1.)
+        self.assertAlmostEqual(m.pfold[1], 0.5, delta=0.05)
+        self.assertGreater(m.kf, 0.)
+        self.assertGreater(m.sum_flux, 0.)
+
+    def test_do_pfold_scalar_states(self):
+        m = self.msm
+        m.do_pfold(FF=[2], UU=[0])
+        pf_list = m.pfold.copy()
+        m.do_pfold(FF=2, UU=0)
+        np.testing.assert_allclose(m.pfold, pf_list)
+
+    def test_sensitivity(self):
+        m = self.msm
+        m.sensitivity(FF=[2], UU=[0])
+        self.assertEqual(len(m.dJ), 3)
+        self.assertEqual(len(m.d_lnkf), 3)
+        self.assertTrue(np.all(np.isfinite(m.d_lnkf)))
+
+
+class TestSuperMSMValidation(unittest.TestCase):
+    """ Implied timescales and Chapman-Kolmogorov test. """
+
+    @classmethod
+    def setUpClass(cls):
+        T = np.array([[.95, .10], [.05, .90]])
+        cls.trajs = [traj.TimeSeries(distraj=_markov_chain(T, 20000, s),
+                                     dt=1.) for s in (1, 2)]
+
+    def test_convergence_test(self):
+        sm = msm.SuperMSM(self.trajs)
+        sm.convergence_test(time=[1, 2, 5])
+        self.assertEqual(sorted(sm.msms.keys()), [1, 2, 5])
+        tau = [sm.msms[lt].tauT[0] for lt in (1, 2, 5)]
+        # Markovian data: implied timescale is lag-independent
+        np.testing.assert_allclose(tau, -1. / np.log(0.85), rtol=0.1)
+
+    def test_ck_test(self):
+        sm = msm.SuperMSM(self.trajs)
+        pMSM, pMD, epMD = sm.ck_test(time=[1, 2, 5], init=[0])
+        self.assertEqual(len(pMSM), 3)
+        self.assertEqual(pMD.shape, (3, 2))
+        self.assertEqual(epMD.shape, (3,))
+        np.testing.assert_array_equal(pMD[:, 0], [1, 2, 5])
+        # lag-1 MSM prediction at t = 2, 5 agrees with direct counts
+        t1, p1 = pMSM[0]
+        for lt, pmd, err in zip(pMD[1:, 0], pMD[1:, 1], epMD[1:]):
+            k = list(t1).index(lt)
+            self.assertLess(abs(p1[k] - pmd), 5 * err + 0.01)
+        # at the lag time itself the prediction is the MD value
+        self.assertAlmostEqual(p1[0], pMD[0, 1])
+
+
+class TestFEWSM(unittest.TestCase):
+    """ Few-state clustering of a 3-state chain with a slow 0,1 | 2 split. """
+
+    @classmethod
+    def setUpClass(cls):
+        from mastermsm.fewsm import fewsm
+        cls.fewsm = fewsm
+        T = np.array([[.90, .10, 0.], [.10, .89, .01], [0., .01, .99]])
+        cls.trajs = [traj.TimeSeries(distraj=_markov_chain(T, n, s), dt=1.)
+                     for n, s in ((20000, 4), (10000, 5))]
+        cls.msm = msm.MSM(cls.trajs, lagt=1)
+        cls.msm.calc_count()
+        cls.msm.do_trans()
+
+    def test_eigen_group(self):
+        for method in ('robust', 'sign'):
+            f = self.fewsm.FEWSM(self.msm, N=2, method=method)
+            groups = sorted(sorted(self.msm.keep_keys[i] for i in v)
+                            for v in f.macros.values())
+            self.assertEqual(groups, [[0, 1], [2]])
+
+    def test_map_trajectory_states(self):
+        f = self.fewsm.FEWSM(self.msm, N=2)
+        f.map_trajectory()
+        self.assertEqual(len(f.mappedtraj), len(self.trajs))
+        kk = self.msm.keep_keys
+        macro_of = {kk[i]: k for k, v in f.macros.items() for i in v}
+        mt = f.mappedtraj[0].distraj
+        ref = self.trajs[0].distraj
+        self.assertEqual(mt[:len(ref)], [macro_of[s] for s in ref])
+
+    def test_map_trajectory_lengths(self):
+        f = self.fewsm.FEWSM(self.msm, N=2)
+        f.map_trajectory()
+        self.assertEqual([len(x.distraj) for x in f.mappedtraj],
+                         [len(x.distraj) for x in self.trajs])
+
+    def test_eigen_group_without_evecs(self):
+        m = msm.MSM(self.trajs, lagt=1)
+        m.count = self.msm.count
+        m.calc_trans()
+        f = self.fewsm.FEWSM(m, N=2)
+        self.assertEqual(len(f.macros), 2)
+
+    def test_metastability(self):
+        f = self.fewsm.FEWSM(self.msm, N=2)
+        Q = f.metastability()
+        self.assertTrue(0. < Q <= 2.)
+        # lumped counts conserve the total and match the mapped trajectory
+        self.assertEqual(f.count.sum(), self.msm.count.sum())
+        f.map_trajectory()
+        m = msm.MSM(f.mappedtraj, keys=[0, 1], lagt=1)
+        m.calc_count()
+        np.testing.assert_array_equal(f.count, m.count)
+        np.testing.assert_allclose(Q, np.trace(f.trans))
+        # 0,1 | 2 split: Q = T(01->01) + T(2->2), close to 0.995 + 0.99
+        self.assertAlmostEqual(Q, 1.985, delta=0.01)

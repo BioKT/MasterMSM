@@ -35,6 +35,10 @@ class FEWSM(msm.MSM):
         """
         self.parent = parent
         self.N = N
+        self.keys = list(range(N))
+        self.lagt = parent.lagt
+        self.sliding = parent.sliding
+        self.sym = parent.sym
         self.macros = self.eigen_group(N=self.N, method=method)
 
     def eigen_group(self, N=2, method="robust"):
@@ -56,8 +60,9 @@ class FEWSM(msm.MSM):
 
         # generate eigenvectors in case the MSM does not have them
         if not hasattr(self.parent, 'lvecsT'):
-            self.parent.tauT, self.parent.peqT, self.parent.rvecsT, self.parent.lvecsT = \
-                   self.parent.calc_eigsT(evecs=True)
+            if not hasattr(self.parent, 'trans'):
+                self.parent.calc_trans()
+            self.parent.calc_evals(evecs=True)
         lvecs = self.parent.lvecsT
 
         # split in desired number of macrostates
@@ -91,22 +96,41 @@ class FEWSM(msm.MSM):
         print ("\n Mapping trajectory onto macrostates...")
         mappedtraj = []
         keep_keys = self.parent.keep_keys
-        mt_states = []
+        # macrostate of each microstate key
+        macro_of = {keep_keys[i]: k for k, v in self.macros.items() \
+                for i in v}
         for data in self.parent.data:
+            # one mapped trajectory per parent trajectory
+            mt_states = []
             for s in data.distraj:
                 try:
-                    mt_states.append([k for k, v in self.macros.items() \
-                           if keep_keys.index(s) in v][0])
-                except ValueError:
+                    mt_states.append(macro_of[s])
+                except KeyError:
                     print (" not in keep_keys")
             mt = traj.TimeSeries(distraj=mt_states, dt=data.dt)
             mappedtraj.append(mt)
         self.mappedtraj = mappedtraj
         #super().__init__(mappedtraj, keys=range(self.N), lagt=self.parent.lagt)
 
+    def calc_count(self, nproc=None, sym=False):
+        """ Calculates the macrostate count matrix
+
+        Lumps the count matrix of the parent MSM according to the
+        current membership in self.macros. This is what counting
+        transitions on the mapped trajectories gives at the lag time
+        of the parent. The arguments are unused and kept only for
+        compatibility with MSM.calc_count.
+
+        """
+        self.count = fewsm_lib.map_micro2macro(self.parent.count, \
+                self.macros, self.parent.keep_states)
+
     def metastability(self):
         """ Calculate metastability according to the definition
         in Chodera et al, J Chem Phys, (2007)
+
+        The macrostate transition matrix is rebuilt from the current
+        membership in self.macros on every call.
 
         Returns
         -------
@@ -114,6 +138,8 @@ class FEWSM(msm.MSM):
             Metastability
 
         """
+        self.calc_count()
+        self.calc_trans()
         return fewsm_lib.metastability(self.trans)
 
 #    def optim(self, nsteps=1, nwrite=None, fout="mc.dat"):
