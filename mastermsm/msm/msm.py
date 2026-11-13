@@ -385,7 +385,10 @@ class MSM(object):
                 rate_init = np.random.rand(nkeep, nkeep) * 1.e-2
             else:
                 rate_init = msm_lib.calc_rate(nkeep, self.trans, self.lagt)
-            self.rate, ml, beta = msm_lib.calc_mlrate(nkeep, self.count, self.lagt,\
+            # counts restricted to the connected set, as in calc_trans
+            keep = self.keep_states
+            count = np.asarray(self.count)[np.ix_(keep, keep)]
+            self.rate, ml, beta = msm_lib.calc_mlrate(nkeep, count, self.lagt,\
                     rate_init)
             if report:
                 _, ax = plt.subplots(2, 1, sharex=True)

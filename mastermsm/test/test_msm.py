@@ -4,7 +4,8 @@ import numpy as np
 from mastermsm.trajectory import traj_lib, traj
 from mastermsm.msm import msm, msm_lib
 from mastermsm.test.download_data import download_osf_alaTB
-import os, pickle
+import os, pickle, io, contextlib, warnings
+from scipy.linalg import expm, logm
 
 # thermal energy (kJ/mol)
 beta = 1./(8.314e-3*300)
@@ -213,6 +214,74 @@ class TestMSMLib(unittest.TestCase):
         self.assertTrue(rate_changed != peq_changed)
         self.assertEqual(db_rate.shape, new_rate.shape)
         self.assertEqual(peq_test.shape, new_peq.shape)
+
+    def test_mc_move_all_rates(self):
+        """ Every independent (lower triangle) rate can be perturbed. """
+        np.random.seed(0)
+        n = 4
+        peq = np.array([0.4, 0.3, 0.2, 0.1])
+        rate = np.zeros((n, n))
+        rate[np.tril_indices(n, -1)] = 1.
+        rate = msm_lib.detailed_balance(n, rate, peq)
+        moved = set()
+        for _ in range(2000):
+            new_rate, _ = msm_lib.mc_move(n, rate, peq)
+            for j, i in np.argwhere(new_rate != rate):
+                moved.add((int(j), int(i)))
+        self.assertEqual(moved, set(zip(*map(list, np.tril_indices(n, -1)))))
+
+    def test_mc_move_rate_step(self):
+        """ Rate steps follow the magnitude (units) of the rates. """
+        n = 4
+        peq = np.array([0.4, 0.3, 0.2, 0.1])
+        for k in (1e-3, 1., 1e3):
+            np.random.seed(0)
+            rate = np.zeros((n, n))
+            rate[np.tril_indices(n, -1)] = k
+            rate = msm_lib.detailed_balance(n, rate, peq)
+            scale = 0.1*np.mean(rate[rate > 0.])
+            steps = []
+            for _ in range(500):
+                new_rate, _ = msm_lib.mc_move(n, rate, peq)
+                if not np.array_equal(new_rate, rate):
+                    steps.append(np.abs(new_rate - rate).max())
+            self.assertLessEqual(np.max(steps), 0.5*scale)
+            self.assertGreater(np.max(steps), 0.4*scale)
+        with self.assertRaises(ValueError):
+            msm_lib.mc_move(n, np.zeros((n, n)), peq)
+
+    def test_calc_mlrate_known_model(self):
+        """ MLPB recovers a known 3-state rate matrix from exact counts. """
+        np.random.seed(0)
+        n, lagt = 3, 10.
+        peq = np.array([0.5, 0.3, 0.2])
+        rate = np.zeros((n, n))
+        rate[np.tril_indices(n, -1)] = [0.02, 0.005, 0.01]
+        rate = msm_lib.detailed_balance(n, rate, peq)
+        trans = expm(rate*lagt)
+        count = np.rint(trans*peq*1e6).astype(int)
+        rate_init = msm_lib.calc_rate(n, trans.copy(), lagt)
+        ml_init = msm_lib.likelihood(n,
+                msm_lib.detailed_balance(n, rate_init.copy(), peq), count, lagt)
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")  # no divide by zero in annealing
+            with contextlib.redirect_stdout(io.StringIO()):
+                res_rate, res_ml, res_temp = msm_lib.calc_mlrate(n, count,
+                        lagt, rate_init)
+        np.testing.assert_allclose(res_rate.sum(axis=0), 0., atol=1e-12)
+        # detailed balance: K[j,i] p[i] = K[i,j] p[j]
+        flux = res_rate*peq
+        np.testing.assert_allclose(flux, flux.T, rtol=0.05)
+        np.testing.assert_allclose(res_rate, rate, rtol=0.1)
+        ml_true = msm_lib.likelihood(n, rate, count, lagt)
+        ml_res = msm_lib.likelihood(n, res_rate, count, lagt)
+        self.assertLess(ml_res, ml_init)
+        self.assertLess((ml_res - ml_true)/ml_true, 1e-4)
+        # annealing temperatures stay within [0, 1]
+        self.assertEqual(len(res_ml), len(res_temp))
+        self.assertTrue(np.all(np.isfinite(res_temp)))
+        self.assertGreaterEqual(np.min(res_temp), 0.)
+        self.assertLessEqual(np.max(res_temp), 1.)
 
     def test_calc_eigsK(self):
         nstates = np.random.randint(2,100)
@@ -593,6 +662,36 @@ class TestMSMWorkflow(unittest.TestCase):
         lam_est = np.sort(np.linalg.eigvals(m.trans))[0]
         np.testing.assert_allclose(m.tauK, [1. / (1. - lam_est)])
         np.testing.assert_allclose(m.peqK, m.peqT)
+
+    def test_do_rate_mlpb(self):
+        np.random.seed(0)
+        m = msm.MSM(self.trajs, lagt=1)
+        m.count = self.msm.count
+        m.calc_trans()
+        m.calc_evals()
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            with contextlib.redirect_stdout(io.StringIO()):
+                m.do_rate(method='MLPB')
+        np.testing.assert_allclose(m.rate.sum(axis=0), 0., atol=1e-12)
+        # for two states the ML generator is the matrix log of T
+        np.testing.assert_allclose(m.rate, logm(m.trans).real, rtol=0.05)
+        np.testing.assert_allclose(m.peqK, m.peqT, atol=0.01)
+        np.testing.assert_allclose(m.tauK, m.tauT, rtol=0.05)
+
+    def test_do_rate_mlpb_disconnected(self):
+        """ MLPB uses only the counts of the connected set. """
+        np.random.seed(0)
+        m = msm.MSM(self.trajs, keys=[2, 0, 1], lagt=1)
+        count = np.zeros((3, 3), int)   # state 2 is never visited
+        count[1:, 1:] = self.msm.count
+        m.count = count
+        m.calc_trans()
+        self.assertEqual(m.keep_keys, [0, 1])
+        with contextlib.redirect_stdout(io.StringIO()):
+            m.do_rate(method='MLPB')
+        self.assertEqual(m.rate.shape, (2, 2))
+        np.testing.assert_allclose(m.rate, logm(m.trans).real, rtol=0.05)
 
     def test_propagate(self):
         m = self.msm

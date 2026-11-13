@@ -715,6 +715,13 @@ def calc_mlrate(nkeep, count, lagt, rate_init):
     rate_best = rate_prev
     ml_best = ml_prev
     while True:
+        # annealing temperature: 1 throughout the first cycle, then
+        # decaying exponentially from 1 (nstep = 0) to 0 (nstep = nsteps)
+        if ncycle > 0:
+            temp = (np.exp(k*nstep) - np.exp(k*nsteps))/(1 - np.exp(k*nsteps))
+        else:
+            temp = 1.
+
         # random choice of MC move
         rate, p = mc_move(nkeep, rate_prev, p_prev)
         rate = detailed_balance(nkeep, rate, p)
@@ -734,9 +741,8 @@ def calc_mlrate(nkeep, count, lagt, rate_init):
                 rate_best = rate
         else:
             delta_ml = ml - ml_prev
-            beta = (1 - np.exp(k*nsteps))/(np.exp(k*nstep) - np.exp(k*nsteps)) if ncycle > 0 else 1
-            weight = np.exp(-beta*delta_ml)
-            if np.random.random() < weight:
+            # at zero temperature uphill moves are always rejected
+            if temp > 0 and np.random.random() < np.exp(-delta_ml/temp):
                 #print " ACCEPT BOLTZMANN\n"
                 rate_prev = rate
                 p_prev = p
@@ -747,7 +753,7 @@ def calc_mlrate(nkeep, count, lagt, rate_init):
         if nstep > nsteps:
             ncycle +=1
             ml_cum.append(ml_prev)
-            temp_cum.append(1./beta)
+            temp_cum.append(temp)
             print ("\n END of cycle %g"%ncycle)
             print ("   acceptance :%g"%(float(accept)/nsteps))
             accept = 0
@@ -762,7 +768,7 @@ def calc_mlrate(nkeep, count, lagt, rate_init):
                 break
         elif nstep % nfreq == 0:
             ml_cum.append(ml_prev)
-            temp_cum.append(1./beta)
+            temp_cum.append(temp)
 
     return rate_best, ml_cum, temp_cum
 
@@ -782,8 +788,12 @@ def mc_move(nkeep, rate, peq):
         The equilibrium probability
 
     """
-    nparam = nkeep*(nkeep - 1)/2 + nkeep - 1
     npeq = nkeep - 1
+    # independent rates: lower triangle, rate[j,i] with j > i
+    rows, cols = np.tril_indices(nkeep, -1)
+    nparam = npeq + len(rows)
+    if not np.any(rate > 0.):
+        raise ValueError("rate matrix has no positive elements")
 
     while True:
         i = np.random.randint(0, nparam)
@@ -800,13 +810,10 @@ def mc_move(nkeep, rate, peq):
                 break
         else:
             #print " Rate"
-            i = np.random.randint(0, nkeep - 1)
+            j, i = rows[i - npeq], cols[i - npeq]
             try:
-                j = np.random.randint(i + 1, nkeep - 1)
-            except ValueError:
-                j = nkeep - 1
-            try:
-                scale = np.mean(np.abs(rate>0.))*0.1
+                # step relative to the mean rate, as for peq above
+                scale = np.mean(rate[rate > 0.])*0.1
                 #rate_new[j,i] = np.random.normal(loc=rate[j,i], scale=scale)
                 rate_new[j,i] = rate[j,i] + (np.random.random() - 0.5)*scale
                 if np.all((rate_new - np.diag(np.diag(rate_new))) >= 0):
