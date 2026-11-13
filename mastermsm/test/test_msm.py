@@ -519,3 +519,225 @@ class TestEigsTau(unittest.TestCase):
         A = Q @ np.diag(evals_in) @ Q.T
         evals, _, _ = msm_lib.calc_eigsT(A)
         np.testing.assert_allclose(np.real(evals), [1., -0.9, 0.5])
+
+
+def _markov_chain(T, n, seed):
+    """ Sample n frames from column-stochastic T, starting in state 0. """
+    rng = np.random.default_rng(seed)
+    cum = np.cumsum(T, axis=0)
+    u = rng.random(n - 1)
+    s = [0]
+    for x in u:
+        s.append(int(np.searchsorted(cum[:, s[-1]], x)))
+    return s
+
+
+class TestMSMWorkflow(unittest.TestCase):
+    """ MSM object on a two-state chain with known kinetics. """
+
+    p, q = 0.05, 0.10   # rates 0->1 and 1->0 per step
+
+    @classmethod
+    def setUpClass(cls):
+        p, q = cls.p, cls.q
+        cls.T = np.array([[1 - p, q], [p, 1 - q]])
+        cls.lam = 1 - p - q
+        cls.trajs = [traj.TimeSeries(distraj=_markov_chain(cls.T, 20000, s),
+                                     dt=1.) for s in (1, 2)]
+        cls.msm = msm.MSM(cls.trajs, lagt=1)
+        cls.msm.calc_count()
+        cls.msm.calc_trans()
+        cls.msm.calc_evals()
+
+    def test_trans(self):
+        np.testing.assert_allclose(self.msm.trans.sum(axis=0), 1.)
+        np.testing.assert_allclose(self.msm.trans, self.T, atol=0.01)
+
+    def test_calc_evals(self):
+        m = self.msm
+        self.assertEqual(len(m.tauT), 1)
+        # tauT consistent with the estimated T ...
+        lam_est = np.sort(np.linalg.eigvals(m.trans))[0]
+        np.testing.assert_allclose(m.tauT, [-1. / np.log(lam_est)])
+        # ... and close to the generating model
+        np.testing.assert_allclose(m.tauT, [-1. / np.log(self.lam)],
+                                   rtol=0.1)
+        np.testing.assert_allclose(m.peqT, [self.q, self.p] /
+                                   np.float64(self.p + self.q), atol=0.02)
+        self.assertAlmostEqual(np.sum(m.peqT), 1.)
+        self.assertEqual(m.lvecsT.shape, (2, 2))
+
+    def test_calc_evals_neigs(self):
+        m = msm.MSM(self.trajs, lagt=1)
+        m.count = self.msm.count
+        m.calc_trans()
+        m.calc_evals(neigs=1, evecs=False)
+        self.assertEqual(len(m.tauT), 1)
+        self.assertFalse(hasattr(m, 'lvecsT'))
+
+    def test_boots(self):
+        m = self.msm
+        m.boots()
+        self.assertEqual(len(m.tau_ave), 1)
+        self.assertTrue(np.all(np.isfinite(m.tau_std)))
+        self.assertGreater(m.tau_std[0], 0.)
+        np.testing.assert_allclose(m.tau_ave, m.tauT, rtol=0.1)
+        self.assertAlmostEqual(np.sum(m.peq_ave), 1.)
+        np.testing.assert_allclose(m.peq_ave, m.peqT, atol=0.02)
+
+    def test_do_rate_taylor(self):
+        m = self.msm
+        m.do_rate(method='Taylor')
+        np.testing.assert_allclose(m.rate.sum(axis=0), 0., atol=1e-12)
+        np.testing.assert_allclose(m.rate, m.trans - np.eye(2))
+        lam_est = np.sort(np.linalg.eigvals(m.trans))[0]
+        np.testing.assert_allclose(m.tauK, [1. / (1. - lam_est)])
+        np.testing.assert_allclose(m.peqK, m.peqT)
+
+    def test_propagate(self):
+        m = self.msm
+        m.do_rate()
+        for prop in (m.propagateT, m.propagateK):
+            t, pop = prop(init=[0], time=[1, 10, 1000])
+            pop = np.array(pop)
+            self.assertEqual(pop.shape, (3, 2))
+            np.testing.assert_allclose(pop.sum(axis=1), 1.)
+            np.testing.assert_allclose(pop[-1], m.peqT, atol=1e-6)
+        # one step of T from state 0 is the first column of T
+        _, pop = m.propagateT(init=[0], time=[1])
+        np.testing.assert_allclose(pop[0], m.trans[:, 0])
+
+    def test_acf_mode(self):
+        acf = self.msm.acf_mode()
+        self.assertEqual(list(acf.keys()), [1])
+        lag = np.arange(1, 6)
+        np.testing.assert_allclose(acf[1][:5], self.lam ** lag, atol=0.03)
+
+
+class TestMSMCommittor(unittest.TestCase):
+    """ Committors and sensitivity on a symmetric linear chain 0-1-2. """
+
+    @classmethod
+    def setUpClass(cls):
+        T = np.array([[.9, .05, 0.], [.1, .9, .1], [0., .05, .9]])
+        cls.trajs = [traj.TimeSeries(distraj=_markov_chain(T, 20000, 3),
+                                     dt=1.)]
+        cls.msm = msm.MSM(cls.trajs, lagt=1)
+        cls.msm.calc_count()
+        cls.msm.do_trans()
+        cls.msm.do_rate()
+
+    def test_do_pfold(self):
+        m = self.msm
+        m.do_pfold(FF=[2], UU=[0])
+        self.assertAlmostEqual(m.pfold[0], 0.)
+        self.assertAlmostEqual(m.pfold[2], 1.)
+        self.assertAlmostEqual(m.pfold[1], 0.5, delta=0.05)
+        self.assertGreater(m.kf, 0.)
+        self.assertGreater(m.sum_flux, 0.)
+
+    def test_do_pfold_scalar_states(self):
+        m = self.msm
+        m.do_pfold(FF=[2], UU=[0])
+        pf_list = m.pfold.copy()
+        m.do_pfold(FF=2, UU=0)
+        np.testing.assert_allclose(m.pfold, pf_list)
+
+    def test_sensitivity(self):
+        m = self.msm
+        m.sensitivity(FF=[2], UU=[0])
+        self.assertEqual(len(m.dJ), 3)
+        self.assertEqual(len(m.d_lnkf), 3)
+        self.assertTrue(np.all(np.isfinite(m.d_lnkf)))
+
+
+class TestSuperMSMValidation(unittest.TestCase):
+    """ Implied timescales and Chapman-Kolmogorov test. """
+
+    @classmethod
+    def setUpClass(cls):
+        T = np.array([[.95, .10], [.05, .90]])
+        cls.trajs = [traj.TimeSeries(distraj=_markov_chain(T, 20000, s),
+                                     dt=1.) for s in (1, 2)]
+
+    def test_convergence_test(self):
+        sm = msm.SuperMSM(self.trajs)
+        sm.convergence_test(time=[1, 2, 5])
+        self.assertEqual(sorted(sm.msms.keys()), [1, 2, 5])
+        tau = [sm.msms[lt].tauT[0] for lt in (1, 2, 5)]
+        # Markovian data: implied timescale is lag-independent
+        np.testing.assert_allclose(tau, -1. / np.log(0.85), rtol=0.1)
+
+    def test_ck_test(self):
+        sm = msm.SuperMSM(self.trajs)
+        pMSM, pMD, epMD = sm.ck_test(time=[1, 2, 5], init=[0])
+        self.assertEqual(len(pMSM), 3)
+        self.assertEqual(pMD.shape, (3, 2))
+        self.assertEqual(epMD.shape, (3,))
+        np.testing.assert_array_equal(pMD[:, 0], [1, 2, 5])
+        # lag-1 MSM prediction at t = 2, 5 agrees with direct counts
+        t1, p1 = pMSM[0]
+        for lt, pmd, err in zip(pMD[1:, 0], pMD[1:, 1], epMD[1:]):
+            k = list(t1).index(lt)
+            self.assertLess(abs(p1[k] - pmd), 5 * err + 0.01)
+        # at the lag time itself the prediction is the MD value
+        self.assertAlmostEqual(p1[0], pMD[0, 1])
+
+
+class TestFEWSM(unittest.TestCase):
+    """ Few-state clustering of a 3-state chain with a slow 0,1 | 2 split. """
+
+    @classmethod
+    def setUpClass(cls):
+        from mastermsm.fewsm import fewsm
+        cls.fewsm = fewsm
+        T = np.array([[.90, .10, 0.], [.10, .89, .01], [0., .01, .99]])
+        cls.trajs = [traj.TimeSeries(distraj=_markov_chain(T, n, s), dt=1.)
+                     for n, s in ((20000, 4), (10000, 5))]
+        cls.msm = msm.MSM(cls.trajs, lagt=1)
+        cls.msm.calc_count()
+        cls.msm.do_trans()
+
+    def test_eigen_group(self):
+        for method in ('robust', 'sign'):
+            f = self.fewsm.FEWSM(self.msm, N=2, method=method)
+            groups = sorted(sorted(self.msm.keep_keys[i] for i in v)
+                            for v in f.macros.values())
+            self.assertEqual(groups, [[0, 1], [2]])
+
+    def test_map_trajectory_states(self):
+        f = self.fewsm.FEWSM(self.msm, N=2)
+        f.map_trajectory()
+        self.assertEqual(len(f.mappedtraj), len(self.trajs))
+        kk = self.msm.keep_keys
+        macro_of = {kk[i]: k for k, v in f.macros.items() for i in v}
+        mt = f.mappedtraj[0].distraj
+        ref = self.trajs[0].distraj
+        self.assertEqual(mt[:len(ref)], [macro_of[s] for s in ref])
+
+    def test_map_trajectory_lengths(self):
+        f = self.fewsm.FEWSM(self.msm, N=2)
+        f.map_trajectory()
+        self.assertEqual([len(x.distraj) for x in f.mappedtraj],
+                         [len(x.distraj) for x in self.trajs])
+
+    def test_eigen_group_without_evecs(self):
+        m = msm.MSM(self.trajs, lagt=1)
+        m.count = self.msm.count
+        m.calc_trans()
+        f = self.fewsm.FEWSM(m, N=2)
+        self.assertEqual(len(f.macros), 2)
+
+    def test_metastability(self):
+        f = self.fewsm.FEWSM(self.msm, N=2)
+        Q = f.metastability()
+        self.assertTrue(0. < Q <= 2.)
+        # lumped counts conserve the total and match the mapped trajectory
+        self.assertEqual(f.count.sum(), self.msm.count.sum())
+        f.map_trajectory()
+        m = msm.MSM(f.mappedtraj, keys=[0, 1], lagt=1)
+        m.calc_count()
+        np.testing.assert_array_equal(f.count, m.count)
+        np.testing.assert_allclose(Q, np.trace(f.trans))
+        # 0,1 | 2 split: Q = T(01->01) + T(2->2), close to 0.995 + 0.99
+        self.assertAlmostEqual(Q, 1.985, delta=0.01)
