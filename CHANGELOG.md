@@ -1,6 +1,6 @@
 # Changelog
 
-## [2.0.0] - 2026-11-XX
+## [2.0.0] - 2026-11-15
 
 Major release. The trajectory API has been redesigned and several fixes
 change numerical results, so analyses run with 1.x will not reproduce
