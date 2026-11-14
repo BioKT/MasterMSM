@@ -504,8 +504,12 @@ def calc_lifetime(x):
     #    life[state_i] = [l*dt]
     return life
 
-def traj_split(data=None, lagt=None, fdboots=None):
+def traj_split(data=None, lagt=None, tmin=0.):
     """ Splits trajectories into fragments for bootstrapping
+
+    Each trajectory is cut into pieces of equal length, as many as
+    fit while every piece is at least ``tmin`` and at least ten lag
+    times long. A trajectory shorter than that is kept whole.
 
     Parameters
     ----------
@@ -513,35 +517,34 @@ def traj_split(data=None, lagt=None, fdboots=None):
         Set of trajectories used for building the MSM.
     lagt : float
         Lag time for building the MSM.
+    tmin : float
+        Minimum length of a fragment, in the time units of the
+        trajectories (typically a multiple of the slowest relaxation
+        time, see ``MSM.boots``).
 
     Returns:
     -------
-    filetmp : file object
-        Open file object with trajectory fragments.
+    filetmp : str
+        Name of a temporary file with the pickled fragments.
+    nfrag : int
+        Number of fragments.
 
     """
-    trajs = [[x.distraj, x.dt] for x in data]
-    ltraj = [len(x[0])*x[1] for x in trajs]
-    ltraj_median = np.median(ltraj)
-    timetot = np.sum(ltraj) # total simulation time
-
-    while ltraj_median > timetot/20. and ltraj_median > 10.*lagt:
-        trajs_new = []
-        #cut trajectories in chunks
-        for x in trajs:
-            lx = len(x[0])
-            trajs_new.append([x[0][:int(lx/2)], x[1]])
-            trajs_new.append([x[0][int(lx/2):], x[1]])
-        trajs = trajs_new
-        ltraj = [len(x[0])*x[1] for x in trajs]
-        ltraj_median = np.median(ltraj)
+    lmin = max(tmin, 10.*lagt)
+    trajs = []
+    for x in data:
+        s, dt = x.distraj, x.dt
+        nfr = int((len(s)*dt)//lmin) if lmin > 0 else len(s)
+        nfr = max(1, min(nfr, len(s)))
+        edges = np.linspace(0, len(s), nfr + 1).astype(int)
+        trajs += [[s[a:b], dt] for a, b in zip(edges[:-1], edges[1:])]
 
     # save trajs
     fd, filetmp = tempfile.mkstemp()
     file = os.fdopen(fd, 'wb')
     pickle.dump(trajs, file, protocol=pickle.HIGHEST_PROTOCOL)
     file.close()
-    return filetmp
+    return filetmp, len(trajs)
 
 def do_boots_worker(x):
     """ Worker function for parallel bootstrapping.
@@ -549,11 +552,15 @@ def do_boots_worker(x):
     Parameters
     ----------
     x : list
-        A list containing the trajectory filename, the states, the lag time
-        and the total number of transitions.
+        A list containing the trajectory filename, the states, the lag time,
+        the total number of transitions, the sliding window option, the
+        number of eigenvalues, the seed for the random number generator
+        (an int, a numpy SeedSequence, or None for fresh entropy) and
+        whether the count matrix is symmetrized, as in MSM.calc_count.
+        The number of transitions is that before symmetrizing.
 
     """
-    filetmp, keys, lagt, ncount, slider, neigs = x
+    filetmp, keys, lagt, ncount, slider, neigs, seed, sym = x
     nkeys = len(keys)
     
     finp = open(filetmp, 'rb')
@@ -561,15 +568,17 @@ def do_boots_worker(x):
     finp.close()
 
     ltrans = len(trans)
-    np.random.seed()
+    rng = np.random.default_rng(seed)
     ncount_boots = 0
     count = np.zeros([nkeys, nkeys], np.int32)
     while ncount_boots < ncount:
-        itrans = np.random.randint(ltrans)
+        itrans = rng.integers(ltrans)
         count_inp = [trans[itrans][0], trans[itrans][1], keys, lagt, slider]
         c = calc_count_worker(count_inp)
         count += c
         ncount_boots += np.sum(c)
+    if sym:
+        count += count.transpose()
     D = nx.DiGraph(count)
     keep_states = list(sorted(list(nx.strongly_connected_components(D)),
                               key=len, reverse=True)[0])
@@ -1170,35 +1179,55 @@ def peq_averages(peq_boots, keep_keys_boots, keys):
             peq_std.append(0.)
     return peq_ave, peq_std
 
-def tau_averages(tau_boots):
+def tau_averages(tau_boots, ntau=None, q=(16, 84)):
     """ Return averages from bootstrap results
+
+    Bootstrap samples can have fewer relaxation times than the
+    original model, when states drop out of the connected set of
+    the resampled count matrix. Each relaxation time is averaged
+    over the samples that have it; times are matched by rank
+    (slowest first).
 
     Parameters
     ----------
     tau_boots : list
         List of Tau arrays
+    ntau : int
+        Number of relaxation times to report. Defaults to the
+        largest number found in a sample.
+    q : tuple
+        Percentiles for the confidence interval.
 
     Returns:
     -------
-    tau_ave : array
-        Tau averages
-    tau_std : array
+    tau_ave : list
+        Tau averages (nan if no sample has that relaxation time)
+    tau_std : list
         Tau std
+    tau_nboots : list
+        Number of samples that contributed to each average
+    tau_ci : list
+        (lower, upper) percentiles of each relaxation time
 
     """
+    if ntau is None:
+        ntau = max(len(x) for x in tau_boots)
     tau_ave = []
     tau_std = []
-    tau_keep = []
-    ntau = len(tau_boots[0])
+    tau_nboots = []
+    tau_ci = []
     for n in range(ntau):
-        try:
-            data = [x[n] for x in tau_boots if not np.isnan(x[n])]
-            tau_ave.append(np.mean(data))
-            tau_std.append(np.std(data))
-            tau_keep.append(data)
-        except IndexError:
-            continue
-    return tau_ave, tau_std
+        data = [x[n] for x in tau_boots if len(x) > n and not np.isnan(x[n])]
+        tau_nboots.append(len(data))
+        if data:
+            tau_ave.append(float(np.mean(data)))
+            tau_std.append(float(np.std(data)))
+            tau_ci.append(tuple(float(v) for v in np.percentile(data, q)))
+        else:
+            tau_ave.append(float('nan'))
+            tau_std.append(float('nan'))
+            tau_ci.append((float('nan'), float('nan')))
+    return tau_ave, tau_std, tau_nboots, tau_ci
 
 def matrix_ave(mat_boots, keep_keys_boots, keys):
     """ Return averages from bootstrap results

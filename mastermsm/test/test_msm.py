@@ -57,10 +57,32 @@ class TestMSMLib(unittest.TestCase):
         traj1 = traj.TimeSeries(distraj=[1, 2, 3], dt=1.)
         traj2 = traj.TimeSeries(distraj=[3, 2, 1], dt=2.)
         trajs = [traj1, traj2]
-        self.filepath = msm_lib.traj_split(data=trajs, lagt=10)
+        self.filepath, nfrag = msm_lib.traj_split(data=trajs, lagt=10)
         self.assertIsInstance(self.filepath, str)
         self.assertTrue(os.path.exists(self.filepath))
+        # both trajectories are shorter than ten lag times: kept whole
+        self.assertEqual(nfrag, 2)
         os.remove(self.filepath)  # clean temp file
+
+    def test_traj_split_lengths(self):
+        """ Equal fragments, at least tmin and ten lag times long,
+        never across trajectories. """
+        trajs = [traj.TimeSeries(distraj=list(range(1000)), dt=1.),
+                 traj.TimeSeries(distraj=list(range(250)), dt=2.)]
+        # second trajectory: 250 frames of dt=2, i.e. 500 time units
+        for tmin, expected in [(0., [10]*100 + [5]*50),
+                               (100., [100]*10 + [50]*5),
+                               (300., [333, 333, 334] + [250]),
+                               (2000., [1000, 250])]:
+            ftmp, nfrag = msm_lib.traj_split(data=trajs, lagt=1, tmin=tmin)
+            with open(ftmp, 'rb') as f:
+                frags = pickle.load(f)
+            os.remove(ftmp)
+            self.assertEqual([len(x[0]) for x in frags], expected)
+            self.assertEqual(nfrag, len(expected))
+            # contiguous pieces that rebuild each trajectory
+            self.assertEqual(list(np.concatenate([x[0] for x in frags])),
+                             list(range(1000)) + list(range(250)))
 
     def test_calc_rate(self):
         self.testT = np.array([
@@ -134,11 +156,40 @@ class TestMSMLib(unittest.TestCase):
 
     def test_tau_averages(self):
         tau_boots_test = np.random.rand(2, 2).tolist()
-        res_tau_ave, res_tau_std = msm_lib.tau_averages(tau_boots_test)
+        res_tau_ave, res_tau_std, res_n, res_ci = \
+            msm_lib.tau_averages(tau_boots_test)
         self.assertIsInstance(res_tau_std, list)
         self.assertIsInstance(res_tau_ave, list)
         self.assertIsInstance(res_tau_ave[0], float)
         self.assertIsInstance(res_tau_std[0], float)
+        self.assertEqual(res_n, [2, 2])
+
+    def test_tau_averages_short_samples(self):
+        """ A sample that lost a state has fewer relaxation times;
+        each time is averaged over the samples that have it. """
+        boots = [[10., 4., 1.], [12., 6.], [14., 5., 3.]]
+        ave, std, n, ci = msm_lib.tau_averages(boots)
+        self.assertEqual(n, [3, 3, 2])
+        np.testing.assert_allclose(ci[0], np.percentile([10., 12., 14.],
+                                                        [16, 84]))
+        np.testing.assert_allclose(ci[2], np.percentile([1., 3.], [16, 84]))
+        np.testing.assert_allclose(ave, [12., 5., 2.])
+        np.testing.assert_allclose(std, [np.std([10., 12., 14.]),
+                                         np.std([4., 6., 5.]), 1.])
+        # the short sample first must not truncate the result
+        ave2, std2, n2, _ = msm_lib.tau_averages(boots[1:] + boots[:1])
+        np.testing.assert_allclose(ave2, ave)
+        self.assertEqual(n2, n)
+
+    def test_tau_averages_ntau(self):
+        """ Relaxation times no sample has are reported as nan;
+        nan entries are skipped. """
+        ave, std, n, ci = msm_lib.tau_averages([[10., np.nan], [12., 6.]],
+                                               ntau=3)
+        self.assertEqual(n, [2, 1, 0])
+        np.testing.assert_allclose(ave[:2], [11., 6.])
+        self.assertTrue(np.isnan(ave[2]) and np.isnan(std[2]))
+        self.assertTrue(np.all(np.isnan(ci[2])))
 
     def test_peq_averages(self):
         peq_boots_test = np.random.rand(2,3)
@@ -653,6 +704,49 @@ class TestMSMWorkflow(unittest.TestCase):
         np.testing.assert_allclose(m.tau_ave, m.tauT, rtol=0.1)
         self.assertAlmostEqual(np.sum(m.peq_ave), 1.)
         np.testing.assert_allclose(m.peq_ave, m.peqT, atol=0.02)
+        self.assertEqual(m.tau_nboots, [20])
+        lo, hi = m.tau_ci[0]
+        self.assertLess(lo, m.tauT[0])
+        self.assertGreater(hi, m.tauT[0])
+        # 40000 steps, tau1 ~ 6 steps, fragments of >= 5 tau1
+        self.assertEqual(m.nfrag, 2*int(20000//(5*m.tauT[0])))
+
+    def test_boots_nboots(self):
+        m = self.msm
+        m.boots(seed=0, nboots=7)
+        self.assertEqual(m.tau_nboots, [7])
+
+    def test_boots_block_warning(self):
+        """ Fragments of at least block x tau1; a warning when they
+        are too few for a reliable error. """
+        m = self.msm
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            m.boots(seed=0, nboots=4)
+        nfrag5 = m.nfrag
+        m.boots(seed=0, nboots=4, block=10.)
+        self.assertEqual(m.nfrag, 2*int(20000//(10*m.tauT[0])))
+        self.assertLess(m.nfrag, nfrag5)
+        with self.assertWarns(UserWarning):
+            m.boots(seed=0, nboots=4, block=20000/m.tauT[0]/2.5)
+        self.assertEqual(m.nfrag, 4)
+
+    def test_boots_seed(self):
+        """ The bootstrap is reproducible with a seed, either passed
+        explicitly or set in numpy's global generator. """
+        m = self.msm
+        m.boots(seed=1)
+        ref = (list(m.tau_std), list(m.peq_std))
+        m.boots(seed=1)
+        self.assertEqual((list(m.tau_std), list(m.peq_std)), ref)
+        m.boots(seed=2)
+        self.assertNotEqual(list(m.tau_std), ref[0])
+        np.random.seed(5)
+        m.boots()
+        ref = list(m.tau_std)
+        np.random.seed(5)
+        m.boots()
+        self.assertEqual(list(m.tau_std), ref)
 
     def test_do_rate_taylor(self):
         m = self.msm
@@ -711,6 +805,47 @@ class TestMSMWorkflow(unittest.TestCase):
         self.assertEqual(list(acf.keys()), [1])
         lag = np.arange(1, 6)
         np.testing.assert_allclose(acf[1][:5], self.lam ** lag, atol=0.03)
+
+
+class TestBootsSym(unittest.TestCase):
+    """ The bootstrap uses the same estimator as the model: counts
+    are symmetrized when the model is. """
+
+    @classmethod
+    def setUpClass(cls):
+        # cyclic, non-reversible chain
+        T = np.array([[.8, 0., .2], [.2, .8, 0.], [0., .2, .8]])
+        trajs = [traj.TimeSeries(distraj=_markov_chain(T, 5000, s), dt=1.)
+                 for s in (1, 2)]
+        cls.msm = msm.MSM(trajs, lagt=1, sym=True)
+        cls.msm.calc_count()
+        cls.msm.calc_trans()
+        cls.msm.calc_evals()
+
+    def test_worker(self):
+        m = self.msm
+        ftmp, _ = msm_lib.traj_split(data=m.data, lagt=1)
+        ncount = np.sum(m.count)/2.
+        try:
+            imag = {}
+            for sym in (False, True):
+                trans, keep = msm_lib.do_boots_worker(
+                    [ftmp, m.keys, 1, ncount, True, 2, 0, sym])
+                np.testing.assert_allclose(trans.sum(axis=0), 1.)
+                imag[sym] = np.max(np.abs(np.linalg.eigvals(trans).imag))
+        finally:
+            os.remove(ftmp)
+        self.assertGreater(imag[False], 0.05)
+        self.assertLess(imag[True], 1e-10)
+
+    def test_boots(self):
+        """ Errors of the symmetrized model: the bootstrap average is
+        close to the (real) relaxation times of the model itself. """
+        m = self.msm
+        m.boots(seed=0)
+        self.assertEqual(m.tau_nboots, [20, 20])
+        np.testing.assert_allclose(m.tau_ave, m.tauT, rtol=0.1)
+        self.assertTrue(np.all(np.array(m.tau_std) > 0.))
 
 
 class TestMSMCommittor(unittest.TestCase):
