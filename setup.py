@@ -3,14 +3,19 @@
 # Setup script for the MasterMSM package
 
 import os
+import re
 from setuptools import setup, find_packages
 
 def read(fname):
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
+def version():
+    init = read(os.path.join('mastermsm', '__init__.py'))
+    return re.search(r'__version__ = "(.+)"', init).group(1)
+
 setup(
 		name='MasterMSM',
-		version='0.2.0',
+		version=version(),
 		description='Algorithms to construct master equation / Markov state models',
 		url='https://github.com/BioKT/MasterMSM',
 		author='David De Sancho',

@@ -28,9 +28,9 @@ copyright = '2019-2026, David De Sancho'
 author = 'David De Sancho'
 
 # The short X.Y version
-version = ''
+version = '.'.join(mastermsm.__version__.split('.')[:2])
 # The full version, including alpha/beta/rc tags
-release = '1.1.1'
+release = mastermsm.__version__
 
 
 # -- General configuration ---------------------------------------------------
