@@ -34,6 +34,11 @@ setup(
 			'mdtraj',
 			'scikit-learn',
 		],
+		extras_require={
+			# Discretizer.hdbscan uses hdbscan.approximate_predict,
+			# which sklearn.cluster.HDBSCAN does not provide
+			'hdbscan': ['hdbscan'],
+		},
 		classifiers = ["""\
 				Development Status :: 3 - Alpha
 				License :: OSI Approved :: GNU General Public License v2 (GPLv2)

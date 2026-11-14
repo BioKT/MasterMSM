@@ -27,7 +27,10 @@ exactly. See "Breaking changes" and "Fixes that change results".
   `DimRed.doPCA` and `whiten`.
 - `Featurizer.add_torsions` (optional shift and sin/cos) and `add_contacts`.
 - `Discretizer.kmeans` and `Discretizer.hdbscan` (HDBSCAN is an optional
-  dependency, imported only when used).
+  dependency, imported only when used; install with `pip install
+  ".[hdbscan]"`). It uses the standalone `hdbscan` package:
+  `sklearn.cluster.HDBSCAN` lacks `approximate_predict` and gives
+  different clusters for the same parameters.
 - Discretization protocols to compare discretizations of the same data.
 - Interactive check of Ramachandran state bounds for Buchete-Hummer
   assignment (opt in with `check=True`).

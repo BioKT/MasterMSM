@@ -55,7 +55,7 @@ first:
 
 HDBSCAN clustering additionally needs the optional
 [hdbscan](https://github.com/scikit-learn-contrib/hdbscan) package
-(`pip install hdbscan`).
+(`pip install ".[hdbscan]"`, or `pip install hdbscan`).
 
 Quick start
 -----------
