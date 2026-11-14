@@ -11,14 +11,11 @@ Contents
 |--------|-----------|---------|
 | `alanine_dipeptide` | `ala_dipeptide.ipynb` | Complete workflow: Ramachandran discretization, MSM, convergence and Chapman-Kolmogorov tests, mode autocorrelation functions, Taylor rate matrix |
 | | `ala_dipeptide_maxlike.ipynb` | Rate matrix with the maximum likelihood propagator-based (MLPB) method |
-| | `ala_dipeptide_discretize.ipynb` | Discretization options for the dipeptide |
 | `alanine_pentapeptide` | `ala_pentapeptide.ipynb` | MSM of a longer peptide from Ramachandran states |
-| | `ala_pentapeptide_featurize.ipynb` | Featurization (torsions, contacts) and PCA |
 | | `ala_pentapeptide_tica.ipynb` | Dimensionality reduction with TICA |
 | | `discretization_comparison.ipynb` | Comparison of discretization protocols (Ramachandran, k-means, HDBSCAN on PCA and TICA) |
 | `bistable_potential` | `1D_smFS_MSM.ipynb`, `2D_smFS_MSM.ipynb` | Brownian dynamics on one and two dimensional two-state surfaces |
 | `schutte_potential` | `schute_mastermsm.ipynb` | Brownian dynamics on the one dimensional Schütte potential |
-| `mueller_potential` | `mueller_potential.ipynb`, `mueller_potential_openmm.ipynb` | Brownian dynamics on the two dimensional Müller potential |
 
 Data
 ----
@@ -28,8 +25,7 @@ data for the bistable and Schütte potentials are fetched with
 
     python download_data.py
 
-run from this folder. The Müller potential notebooks indicate where to
-obtain or how to generate their data.
+run from this folder.
 
 Some notebooks use additional packages for plotting (`seaborn`) or
 clustering (`hdbscan`).

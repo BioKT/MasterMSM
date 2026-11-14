@@ -58,6 +58,13 @@ exactly. See "Breaking changes" and "Fixes that change results".
   (complex output from `eig` with NumPy >= 2.5).
 - NumPy 2 compatibility (`np.float`, `np.matrix` removed).
 
+### Removed
+- Example notebooks that no longer ran: `ala_dipeptide_discretize` and
+  `ala_pentapeptide_featurize` (unfinished drafts; their workflows are
+  covered by `ala_dipeptide`, `ala_pentapeptide_tica` and
+  `discretization_comparison`) and the Müller potential examples (their
+  data were not distributed).
+
 ### Infrastructure
 - GitHub Actions CI on Linux and macOS, Python 3.10-3.12 (replaces Travis).
 - Test suite re-enabled and extended (MSM, MLPB, fewsm, TICA, protocols);

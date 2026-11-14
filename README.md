@@ -119,7 +119,6 @@ The [examples](examples) folder contains Jupyter notebooks:
 | [alanine_pentapeptide](examples/alanine_pentapeptide) | Featurization, TICA and comparison of discretization protocols |
 | [bistable_potential](examples/bistable_potential) | Brownian dynamics on one and two dimensional two-state potentials |
 | [schutte_potential](examples/schutte_potential) | Brownian dynamics on the one dimensional Schütte potential |
-| [mueller_potential](examples/mueller_potential) | Brownian dynamics on the two dimensional Müller potential |
 
 Most of the data are hosted at [OSF](https://osf.io/a2vc7); each
 notebook says where its data come from. The Brownian dynamics data
