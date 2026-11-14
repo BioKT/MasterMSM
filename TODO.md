@@ -4,8 +4,9 @@
 - [x] Implement TICA
 
 ## Discretization comparison
-- [ ] Notebook: set HDBSCAN to mcs = 1% of frames (500) with ms=25 for PCA and TICA (branch feature/hdbscan-params); rerun. Scan (_build/mcs_scan.py, .log): TICA 0.2-1% gives 7-9 states, tau1 ~9.2 ns, tau2 ~7 ns; >=2% loses tau2 (drops to ~4 ns); PCA gives 2 states and unconverged tau1 at any mcs
-- [ ] Notebook: rewrite HDBSCAN bullet; drop "8-10 states in PCA" claim (came from ms=mcs, not reproduced with ms=25)
+- [x] Notebook: set HDBSCAN to mcs = 1% of frames (500) with ms=25 for PCA and TICA (branch feature/hdbscan-params); rerun. Scan (_build/mcs_scan.py, .log): TICA 0.2-1% gives 7-9 states, tau1 ~9.2 ns, tau2 ~7 ns; >=2% loses tau2 (drops to ~4 ns); PCA gives 2 states and unconverged tau1 at any mcs
+- [x] Notebook: rewrite HDBSCAN bullet; drop "8-10 states in PCA" claim (came from ms=mcs, not reproduced with ms=25)
+- [ ] tau_averages (msm_lib.py): if any bootstrap sample lost a state (smaller connected set), the IndexError handler drops that timescale index for all samples, so tau_std is shorter than tauT (TICA + hdbscan: 6 taus, 4-5 errors; BH A/E/L: 120 vs ~100). The notebook's timescale plot fails with IndexError when fewer than 4 remain (seen once, 2026-11-14)
 - [ ] Seed bootstrap: np.random.seed in parent does not reach spawned workers in do_boots; pass a seed per worker (errors differ run to run with identical tau)
 - [ ] Check whether near-degenerate tau1/tau2 (TICA, ~9 vs ~7 ns) swap order across bootstrap samples, inflating tau1 errors
 - [ ] Commit flaky mc_move test fix (uncommitted in test_msm.py) on its own branch
