@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Setup script for bestmsm package
+# Setup script for the MasterMSM package
 
 import os
 from setuptools import setup, find_packages
@@ -12,13 +12,14 @@ setup(
 		name='MasterMSM',
 		version='0.2.0',
 		description='Algorithms to construct master equation / Markov state models',
-		url='http://github.com/daviddesancho/MasterMSM',
+		url='https://github.com/BioKT/MasterMSM',
 		author='David De Sancho',
 		author_email='daviddesancho.at.gmail.com',
-		license='GPL',
+		license='GPL-2.0',
         	packages=find_packages(),
 		keywords= "markov state model",
 		long_description=read('README.md'),
+		long_description_content_type='text/markdown',
 		python_requires='>=3.10',
 		install_requires=[
 			'numpy',
@@ -30,6 +31,7 @@ setup(
 		],
 		classifiers = ["""\
 				Development Status :: 3 - Alpha
+				License :: OSI Approved :: GNU General Public License v2 (GPLv2)
 				Operating System :: POSIX :: Linux
 				Operating System :: MacOS
 				Programming Language :: Python :: 3.10

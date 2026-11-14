@@ -24,7 +24,7 @@ import mastermsm
 # -- Project information -----------------------------------------------------
 
 project = 'MasterMSM'
-copyright = '2019, David De Sancho'
+copyright = '2019-2026, David De Sancho'
 author = 'David De Sancho'
 
 # The short X.Y version
