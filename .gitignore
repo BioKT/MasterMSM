@@ -8,3 +8,8 @@ examples/alanine_dipeptide/data/
 examples/alanine_pentapeptide/data/
 coverage.xml
 .coverage
+
+mastermsm/test/data/
+dist/
+*.egg-info/
+build/
