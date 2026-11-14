@@ -53,6 +53,10 @@ extensions = [
     'sphinx.ext.doctest',
     'sphinx.ext.inheritance_diagram']
 
+# Keep the hand-written API pages (mastermsm.*.rst); generating autosummary
+# stubs would overwrite them with empty module pages.
+autosummary_generate = False
+
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
 
