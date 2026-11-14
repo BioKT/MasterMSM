@@ -157,7 +157,9 @@ If you use MasterMSM in your work, please cite:
 
 Contributors
 ------------
-This code has been written by David De Sancho with help from Anne Aguirre.
+*   David De Sancho
+*   Anne Aguirre
+*   Ion Mitxelena
 
 License
 -------
