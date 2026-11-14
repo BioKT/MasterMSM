@@ -44,7 +44,7 @@ jobs:
         run: |
           conda install -y -c conda-forge \
             numpy scipy matplotlib networkx \
-            mdtraj scikit-learn
+            mdtraj scikit-learn ipython
           pip install pytest pytest-cov
           pip install -e .
 

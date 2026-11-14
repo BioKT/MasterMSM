@@ -886,8 +886,8 @@ def likelihood(nkeep, rate, count, lagt):
     for i in range(nkeep):
         ratesym[i,i] = -ratesym[i,i]
 
-    # calculate eigenvalues and eigenvectors
-    evalsym, evectsym = np.linalg.eig(ratesym)
+    # ratesym is symmetric by construction: eigh gives real output
+    evalsym, evectsym = np.linalg.eigh(ratesym)
 
     # index the solutions
     indx_eig = np.argsort(-evalsym)

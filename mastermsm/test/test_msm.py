@@ -335,13 +335,24 @@ class TestMSMLib(unittest.TestCase):
         self.assertLessEqual(np.max(res_temp), 1.)
 
     def test_calc_eigsK(self):
-        nstates = np.random.randint(2,100)
-        rate_test = np.random.rand(nstates,nstates)
-        res_tauK,res_peqK = msm_lib.calc_eigsK(rate_test)
-        self.assertIsInstance(res_tauK, list)
-        self.assertEqual(len(res_peqK), nstates)
-        self.assertIsInstance(res_tauK[0], float)
-        self.assertIsInstance(res_peqK[0], complex)
+        # detailed-balance rate matrix (k_ji = s_ji p_j, s symmetric):
+        # real spectrum, known equilibrium populations
+        rng = np.random.default_rng(42)
+        for nstates in (2, 3, 10, 50):
+            p = rng.random(nstates)
+            p /= p.sum()
+            s = rng.random((nstates, nstates))
+            rate_test = (s + s.T)*p[:,None]
+            np.fill_diagonal(rate_test, 0.)
+            rate_test -= np.diag(rate_test.sum(axis=0))
+            res_tauK, res_peqK = msm_lib.calc_eigsK(rate_test)
+            self.assertIsInstance(res_tauK, list)
+            self.assertEqual(len(res_tauK), nstates - 1)
+            self.assertIsInstance(res_tauK[0], float)
+            self.assertTrue(all(t > 0 for t in res_tauK))
+            self.assertEqual(len(res_peqK), nstates)
+            np.testing.assert_allclose(np.imag(res_peqK), 0., atol=1e-12)
+            np.testing.assert_allclose(np.real(res_peqK), p, rtol=1e-8)
 
         res_tauK, res_peqK, res_rvecsK, res_lvecsK = msm_lib.calc_eigsK(rate_test, evecs=True)
         self.assertIsNotNone(res_rvecsK)
