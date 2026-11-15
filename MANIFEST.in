@@ -1,0 +1,4 @@
+include CHANGELOG.md
+prune mastermsm/test/data
+global-exclude *.py[cod] __pycache__ .DS_Store .ipynb_checkpoints
+exclude mastermsm/test/index.html mastermsm/tester.ipynb
