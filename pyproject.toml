@@ -1,0 +1,51 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "MasterMSM"
+dynamic = ["version"]
+description = "Algorithms to construct master equation / Markov state models"
+readme = "README.md"
+license = "GPL-2.0-or-later"
+license-files = ["LICENSE"]
+authors = [{ name = "David De Sancho", email = "daviddesancho@gmail.com" }]
+keywords = ["markov state model", "master equation", "molecular dynamics"]
+requires-python = ">=3.10"
+dependencies = [
+    "numpy",
+    "scipy",
+    "matplotlib",
+    "networkx",
+    "mdtraj",
+    "scikit-learn",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+    "Topic :: Scientific/Engineering :: Chemistry",
+]
+
+[project.optional-dependencies]
+# Discretizer.hdbscan uses hdbscan.approximate_predict,
+# which sklearn.cluster.HDBSCAN does not provide
+hdbscan = ["hdbscan"]
+test = ["pytest", "ipython"]
+
+[project.urls]
+Homepage = "https://github.com/BioKT/MasterMSM"
+Documentation = "https://mastermsm.readthedocs.io"
+Changelog = "https://github.com/BioKT/MasterMSM/blob/master/CHANGELOG.md"
+
+[tool.setuptools.dynamic]
+version = { attr = "mastermsm.__version__" }
+
+[tool.setuptools.packages.find]
+include = ["mastermsm*"]

@@ -1,4 +1,5 @@
 import unittest
+import importlib.util
 import os
 import mdtraj as md
 import numpy as np
@@ -945,8 +946,11 @@ class TestRama_extra(unittest.TestCase):
     def test_interactive_stdin(self):
         tty = mock.Mock(isatty=lambda: True)
         pipe = mock.Mock(isatty=lambda: False)
-        # no IPython at all, and IPython without a kernel
-        for mods in [{'IPython': None}, {}]:
+        # no IPython at all, and (if installed) IPython without a kernel
+        cases = [{'IPython': None}]
+        if importlib.util.find_spec('IPython') is not None:
+            cases.append({})
+        for mods in cases:
             with mock.patch.dict(sys.modules, mods):
                 with mock.patch('IPython.get_ipython', \
                         return_value=None, create=True) \
