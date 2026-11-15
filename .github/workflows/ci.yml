@@ -44,7 +44,7 @@ jobs:
         run: |
           conda install -y -c conda-forge \
             numpy scipy matplotlib networkx \
-            mdtraj scikit-learn ipython
+            mdtraj scikit-learn ipython hdbscan
           pip install pytest pytest-cov
           pip install -e .
 

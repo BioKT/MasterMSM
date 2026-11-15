@@ -700,6 +700,15 @@ class TestDimRed_TICA_extra(unittest.TestCase):
             with self.assertRaises(ValueError):
                 _quiet(traj.DimRed(self._ts(x)).doTICA, lag=1, n=1)
 
+    def test_eigh_failure_raises_valueerror(self):
+        # backstop if C(0) passes the correlation check but the
+        # Cholesky step in eigh still fails
+        dr = traj.DimRed(self._ts(self._ar1()))
+        err = np.linalg.LinAlgError("not positive definite")
+        with mock.patch('scipy.linalg.eigh', side_effect=err):
+            with self.assertRaises(ValueError):
+                _quiet(dr.doTICA, lag=5, n=1)
+
     def test_projection_and_normalization(self):
         x = self._ar1()
         ts = self._ts(x.copy())
