@@ -4,9 +4,10 @@ This file is part of the MasterMSM package.
 """
 
 import copy
+import warnings
 #import random
 from ..msm import msm
-from ..trajectory import traj
+from ..trajectory import traj, traj_lib
 #import msm_lib
 from ..fewsm import fewsm_lib
 
@@ -87,10 +88,17 @@ class FEWSM(msm.MSM):
     def map_trajectory(self):
         """ Maps trajectory onto the PCCA clusters
 
+        Frames in microstates outside the connected set (not in
+        ``keep_keys``) are removed if they are at the start of a
+        trajectory, and otherwise inherit the macrostate of the
+        previous frame. A trajectory that never visits the connected
+        set is left out, with a warning.
+
         Returns
         -------
-        mappedtraj : str
-            The mapped trajectory.
+        mappedtraj : list
+            One TimeSeries per parent trajectory, stored in
+            ``self.mappedtraj``.
 
         """
         print ("\n Mapping trajectory onto macrostates...")
@@ -99,14 +107,17 @@ class FEWSM(msm.MSM):
         # macrostate of each microstate key
         macro_of = {keep_keys[i]: k for k, v in self.macros.items() \
                 for i in v}
-        for data in self.parent.data:
-            # one mapped trajectory per parent trajectory
-            mt_states = []
-            for s in data.distraj:
-                try:
-                    mt_states.append(macro_of[s])
-                except KeyError:
-                    print (" not in keep_keys")
+        for n, data in enumerate(self.parent.data):
+            # one mapped trajectory per parent trajectory; -1 marks
+            # frames outside the connected set
+            mt_states = [macro_of.get(s, -1) for s in data.distraj]
+            start = next((i for i, s in enumerate(mt_states) \
+                    if s >= 0), None)
+            if start is None:
+                warnings.warn("trajectory %i never visits the "
+                        "connected set; left out of mappedtraj"%n)
+                continue
+            mt_states = traj_lib._filter_states(mt_states[start:])
             mt = traj.TimeSeries(distraj=mt_states, dt=data.dt)
             mappedtraj.append(mt)
         self.mappedtraj = mappedtraj
