@@ -2,6 +2,22 @@
 
 ## [Unreleased]
 
+## [2.0.1] - 2026-11-15
+
+First release distributed on PyPI (`pip install MasterMSM`).
+
+### Packaging
+- `setup.py` replaced by `pyproject.toml`; the licence is stated as
+  GPL-2.0-or-later; extras `hdbscan` and `test`.
+- The test suite is installed with the package and runs with
+  `pytest --pyargs mastermsm`. Test trajectories are downloaded to
+  `$MASTERMSM_TEST_DATA`, the package folder or a per-user cache; tests
+  that need them are skipped if the download fails.
+- Releases are uploaded to PyPI from GitHub Actions.
+
+### Fixes
+- `test_interactive_stdin` no longer fails when IPython is not installed.
+
 ### Fixes that change results
 - `FEWSM.map_trajectory`: frames in microstates outside the connected
   set were silently dropped, joining the frames on either side. They are
