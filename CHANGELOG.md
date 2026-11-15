@@ -1,5 +1,14 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixes that change results
+- `FEWSM.map_trajectory`: frames in microstates outside the connected
+  set were silently dropped, joining the frames on either side. They are
+  now removed only at the start of a trajectory; elsewhere they inherit
+  the macrostate of the previous frame. A trajectory that never visits
+  the connected set is left out with a warning.
+
 ## [2.0.0] - 2026-11-15
 
 Major release. The trajectory API has been redesigned and several fixes
