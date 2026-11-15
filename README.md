@@ -37,13 +37,16 @@ Features
 
 Installation
 ------------
-MasterMSM requires Python >= 3.10 and is installed from source:
+MasterMSM requires Python >= 3.10 and is installed from
+[PyPI](https://pypi.org/project/MasterMSM/) with `pip`:
+
+    pip install MasterMSM
+
+To work on the code, install it from source instead:
 
     git clone https://github.com/BioKT/MasterMSM
     cd MasterMSM
-    pip install .
-
-Use `pip install -e .` instead for an editable (development) install.
+    pip install -e .
 
 The dependencies are installed automatically by `pip`: numpy, scipy,
 matplotlib, networkx, [mdtraj](https://mdtraj.org) and scikit-learn.
@@ -55,7 +58,7 @@ first:
 
 HDBSCAN clustering additionally needs the optional
 [hdbscan](https://github.com/scikit-learn-contrib/hdbscan) package
-(`pip install ".[hdbscan]"`, or `pip install hdbscan`).
+(`pip install "MasterMSM[hdbscan]"`, or `pip install hdbscan`).
 
 Quick start
 -----------
@@ -132,7 +135,7 @@ The tests use `pytest` and download a small amount of MD data on the
 first run:
 
     pip install pytest
-    pytest mastermsm/test/
+    pytest --pyargs mastermsm
 
 Contributing
 ------------

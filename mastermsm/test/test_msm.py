@@ -4,7 +4,7 @@ import numpy as np
 from mastermsm.trajectory import traj_lib, traj
 from mastermsm.msm import msm, msm_lib
 from mastermsm.test.download_data import download_osf_alaTB
-import os, pickle, io, contextlib, warnings
+import os, pickle, io, contextlib, warnings, copy
 from scipy.linalg import expm, logm
 
 # thermal energy (kJ/mol)
@@ -989,6 +989,30 @@ class TestFEWSM(unittest.TestCase):
         m.calc_trans()
         f = self.fewsm.FEWSM(m, N=2)
         self.assertEqual(len(f.macros), 2)
+
+    def _fewsm_with_outsider(self, distraj):
+        """ FEWSM on the 3-state model, mapping a trajectory that
+        visits state 9, which is outside the connected set. """
+        f = self.fewsm.FEWSM(self.msm, N=2)
+        f.parent = copy.copy(self.msm)
+        f.parent.data = [traj.TimeSeries(distraj=distraj, dt=1.)]
+        kk = self.msm.keep_keys
+        macro_of = {kk[i]: k for k, v in f.macros.items() for i in v}
+        return f, macro_of
+
+    def test_map_trajectory_disconnected(self):
+        # leading outsiders removed; middle and trailing ones
+        # inherit the macrostate of the previous frame
+        f, m = self._fewsm_with_outsider([9, 9, 0, 9, 2, 9, 9, 1, 9])
+        f.map_trajectory()
+        self.assertEqual(f.mappedtraj[0].distraj,
+                         [m[0], m[0], m[2], m[2], m[2], m[1], m[1]])
+
+    def test_map_trajectory_never_connected(self):
+        f, _ = self._fewsm_with_outsider([9, 9, 9])
+        with self.assertWarns(UserWarning):
+            f.map_trajectory()
+        self.assertEqual(f.mappedtraj, [])
 
     def test_eigen_group_without_trans(self):
         # FEWSM builds the transition matrix itself if missing

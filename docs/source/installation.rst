@@ -1,15 +1,20 @@
 Installation
 ============
-MasterMSM requires Python >= 3.10. Install it from the
-`GitHub repository <https://github.com/BioKT/MasterMSM>`_ with ``pip``:
+MasterMSM requires Python >= 3.10. Install it from
+`PyPI <https://pypi.org/project/MasterMSM/>`_ with ``pip``:
+
+.. code-block:: bash
+
+   pip install MasterMSM
+
+To work on the code, install it from the
+`GitHub repository <https://github.com/BioKT/MasterMSM>`_ instead:
 
 .. code-block:: bash
 
    git clone https://github.com/BioKT/MasterMSM
    cd MasterMSM
-   pip install .
-
-Use ``pip install -e .`` instead for an editable (development) install.
+   pip install -e .
 
 Dependencies
 ------------
@@ -28,7 +33,7 @@ which can be installed as an extra:
 
 .. code-block:: bash
 
-   pip install ".[hdbscan]"
+   pip install "MasterMSM[hdbscan]"
 
 or on its own with ``pip install hdbscan``.
 
@@ -40,7 +45,7 @@ on its first run:
 .. code-block:: bash
 
    pip install pytest
-   pytest mastermsm/test/
+   pytest --pyargs mastermsm
 
 Parallel processing in Python and MasterMSM
 -------------------------------------------

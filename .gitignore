@@ -19,3 +19,5 @@ __pycache__/
 # local builds and downloaded test data
 _build/
 mastermsm/test/data/
+dist/
+build/
