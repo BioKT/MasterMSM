@@ -4,7 +4,7 @@ import numpy as np
 from mastermsm.trajectory import traj_lib, traj
 from mastermsm.msm import msm, msm_lib
 from mastermsm.test.download_data import download_osf_alaTB
-import os, pickle, io, contextlib, warnings
+import os, pickle, io, contextlib, warnings, copy
 from scipy.linalg import expm, logm
 
 # thermal energy (kJ/mol)
@@ -722,6 +722,15 @@ class TestMSMWorkflow(unittest.TestCase):
         # 40000 steps, tau1 ~ 6 steps, fragments of >= 5 tau1
         self.assertEqual(m.nfrag, 2*int(20000//(5*m.tauT[0])))
 
+    def test_boots_nonfinite_tau(self):
+        # fragment length is set by tau1, so it must be finite
+        m = msm.MSM(self.trajs, lagt=1)
+        m.count = self.msm.count
+        m.do_trans(evecs=False)
+        m.tauT = np.array([np.inf])
+        with self.assertRaises(ValueError):
+            m.boots(seed=0, nboots=4)
+
     def test_boots_nboots(self):
         m = self.msm
         m.boots(seed=0, nboots=7)
@@ -913,6 +922,14 @@ class TestSuperMSMValidation(unittest.TestCase):
         # Markovian data: implied timescale is lag-independent
         np.testing.assert_allclose(tau, -1. / np.log(0.85), rtol=0.1)
 
+    def test_convergence_test_error(self):
+        sm = msm.SuperMSM(self.trajs)
+        sm.convergence_test(time=[1, 2], error=True, seed=0, nboots=5)
+        for lt in (1, 2):
+            m = sm.msms[lt]
+            self.assertEqual(m.tau_nboots, [5])
+            self.assertTrue(np.all(np.isfinite(m.tau_std)))
+
     def test_ck_test(self):
         sm = msm.SuperMSM(self.trajs)
         pMSM, pMD, epMD = sm.ck_test(time=[1, 2, 5], init=[0])
@@ -972,6 +989,40 @@ class TestFEWSM(unittest.TestCase):
         m.calc_trans()
         f = self.fewsm.FEWSM(m, N=2)
         self.assertEqual(len(f.macros), 2)
+
+    def _fewsm_with_outsider(self, distraj):
+        """ FEWSM on the 3-state model, mapping a trajectory that
+        visits state 9, which is outside the connected set. """
+        f = self.fewsm.FEWSM(self.msm, N=2)
+        f.parent = copy.copy(self.msm)
+        f.parent.data = [traj.TimeSeries(distraj=distraj, dt=1.)]
+        kk = self.msm.keep_keys
+        macro_of = {kk[i]: k for k, v in f.macros.items() for i in v}
+        return f, macro_of
+
+    def test_map_trajectory_disconnected(self):
+        # leading outsiders removed; middle and trailing ones
+        # inherit the macrostate of the previous frame
+        f, m = self._fewsm_with_outsider([9, 9, 0, 9, 2, 9, 9, 1, 9])
+        f.map_trajectory()
+        self.assertEqual(f.mappedtraj[0].distraj,
+                         [m[0], m[0], m[2], m[2], m[2], m[1], m[1]])
+
+    def test_map_trajectory_never_connected(self):
+        f, _ = self._fewsm_with_outsider([9, 9, 9])
+        with self.assertWarns(UserWarning):
+            f.map_trajectory()
+        self.assertEqual(f.mappedtraj, [])
+
+    def test_eigen_group_without_trans(self):
+        # FEWSM builds the transition matrix itself if missing
+        m = msm.MSM(self.trajs, lagt=1)
+        m.count = self.msm.count
+        f = self.fewsm.FEWSM(m, N=2)
+        self.assertTrue(hasattr(m, 'trans'))
+        groups = sorted(sorted(m.keep_keys[i] for i in v)
+                        for v in f.macros.values())
+        self.assertEqual(groups, [[0, 1], [2]])
 
     def test_metastability(self):
         f = self.fewsm.FEWSM(self.msm, N=2)

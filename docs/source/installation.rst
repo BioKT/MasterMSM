@@ -23,11 +23,14 @@ With conda, you may prefer to install them from conda-forge first:
        networkx mdtraj scikit-learn
 
 Clustering with HDBSCAN additionally requires the optional
-`hdbscan <https://github.com/scikit-learn-contrib/hdbscan>`_ package:
+`hdbscan <https://github.com/scikit-learn-contrib/hdbscan>`_ package,
+which can be installed as an extra:
 
 .. code-block:: bash
 
-   pip install hdbscan
+   pip install ".[hdbscan]"
+
+or on its own with ``pip install hdbscan``.
 
 Testing the installation
 ------------------------

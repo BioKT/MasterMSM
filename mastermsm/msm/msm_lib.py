@@ -592,7 +592,7 @@ def do_boots_worker(x):
 def calc_trans(nkeep=None, keep_states=None, count=None):
     """ Calculates transition matrix.
 
-    Uses the maximum likelihood expression by Prinz et al.[1]_
+    Uses the maximum likelihood expression by Prinz et al. [#]_
 
     Parameters
     ----------
@@ -606,9 +606,9 @@ def calc_trans(nkeep=None, keep_states=None, count=None):
 
     Notes
     -----
-    ..[1] J. H. Prinz, H. Wu, M. Sarich, B. Keller, M. Senne, M. Held,
-    J. D. Chodera, C. Schutte and F. Noe, "Markov state models:
-    Generation and validation", J. Chem. Phys. (2011).
+    .. [#] J. H. Prinz, H. Wu, M. Sarich, B. Keller, M. Senne, M. Held,
+       J. D. Chodera, C. Schutte and F. Noe, "Markov state models:
+       Generation and validation", J. Chem. Phys. (2011).
     """
     trans = np.zeros([nkeep, nkeep], float)
     for i in range(nkeep):
@@ -621,7 +621,7 @@ def calc_trans(nkeep=None, keep_states=None, count=None):
 def calc_rate(nkeep, trans, lagt):
     """ Calculate rate matrix from transition matrix.
 
-    We use a method based on a Taylor expansion.[1]_
+    We use a method based on a Taylor expansion [#]_.
 
     Parameters
     ----------
@@ -639,9 +639,9 @@ def calc_rate(nkeep, trans, lagt):
 
     Notes
     -----
-    ..[1] D. De Sancho, J. Mittal and R. B. Best, "Folding kinetics
-    and unfolded state dynamics of the GB1 hairpin from molecular
-    simulation", J. Chem. Theory Comput. (2013).
+    .. [#] D. De Sancho, J. Mittal and R. B. Best, "Folding kinetics
+       and unfolded state dynamics of the GB1 hairpin from molecular
+       simulation", J. Chem. Theory Comput. (2013).
 
     """
     rate = trans/lagt
@@ -682,7 +682,7 @@ def rand_rate(nkeep, count):
 def calc_mlrate(nkeep, count, lagt, rate_init):
     """ Calculate rate matrix using maximum likelihood Bayesian method.
 
-    We use a the MLPB method described by Buchete and Hummer.[1]_
+    We use a the MLPB method described by Buchete and Hummer [#]_.
 
     Parameters
     ----------
@@ -700,7 +700,7 @@ def calc_mlrate(nkeep, count, lagt, rate_init):
 
     Notes
     -----
-    ..[1] N.-V. Buchete and G. Hummer, "Coarse master equations for
+    .. [#] N.-V. Buchete and G. Hummer, "Coarse master equations for
         peptide folding dynamics", J. Phys. Chem. B (2008).
 
     """
@@ -858,7 +858,7 @@ def detailed_balance(nkeep, rate, peq):
 def likelihood(nkeep, rate, count, lagt):
     """ Likelihood of a rate matrix given a count matrix
 
-    We use the procedure described by Buchete and Hummer.[1]_
+    We use the procedure described by Buchete and Hummer [#]_.
 
     Parameters
     ----------
@@ -876,7 +876,7 @@ def likelihood(nkeep, rate, count, lagt):
 
     Notes
     -----
-    ..[1] N.-V. Buchete and G. Hummer, "Coarse master equations for
+    .. [#] N.-V. Buchete and G. Hummer, "Coarse master equations for
         peptide folding dynamics", J. Phys. Chem. B (2008).
 
     """
@@ -1331,9 +1331,9 @@ def check_connect(count, keys):
 
     References
     -----
-    We use the Tarjan algorithm as implemented in NetworkX. [1]_
+    We use the Tarjan algorithm as implemented in NetworkX. [#]_
 
-    .. [1] R. Tarjan, "Depth-first search and linear graph algorithms",
+    .. [#] R. Tarjan, "Depth-first search and linear graph algorithms",
         SIAM Journal of Computing (1972).
 
     """

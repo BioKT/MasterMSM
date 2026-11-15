@@ -116,7 +116,7 @@ class SuperMSM(object):
         and compares the predicted conditional return probability with the
         value directly measured from the count matrices.
 
-        Follows the procedure described by Prinz et al.[1]_
+        Follows the procedure described by Prinz et al. [#]_
 
         Parameters
         ----------
@@ -136,7 +136,7 @@ class SuperMSM(object):
 
         References
         ----------
-        .. [1] J.-H. Prinz et al, "Markov models of molecular kinetics: Generation
+        .. [#] J.-H. Prinz et al, "Markov models of molecular kinetics: Generation
             and validation", J. Chem. Phys. (2011).
 
         """
@@ -185,7 +185,7 @@ class SuperMSM(object):
     def do_lbrate(self, evecs=False, error=False):
         """ Calculates the rate matrix using the lifetime based method.
 
-        We use the method described by Buchete and Hummer [1]_.
+        We use the method described by Buchete and Hummer [#]_.
 
         Parameters
         ----------
@@ -195,8 +195,8 @@ class SuperMSM(object):
             Whether to include errors or not.
 
         References
-        -----
-        .. [1] N.-V. Buchete and G. Hummer, "Coarse master equations for
+        ----------
+        .. [#] N.-V. Buchete and G. Hummer, "Coarse master equations for
             peptide folding dynamics", J. Phys. Chem. B (2008).
 
         """
@@ -360,7 +360,7 @@ class MSM(object):
     def do_rate(self, method='Taylor', init=False, report=False):
         """ Calculates the rate matrix from the transition matrix.
 
-        We use a method based on a Taylor expansion [1]_ or the maximum likelihood
+        We use a method based on a Taylor expansion [#]_ or the maximum likelihood
         propagator based (MLPB) method [2]_.
 
         Parameters
@@ -374,8 +374,8 @@ class MSM(object):
             Whether to report the results from MC in MLPB.
 
         References
-        -----
-        .. [1] D. De Sancho, J. Mittal and R. B. Best, "Folding kinetics
+        ----------
+        .. [#] D. De Sancho, J. Mittal and R. B. Best, "Folding kinetics
             and unfolded state dynamics of the GB1 hairpin from molecular
             simulation", J. Chem. Theory Comput. (2013).
         .. [2] N.-V. Buchete and G. Hummer, "Coarse master equations for
@@ -769,7 +769,7 @@ class MSM(object):
         """ Sensitivity analysis of the states in the network.
 
         We use the procedure described by De Sancho, Kubas,
-        Blumberger and Best [1]_.
+        Blumberger and Best [#]_.
 
         Parameters
         ----------
@@ -790,10 +790,10 @@ class MSM(object):
             Global rate.
 
         References
-        -----
-        .. [1] D. De Sancho, A. Kubas, P.-H. Wang, J. Blumberger, R. B.
-        Best "Identification of mutational hot spots for substrate diffusion:
-        Application to myoglobin", J. Chem. Theory Comput. (2015).
+        ----------
+        .. [#] D. De Sancho, A. Kubas, P.-H. Wang, J. Blumberger, R. B.
+           Best "Identification of mutational hot spots for substrate diffusion:
+           Application to myoglobin", J. Chem. Theory Comput. (2015).
 
         """
         nkeep = len(self.keep_states)
@@ -1007,7 +1007,7 @@ class MSM(object):
     def acf_mode(self, modes=None):
         """ Calculate mode autocorrelation functions.
 
-        We use the procedure described by Buchete and Hummer [1]_.
+        We use the procedure described by Buchete and Hummer [#]_.
 
         Parameters
         ----------
@@ -1023,7 +1023,7 @@ class MSM(object):
 
         References
         ----------
-        .. [1] N.-V. Buchete and G. Hummer, "Coarse master equations for
+        .. [#] N.-V. Buchete and G. Hummer, "Coarse master equations for
             peptide folding dynamics", J. Phys. Chem. B (2008).
 
         """

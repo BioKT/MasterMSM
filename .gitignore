@@ -3,13 +3,21 @@ docs/build
 examples/datafiles/
 examples/schutte_potential/data/
 examples/bistable_potential/data/
-examples/mueller_potential/data/
 examples/alanine_dipeptide/data/
 examples/alanine_pentapeptide/data/
 coverage.xml
 .coverage
 
+# Python, Jupyter, editors, OS
+__pycache__/
+*.py[cod]
+*.egg-info/
+.ipynb_checkpoints/
+.idea/
+.DS_Store
+
+# local builds and downloaded test data
+_build/
 mastermsm/test/data/
 dist/
-*.egg-info/
 build/

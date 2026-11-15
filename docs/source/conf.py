@@ -28,9 +28,9 @@ copyright = '2019-2026, David De Sancho'
 author = 'David De Sancho'
 
 # The short X.Y version
-version = ''
+version = '.'.join(mastermsm.__version__.split('.')[:2])
 # The full version, including alpha/beta/rc tags
-release = '1.1.1'
+release = mastermsm.__version__
 
 
 # -- General configuration ---------------------------------------------------
@@ -52,6 +52,10 @@ extensions = [
     'sphinx.ext.autosummary',
     'sphinx.ext.doctest',
     'sphinx.ext.inheritance_diagram']
+
+# Keep the hand-written API pages (mastermsm.*.rst); generating autosummary
+# stubs would overwrite them with empty module pages.
+autosummary_generate = False
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
