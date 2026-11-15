@@ -36,22 +36,49 @@ def calc_eigsT(trans):
     Returns
     -------
     evals: np.array
-        Sorted eigenvalues and eigenvectors 
-    rvecs : numpy array, optional
-        Sorted right eigenvectors of T, sorted.
-    lvecs : numpy array, optional
-        Left eigenvectors of T, sorted.
+        Eigenvalues, sorted by decreasing modulus (complex in general).
+    lvecs : numpy array
+        Left eigenvectors of T, in the same order.
+    rvecs : numpy array
+        Right eigenvectors of T, in the same order.
 
     """
     evals, lvecs, rvecs = spla.eig(trans, left=True)
 
-    # sort eigenvalues and eigenvectors
-    ievals = np.argsort(-evals)
+    # sort by decreasing modulus; ties (conjugate pairs) by real part
+    ievals = np.lexsort((-np.real(evals), -np.abs(evals)))
     evals = evals[ievals]
     lvecs = lvecs[:,ievals]
     rvecs = rvecs[:,ievals]
 
     return evals, lvecs, rvecs
+
+def calc_tauT(evals, lagt):
+    """
+    Relaxation times from the eigenvalues of a transition matrix.
+
+    Uses tau = -lagt/ln|lambda|. Complex-conjugate pairs (from
+    non-reversible estimates) and negative eigenvalues decay with
+    rate ln|lambda|; both members of a pair are kept, so the output
+    has len(evals) - 1 entries. The stationary eigenvalue (first)
+    is skipped.
+
+    Parameters
+    ----------
+    evals : np.array
+        Eigenvalues sorted by decreasing modulus, as from calc_eigsT.
+    lagt : float
+        Lag time.
+
+    Returns
+    -------
+    tau : np.array
+        Relaxation times (real).
+
+    """
+    mod = np.abs(np.asarray(evals)[1:])
+    with np.errstate(divide='ignore'):
+        return -lagt / np.log(mod)
 
 def calc_eigsK(rate, evecs=False):
     """ 
@@ -477,8 +504,12 @@ def calc_lifetime(x):
     #    life[state_i] = [l*dt]
     return life
 
-def traj_split(data=None, lagt=None, fdboots=None):
+def traj_split(data=None, lagt=None, tmin=0.):
     """ Splits trajectories into fragments for bootstrapping
+
+    Each trajectory is cut into pieces of equal length, as many as
+    fit while every piece is at least ``tmin`` and at least ten lag
+    times long. A trajectory shorter than that is kept whole.
 
     Parameters
     ----------
@@ -486,35 +517,34 @@ def traj_split(data=None, lagt=None, fdboots=None):
         Set of trajectories used for building the MSM.
     lagt : float
         Lag time for building the MSM.
+    tmin : float
+        Minimum length of a fragment, in the time units of the
+        trajectories (typically a multiple of the slowest relaxation
+        time, see ``MSM.boots``).
 
     Returns:
     -------
-    filetmp : file object
-        Open file object with trajectory fragments.
+    filetmp : str
+        Name of a temporary file with the pickled fragments.
+    nfrag : int
+        Number of fragments.
 
     """
-    trajs = [[x.distraj, x.dt] for x in data]
-    ltraj = [len(x[0])*x[1] for x in trajs]
-    ltraj_median = np.median(ltraj)
-    timetot = np.sum(ltraj) # total simulation time
-
-    while ltraj_median > timetot/20. and ltraj_median > 10.*lagt:
-        trajs_new = []
-        #cut trajectories in chunks
-        for x in trajs:
-            lx = len(x[0])
-            trajs_new.append([x[0][:int(lx/2)], x[1]])
-            trajs_new.append([x[0][int(lx/2):], x[1]])
-        trajs = trajs_new
-        ltraj = [len(x[0])*x[1] for x in trajs]
-        ltraj_median = np.median(ltraj)
+    lmin = max(tmin, 10.*lagt)
+    trajs = []
+    for x in data:
+        s, dt = x.distraj, x.dt
+        nfr = int((len(s)*dt)//lmin) if lmin > 0 else len(s)
+        nfr = max(1, min(nfr, len(s)))
+        edges = np.linspace(0, len(s), nfr + 1).astype(int)
+        trajs += [[s[a:b], dt] for a, b in zip(edges[:-1], edges[1:])]
 
     # save trajs
     fd, filetmp = tempfile.mkstemp()
     file = os.fdopen(fd, 'wb')
     pickle.dump(trajs, file, protocol=pickle.HIGHEST_PROTOCOL)
     file.close()
-    return filetmp
+    return filetmp, len(trajs)
 
 def do_boots_worker(x):
     """ Worker function for parallel bootstrapping.
@@ -522,11 +552,15 @@ def do_boots_worker(x):
     Parameters
     ----------
     x : list
-        A list containing the trajectory filename, the states, the lag time
-        and the total number of transitions.
+        A list containing the trajectory filename, the states, the lag time,
+        the total number of transitions, the sliding window option, the
+        number of eigenvalues, the seed for the random number generator
+        (an int, a numpy SeedSequence, or None for fresh entropy) and
+        whether the count matrix is symmetrized, as in MSM.calc_count.
+        The number of transitions is that before symmetrizing.
 
     """
-    filetmp, keys, lagt, ncount, slider, neigs = x
+    filetmp, keys, lagt, ncount, slider, neigs, seed, sym = x
     nkeys = len(keys)
     
     finp = open(filetmp, 'rb')
@@ -534,15 +568,17 @@ def do_boots_worker(x):
     finp.close()
 
     ltrans = len(trans)
-    np.random.seed()
+    rng = np.random.default_rng(seed)
     ncount_boots = 0
     count = np.zeros([nkeys, nkeys], np.int32)
     while ncount_boots < ncount:
-        itrans = np.random.randint(ltrans)
+        itrans = rng.integers(ltrans)
         count_inp = [trans[itrans][0], trans[itrans][1], keys, lagt, slider]
         c = calc_count_worker(count_inp)
         count += c
         ncount_boots += np.sum(c)
+    if sym:
+        count += count.transpose()
     D = nx.DiGraph(count)
     keep_states = list(sorted(list(nx.strongly_connected_components(D)),
                               key=len, reverse=True)[0])
@@ -556,7 +592,7 @@ def do_boots_worker(x):
 def calc_trans(nkeep=None, keep_states=None, count=None):
     """ Calculates transition matrix.
 
-    Uses the maximum likelihood expression by Prinz et al.[1]_
+    Uses the maximum likelihood expression by Prinz et al. [#]_
 
     Parameters
     ----------
@@ -570,9 +606,9 @@ def calc_trans(nkeep=None, keep_states=None, count=None):
 
     Notes
     -----
-    ..[1] J. H. Prinz, H. Wu, M. Sarich, B. Keller, M. Senne, M. Held,
-    J. D. Chodera, C. Schutte and F. Noe, "Markov state models:
-    Generation and validation", J. Chem. Phys. (2011).
+    .. [#] J. H. Prinz, H. Wu, M. Sarich, B. Keller, M. Senne, M. Held,
+       J. D. Chodera, C. Schutte and F. Noe, "Markov state models:
+       Generation and validation", J. Chem. Phys. (2011).
     """
     trans = np.zeros([nkeep, nkeep], float)
     for i in range(nkeep):
@@ -585,7 +621,7 @@ def calc_trans(nkeep=None, keep_states=None, count=None):
 def calc_rate(nkeep, trans, lagt):
     """ Calculate rate matrix from transition matrix.
 
-    We use a method based on a Taylor expansion.[1]_
+    We use a method based on a Taylor expansion [#]_.
 
     Parameters
     ----------
@@ -603,9 +639,9 @@ def calc_rate(nkeep, trans, lagt):
 
     Notes
     -----
-    ..[1] D. De Sancho, J. Mittal and R. B. Best, "Folding kinetics
-    and unfolded state dynamics of the GB1 hairpin from molecular
-    simulation", J. Chem. Theory Comput. (2013).
+    .. [#] D. De Sancho, J. Mittal and R. B. Best, "Folding kinetics
+       and unfolded state dynamics of the GB1 hairpin from molecular
+       simulation", J. Chem. Theory Comput. (2013).
 
     """
     rate = trans/lagt
@@ -646,7 +682,7 @@ def rand_rate(nkeep, count):
 def calc_mlrate(nkeep, count, lagt, rate_init):
     """ Calculate rate matrix using maximum likelihood Bayesian method.
 
-    We use a the MLPB method described by Buchete and Hummer.[1]_
+    We use a the MLPB method described by Buchete and Hummer [#]_.
 
     Parameters
     ----------
@@ -664,7 +700,7 @@ def calc_mlrate(nkeep, count, lagt, rate_init):
 
     Notes
     -----
-    ..[1] N.-V. Buchete and G. Hummer, "Coarse master equations for
+    .. [#] N.-V. Buchete and G. Hummer, "Coarse master equations for
         peptide folding dynamics", J. Phys. Chem. B (2008).
 
     """
@@ -688,6 +724,13 @@ def calc_mlrate(nkeep, count, lagt, rate_init):
     rate_best = rate_prev
     ml_best = ml_prev
     while True:
+        # annealing temperature: 1 throughout the first cycle, then
+        # decaying exponentially from 1 (nstep = 0) to 0 (nstep = nsteps)
+        if ncycle > 0:
+            temp = (np.exp(k*nstep) - np.exp(k*nsteps))/(1 - np.exp(k*nsteps))
+        else:
+            temp = 1.
+
         # random choice of MC move
         rate, p = mc_move(nkeep, rate_prev, p_prev)
         rate = detailed_balance(nkeep, rate, p)
@@ -707,9 +750,8 @@ def calc_mlrate(nkeep, count, lagt, rate_init):
                 rate_best = rate
         else:
             delta_ml = ml - ml_prev
-            beta = (1 - np.exp(k*nsteps))/(np.exp(k*nstep) - np.exp(k*nsteps)) if ncycle > 0 else 1
-            weight = np.exp(-beta*delta_ml)
-            if np.random.random() < weight:
+            # at zero temperature uphill moves are always rejected
+            if temp > 0 and np.random.random() < np.exp(-delta_ml/temp):
                 #print " ACCEPT BOLTZMANN\n"
                 rate_prev = rate
                 p_prev = p
@@ -720,7 +762,7 @@ def calc_mlrate(nkeep, count, lagt, rate_init):
         if nstep > nsteps:
             ncycle +=1
             ml_cum.append(ml_prev)
-            temp_cum.append(1./beta)
+            temp_cum.append(temp)
             print ("\n END of cycle %g"%ncycle)
             print ("   acceptance :%g"%(float(accept)/nsteps))
             accept = 0
@@ -735,7 +777,7 @@ def calc_mlrate(nkeep, count, lagt, rate_init):
                 break
         elif nstep % nfreq == 0:
             ml_cum.append(ml_prev)
-            temp_cum.append(1./beta)
+            temp_cum.append(temp)
 
     return rate_best, ml_cum, temp_cum
 
@@ -755,8 +797,12 @@ def mc_move(nkeep, rate, peq):
         The equilibrium probability
 
     """
-    nparam = nkeep*(nkeep - 1)/2 + nkeep - 1
     npeq = nkeep - 1
+    # independent rates: lower triangle, rate[j,i] with j > i
+    rows, cols = np.tril_indices(nkeep, -1)
+    nparam = npeq + len(rows)
+    if not np.any(rate > 0.):
+        raise ValueError("rate matrix has no positive elements")
 
     while True:
         i = np.random.randint(0, nparam)
@@ -773,13 +819,10 @@ def mc_move(nkeep, rate, peq):
                 break
         else:
             #print " Rate"
-            i = np.random.randint(0, nkeep - 1)
+            j, i = rows[i - npeq], cols[i - npeq]
             try:
-                j = np.random.randint(i + 1, nkeep - 1)
-            except ValueError:
-                j = nkeep - 1
-            try:
-                scale = np.mean(np.abs(rate>0.))*0.1
+                # step relative to the mean rate, as for peq above
+                scale = np.mean(rate[rate > 0.])*0.1
                 #rate_new[j,i] = np.random.normal(loc=rate[j,i], scale=scale)
                 rate_new[j,i] = rate[j,i] + (np.random.random() - 0.5)*scale
                 if np.all((rate_new - np.diag(np.diag(rate_new))) >= 0):
@@ -815,7 +858,7 @@ def detailed_balance(nkeep, rate, peq):
 def likelihood(nkeep, rate, count, lagt):
     """ Likelihood of a rate matrix given a count matrix
 
-    We use the procedure described by Buchete and Hummer.[1]_
+    We use the procedure described by Buchete and Hummer [#]_.
 
     Parameters
     ----------
@@ -833,7 +876,7 @@ def likelihood(nkeep, rate, count, lagt):
 
     Notes
     -----
-    ..[1] N.-V. Buchete and G. Hummer, "Coarse master equations for
+    .. [#] N.-V. Buchete and G. Hummer, "Coarse master equations for
         peptide folding dynamics", J. Phys. Chem. B (2008).
 
     """
@@ -843,8 +886,8 @@ def likelihood(nkeep, rate, count, lagt):
     for i in range(nkeep):
         ratesym[i,i] = -ratesym[i,i]
 
-    # calculate eigenvalues and eigenvectors
-    evalsym, evectsym = np.linalg.eig(ratesym)
+    # ratesym is symmetric by construction: eigh gives real output
+    evalsym, evectsym = np.linalg.eigh(ratesym)
 
     # index the solutions
     indx_eig = np.argsort(-evalsym)
@@ -1136,35 +1179,55 @@ def peq_averages(peq_boots, keep_keys_boots, keys):
             peq_std.append(0.)
     return peq_ave, peq_std
 
-def tau_averages(tau_boots):
+def tau_averages(tau_boots, ntau=None, q=(16, 84)):
     """ Return averages from bootstrap results
+
+    Bootstrap samples can have fewer relaxation times than the
+    original model, when states drop out of the connected set of
+    the resampled count matrix. Each relaxation time is averaged
+    over the samples that have it; times are matched by rank
+    (slowest first).
 
     Parameters
     ----------
     tau_boots : list
         List of Tau arrays
+    ntau : int
+        Number of relaxation times to report. Defaults to the
+        largest number found in a sample.
+    q : tuple
+        Percentiles for the confidence interval.
 
     Returns:
     -------
-    tau_ave : array
-        Tau averages
-    tau_std : array
+    tau_ave : list
+        Tau averages (nan if no sample has that relaxation time)
+    tau_std : list
         Tau std
+    tau_nboots : list
+        Number of samples that contributed to each average
+    tau_ci : list
+        (lower, upper) percentiles of each relaxation time
 
     """
+    if ntau is None:
+        ntau = max(len(x) for x in tau_boots)
     tau_ave = []
     tau_std = []
-    tau_keep = []
-    ntau = len(tau_boots[0])
+    tau_nboots = []
+    tau_ci = []
     for n in range(ntau):
-        try:
-            data = [x[n] for x in tau_boots if not np.isnan(x[n])]
-            tau_ave.append(np.mean(data))
-            tau_std.append(np.std(data))
-            tau_keep.append(data)
-        except IndexError:
-            continue
-    return tau_ave, tau_std
+        data = [x[n] for x in tau_boots if len(x) > n and not np.isnan(x[n])]
+        tau_nboots.append(len(data))
+        if data:
+            tau_ave.append(float(np.mean(data)))
+            tau_std.append(float(np.std(data)))
+            tau_ci.append(tuple(float(v) for v in np.percentile(data, q)))
+        else:
+            tau_ave.append(float('nan'))
+            tau_std.append(float('nan'))
+            tau_ci.append((float('nan'), float('nan')))
+    return tau_ave, tau_std, tau_nboots, tau_ci
 
 def matrix_ave(mat_boots, keep_keys_boots, keys):
     """ Return averages from bootstrap results
@@ -1268,9 +1331,9 @@ def check_connect(count, keys):
 
     References
     -----
-    We use the Tarjan algorithm as implemented in NetworkX. [1]_
+    We use the Tarjan algorithm as implemented in NetworkX. [#]_
 
-    .. [1] R. Tarjan, "Depth-first search and linear graph algorithms",
+    .. [#] R. Tarjan, "Depth-first search and linear graph algorithms",
         SIAM Journal of Computing (1972).
 
     """

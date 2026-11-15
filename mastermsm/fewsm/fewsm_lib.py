@@ -11,14 +11,8 @@ def map_micro2macro(cmic, mac, states):
     cmac = np.zeros((m, m), int)
     for i in range(m):
         for j in range(m):
-            if i == j:
-                cmac[j,i] = reduce(lambda x, y: x + y, \
-                    [cmic[states[x],states[y]] for (x,y) in \
-                    itertools.product(mac[j],mac[i])])
-            else:
-                cmac[j,i] = reduce(lambda x, y: x + y, \
-                    [cmic[states[x],states[y]] for (x,y) in \
-                    itertools.product(mac[j],mac[i])])
+            cmac[j,i] = sum(cmic[states[x],states[y]] for (x,y) in \
+                    itertools.product(mac[j],mac[i]))
     return cmac
 
 def test_sign(v):

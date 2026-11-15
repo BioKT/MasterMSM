@@ -2,7 +2,7 @@
 This file is part of the MasterMSM package.
 
 """
-import warnings, sys
+import warnings, sys, os
 import math
 from functools import reduce, cmp_to_key
 import itertools
@@ -84,7 +84,8 @@ class SuperMSM(object):
         for lagt in self.lagts:
            self.msms[lagt].calc_evals(neigs=neigs, evecs=evecs, errors=errors)
 
-    def convergence_test(self, time=None, error=False):
+    def convergence_test(self, time=None, error=False, seed=None, \
+            nboots=20, block=5.):
         """ Build MSMs at multiple lag times for an implied timescales test.
 
         Parameters
@@ -93,13 +94,20 @@ class SuperMSM(object):
             Lag times at which to build MSMs.
         error : bool
             Whether to bootstrap errors on timescales and populations.
+        seed : int
+            Seed for the bootstrap (see ``MSM.boots``).
+        nboots : int
+            Number of bootstrap samples (see ``MSM.boots``).
+        block : float
+            Minimum fragment length for the bootstrap, in units of
+            the slowest relaxation time (see ``MSM.boots``).
 
         """
         for lt in time:
             self.do_msm(lt)
             self.msms[lt].do_trans(evecs=False)
             if error:
-                self.msms[lt].boots()
+                self.msms[lt].boots(seed=seed, nboots=nboots, block=block)
 
     def ck_test(self, time=None, init=None):
         """ Chapman-Kolmogorov test comparing MSM predictions with direct MD.
@@ -108,7 +116,7 @@ class SuperMSM(object):
         and compares the predicted conditional return probability with the
         value directly measured from the count matrices.
 
-        Follows the procedure described by Prinz et al.[1]_
+        Follows the procedure described by Prinz et al. [#]_
 
         Parameters
         ----------
@@ -128,7 +136,7 @@ class SuperMSM(object):
 
         References
         ----------
-        .. [1] J.-H. Prinz et al, "Markov models of molecular kinetics: Generation
+        .. [#] J.-H. Prinz et al, "Markov models of molecular kinetics: Generation
             and validation", J. Chem. Phys. (2011).
 
         """
@@ -177,7 +185,7 @@ class SuperMSM(object):
     def do_lbrate(self, evecs=False, error=False):
         """ Calculates the rate matrix using the lifetime based method.
 
-        We use the method described by Buchete and Hummer [1]_.
+        We use the method described by Buchete and Hummer [#]_.
 
         Parameters
         ----------
@@ -187,8 +195,8 @@ class SuperMSM(object):
             Whether to include errors or not.
 
         References
-        -----
-        .. [1] N.-V. Buchete and G. Hummer, "Coarse master equations for
+        ----------
+        .. [#] N.-V. Buchete and G. Hummer, "Coarse master equations for
             peptide folding dynamics", J. Phys. Chem. B (2008).
 
         """
@@ -352,7 +360,7 @@ class MSM(object):
     def do_rate(self, method='Taylor', init=False, report=False):
         """ Calculates the rate matrix from the transition matrix.
 
-        We use a method based on a Taylor expansion [1]_ or the maximum likelihood
+        We use a method based on a Taylor expansion [#]_ or the maximum likelihood
         propagator based (MLPB) method [2]_.
 
         Parameters
@@ -366,8 +374,8 @@ class MSM(object):
             Whether to report the results from MC in MLPB.
 
         References
-        -----
-        .. [1] D. De Sancho, J. Mittal and R. B. Best, "Folding kinetics
+        ----------
+        .. [#] D. De Sancho, J. Mittal and R. B. Best, "Folding kinetics
             and unfolded state dynamics of the GB1 hairpin from molecular
             simulation", J. Chem. Theory Comput. (2013).
         .. [2] N.-V. Buchete and G. Hummer, "Coarse master equations for
@@ -385,7 +393,10 @@ class MSM(object):
                 rate_init = np.random.rand(nkeep, nkeep) * 1.e-2
             else:
                 rate_init = msm_lib.calc_rate(nkeep, self.trans, self.lagt)
-            self.rate, ml, beta = msm_lib.calc_mlrate(nkeep, self.count, self.lagt,\
+            # counts restricted to the connected set, as in calc_trans
+            keep = self.keep_states
+            count = np.asarray(self.count)[np.ix_(keep, keep)]
+            self.rate, ml, beta = msm_lib.calc_mlrate(nkeep, count, self.lagt,\
                     rate_init)
             if report:
                 _, ax = plt.subplots(2, 1, sharex=True)
@@ -420,7 +431,7 @@ class MSM(object):
         # relaxation times
         if not neigs:
             neigs = len(evals) - 1
-        self.tauT = np.real(np.array([-self.lagt/np.log(lmbd) for lmbd in evals[1:neigs+1]]))
+        self.tauT = msm_lib.calc_tauT(evals, self.lagt)[:neigs]
 
         # equilibrium probabilities
         self.peqT = np.real(rvecs[:,0]/np.sum(rvecs[:,0]))
@@ -432,37 +443,86 @@ class MSM(object):
         if errors:
             self.boots(neigs=neigs)
             
-    def boots(self, neigs=None):
+    def boots(self, neigs=None, seed=None, nboots=20, block=5.):
         """ Bootstrap the simulation data to calculate errors.
 
-        We generate count matrices with the same number of counts
-        as the original by bootstrapping the simulation data
+        The trajectories are cut into fragments, which are resampled
+        with replacement until the count matrix has as many
+        transitions as the original. The resampled counts are
+        symmetrized if the model is (``sym``), so that the errors
+        correspond to the same estimator.
+
+        Fragments must be long compared to the slowest relaxation
+        time, so that they are approximately independent: each is at
+        least ``block`` times the slowest relaxation time of the
+        model (and at least ten lag times). Long relaxation times
+        then leave few fragments; with fewer than eight, the errors
+        are unreliable and a warning is issued. The number of
+        fragments is stored in ``nfrag``.
+
+        Each relaxation time is averaged over the bootstrap samples
+        that have it (samples can lose states, and hence relaxation
+        times, when the resampled counts are not fully connected).
+        The number of samples behind each value is stored in
+        ``tau_nboots``. As the distributions can be skewed, the
+        16th and 84th percentiles are stored in ``tau_ci`` besides
+        the mean (``tau_ave``) and standard deviation (``tau_std``).
 
         Parameters
         ----------
         neigs : int
             Number of eigenvalues to calculate
+        seed : int
+            Seed for the bootstrap, for reproducible errors. Each
+            sample gets its own independent stream. If None, the
+            seeds are drawn from numpy's global generator, so that
+            ``np.random.seed`` in the calling code also makes the
+            errors reproducible.
+        nboots : int
+            Number of bootstrap samples.
+        block : float
+            Minimum fragment length, in units of the slowest
+            relaxation time of the model.
 
         """
-        nboots = 20
-
         if neigs is None:
             neigs = len(self.keep_states) - 1
 
-        # generate trajectory list for easy handling
-        filetmp = msm_lib.traj_split(data=self.data, lagt=self.lagt)
+        # fragments long compared to the slowest relaxation time
+        tau1 = self.tauT[0] if len(self.tauT) > 0 else 0.
+        if not np.isfinite(tau1):
+            raise ValueError("slowest relaxation time is not finite")
+        filetmp, self.nfrag = msm_lib.traj_split(data=self.data, \
+                lagt=self.lagt, tmin=block*tau1)
+        if self.nfrag < 8:
+            warnings.warn("bootstrap at lag time %g uses only %i "
+                    "fragments of at least %g x the slowest relaxation "
+                    "time (%g); errors are unreliable"%(self.lagt, \
+                    self.nfrag, block, tau1))
+
+        # one independent random stream per bootstrap sample
+        if seed is None:
+            seed = int(np.random.randint(2**31 - 1))
+        seeds = np.random.SeedSequence(seed).spawn(nboots)
+
+        # number of transitions in the data; a symmetrized count
+        # matrix holds every transition twice
+        ncount = np.sum(self.count)
+        if self.sym:
+            ncount = ncount/2.
+        multi_boots_input = [[filetmp, self.keys, self.lagt, ncount, \
+                self.sliding, neigs, seeds[x], self.sym] \
+                for x in range(nboots)]
 
         # multiprocessing options
-        nproc = mp.cpu_count()
+        nproc = min(mp.cpu_count(), nboots)
         pool = mp.Pool(processes=nproc)
-
-        ncount = np.sum(self.count)
-        multi_boots_input = [[filetmp, self.keys, self.lagt, ncount, \
-                self.sliding, neigs] for x in range(nboots)]
-        result = pool.map(msm_lib.do_boots_worker, multi_boots_input)
-
-        pool.close()
-        pool.join()
+        try:
+            result = pool.map(msm_lib.do_boots_worker, multi_boots_input)
+        finally:
+            pool.close()
+            pool.join()
+            os.remove(filetmp)
 
         tauT_boots = []
         peqT_boots = []
@@ -470,14 +530,15 @@ class MSM(object):
         for r in result:
             trans_boots, keep_keys  = r[0], r[1]
             evals, lvecs, rvecs = msm_lib.calc_eigsT(trans_boots)
-            tauT_boots.append(np.array([-self.lagt/np.log(lmbd) for \
-                    lmbd in evals[1:neigs+1]]))
+            tauT_boots.append(
+                msm_lib.calc_tauT(evals, self.lagt)[:neigs])
             peqT_boots.append(rvecs[:,0]/np.sum(rvecs[:,0]))
             keep_keys_boots.append(keep_keys)
 
         self.peq_ave, self.peq_std = msm_lib.peq_averages(peqT_boots, \
                 keep_keys_boots, self.keys)
-        self.tau_ave, self.tau_std = msm_lib.tau_averages(tauT_boots)
+        self.tau_ave, self.tau_std, self.tau_nboots, self.tau_ci = \
+                msm_lib.tau_averages(tauT_boots, ntau=neigs)
 
     def do_pfold(self, FF=None, UU=None, dot=False):
         """ Wrapper to calculate reactive fluxes and committors
@@ -708,7 +769,7 @@ class MSM(object):
         """ Sensitivity analysis of the states in the network.
 
         We use the procedure described by De Sancho, Kubas,
-        Blumberger and Best [1]_.
+        Blumberger and Best [#]_.
 
         Parameters
         ----------
@@ -729,10 +790,10 @@ class MSM(object):
             Global rate.
 
         References
-        -----
-        .. [1] D. De Sancho, A. Kubas, P.-H. Wang, J. Blumberger, R. B.
-        Best "Identification of mutational hot spots for substrate diffusion:
-        Application to myoglobin", J. Chem. Theory Comput. (2015).
+        ----------
+        .. [#] D. De Sancho, A. Kubas, P.-H. Wang, J. Blumberger, R. B.
+           Best "Identification of mutational hot spots for substrate diffusion:
+           Application to myoglobin", J. Chem. Theory Comput. (2015).
 
         """
         nkeep = len(self.keep_states)
@@ -946,7 +1007,7 @@ class MSM(object):
     def acf_mode(self, modes=None):
         """ Calculate mode autocorrelation functions.
 
-        We use the procedure described by Buchete and Hummer [1]_.
+        We use the procedure described by Buchete and Hummer [#]_.
 
         Parameters
         ----------
@@ -962,7 +1023,7 @@ class MSM(object):
 
         References
         ----------
-        .. [1] N.-V. Buchete and G. Hummer, "Coarse master equations for
+        .. [#] N.-V. Buchete and G. Hummer, "Coarse master equations for
             peptide folding dynamics", J. Phys. Chem. B (2008).
 
         """
