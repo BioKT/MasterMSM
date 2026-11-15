@@ -11,17 +11,29 @@
 - [x] Check whether near-degenerate tau1/tau2 (TICA, ~9 vs ~7 ns) swap order across bootstrap samples, inflating tau1 errors
 - [ ] Bootstrap BH A/E/L: check whether rare microstates carry the slowest eigenvector in samples with long tau1 (bootstrap median above the model value)
 - [ ] Bootstrap: relaxation times matched by rank bias the slower of two near-degenerate modes upwards (BH A/E tau2 at 0.5-1 ns lag); match by eigenvector overlap instead?
-- [ ] Commit flaky mc_move test fix (uncommitted in test_msm.py) on its own branch
-- [ ] Delete merged local branch feature/discretization-workflow
+- [x] Commit flaky mc_move test fix (uncommitted in test_msm.py) on its own branch
+- [x] Delete merged local branch feature/discretization-workflow
 
 ## Bug fixes
 - [x] MLPB: fix divide-by-zero in calc_mlrate annealing schedule (msm_lib.py:737, denominator exp(k*nstep) - exp(k*nsteps) is 0 when nstep == nsteps); add MLPB coverage for do_rate
 - [x] MLPB: decide rate step size in mc_move (msm_lib.py, `scale = np.mean(np.abs(rate>0.))*0.1` is the fraction of positive entries x 0.1, independent of rate units)
+- [ ] do_pfold: ComplexWarning casting complex peq to real (msm_lib.py, `pss[i] = (1-pfold[i])*peq[i]`), seen in ala_pentapeptide notebook; same pattern as the likelihood eig fix
 - [x] fewsm: fix 3 bugs, then drop expectedFailure in TestFEWSM: (1) eigen_group calls nonexistent parent.calc_eigsT when lvecsT missing; (2) metastability uses self.trans, never set; (3) map_trajectory does not reset mt_states per trajectory
 
 ## Release
-- [ ] Build the documentation for the updated version, preparing for a release
+- [x] Build the documentation for the updated version, preparing for a release
+- [x] Release 2.0.0 (2026-11-15): tag v2.0.0, GitHub release, CHANGELOG.md
+- [ ] ReadTheDocs: project clones the stale fork github.com/daviddesancho/MasterMSM (no .readthedocs.yaml), so every build fails; point it to BioKT/MasterMSM in the RTD admin settings, then check that 2.0.0 docs build
+- [ ] Merge feature/packaging (MANIFEST.in, download_data.py) for the next release
+
+## Examples
+- [ ] Restore Mueller potential examples: distribute the data (OSF) and port mueller_potential_openmm to OpenMM >= 8 (`import openmm`)
+- [ ] Rewrite discretization/featurization examples removed in 2.0.0 (ala_dipeptide_discretize, ala_pentapeptide_featurize), if still needed
+
+## Features
+- [ ] Pseudocounts in calc_trans (idea from closed PR #23, Ion Mitxelena); normalise columns correctly
+- [ ] Consider sklearn.cluster.HDBSCAN instead of hdbscan (no approximate_predict; different clusters for PCA on ala5, ARI 0.59): needs validation
 
 ## Infrastructure
 - [ ] Code style: add ruff (lint + format) to CI, then a badge
-- [ ] Packaging: publish to PyPI and conda-forge; add version/downloads badges (align setup.py version 0.2.0 with tags v1.x first)
+- [ ] Packaging: publish to PyPI and conda-forge; add version/downloads badges (version now single-sourced in mastermsm/__init__.py)
