@@ -28,7 +28,9 @@ chemical master equation. This package will allow you to:
 
 We have written a `paper <https://doi.org/10.1021/acs.jcim.9b00468>`_
 on MasterMSM (*J. Chem. Inf. Model.*, 2019) that describes the code
-capabilities. The MasterMSM code is hosted on
+capabilities. HDBSCAN-based discretization is described in
+`Mitxelena et al. <https://doi.org/10.1063/5.0056748>`_
+(*J. Chem. Phys.*, 2021). The MasterMSM code is hosted on
 `GitHub <https://github.com/BioKT/MasterMSM>`_, where development takes
 place on the ``develop`` branch.
 

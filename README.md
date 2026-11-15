@@ -154,6 +154,21 @@ If you use MasterMSM in your work, please cite:
     doi = "10.1021/acs.jcim.9b00468"
     }
 
+If you use HDBSCAN discretization (`Discretizer.hdbscan`), please
+also cite:
+
+    @article{mitxelena2021markov,
+    author = "Ion Mitxelena and Xabier L{\'o}pez and David De Sancho",
+    title = "{Markov state models from hierarchical density-based assignment}",
+    year = "2021",
+    journal = "J. Chem. Phys.",
+    volume = "155",
+    number = "5",
+    pages = "054102",
+    url = "https://doi.org/10.1063/5.0056748",
+    doi = "10.1063/5.0056748"
+    }
+
 Contributors
 ------------
 *   David De Sancho
