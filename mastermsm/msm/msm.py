@@ -325,14 +325,9 @@ class MSM(object):
         pool.close()
         pool.join()
 
-        # add up all independent counts
-        count = np.sum(result, 0)
-
-        # symmetrize if needed
-        if self.sym:
-            print(" symmetrizing")
-            count += count.transpose()
-        self.count = count
+        # add up all independent counts (kept unsymmetrized; detailed
+        # balance is enforced in calc_trans when self.sym is True)
+        self.count = np.sum(result, 0)
 
     def calc_trans(self):
         """ Calculates transition matrix
@@ -343,7 +338,8 @@ class MSM(object):
         self.keep_states, self.keep_keys = keep_states, keep_keys
 
         nkeep = len(self.keep_states)
-        self.trans = msm_lib.calc_trans(nkeep, keep_states, self.count)
+        self.trans = msm_lib.calc_trans(nkeep, keep_states, self.count,
+                                        sym=self.sym)
 
     def do_trans(self, evecs=True):
         """ Calculate transition matrix and eigendecomposition.
@@ -426,7 +422,7 @@ class MSM(object):
             Whether we want bootstrap errors
 
         """
-        evals, lvecs, rvecs = msm_lib.calc_eigsT(self.trans)
+        evals, lvecs, rvecs = msm_lib.calc_eigsT(self.trans, sym=self.sym)
 
         # relaxation times
         if not neigs:
@@ -505,11 +501,8 @@ class MSM(object):
             seed = int(np.random.randint(2**31 - 1))
         seeds = np.random.SeedSequence(seed).spawn(nboots)
 
-        # number of transitions in the data; a symmetrized count
-        # matrix holds every transition twice
+        # number of observed transitions in the data
         ncount = np.sum(self.count)
-        if self.sym:
-            ncount = ncount/2.
         multi_boots_input = [[filetmp, self.keys, self.lagt, ncount, \
                 self.sliding, neigs, seeds[x], self.sym] \
                 for x in range(nboots)]
@@ -529,7 +522,7 @@ class MSM(object):
         keep_keys_boots = []
         for r in result:
             trans_boots, keep_keys  = r[0], r[1]
-            evals, lvecs, rvecs = msm_lib.calc_eigsT(trans_boots)
+            evals, lvecs, rvecs = msm_lib.calc_eigsT(trans_boots, sym=self.sym)
             tauT_boots.append(
                 msm_lib.calc_tauT(evals, self.lagt)[:neigs])
             peqT_boots.append(rvecs[:,0]/np.sum(rvecs[:,0]))

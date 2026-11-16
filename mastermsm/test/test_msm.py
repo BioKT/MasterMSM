@@ -828,8 +828,8 @@ class TestMSMWorkflow(unittest.TestCase):
 
 
 class TestBootsSym(unittest.TestCase):
-    """ The bootstrap uses the same estimator as the model: counts
-    are symmetrized when the model is. """
+    """ The bootstrap uses the same estimator as the model: reversible
+    MLE is enforced when ``sym=True``, while ``count`` stays raw. """
 
     @classmethod
     def setUpClass(cls):
@@ -845,7 +845,7 @@ class TestBootsSym(unittest.TestCase):
     def test_worker(self):
         m = self.msm
         ftmp, _ = msm_lib.traj_split(data=m.data, lagt=1)
-        ncount = np.sum(m.count)/2.
+        ncount = np.sum(m.count)
         try:
             imag = {}
             for sym in (False, True):
@@ -1037,3 +1037,63 @@ class TestFEWSM(unittest.TestCase):
         np.testing.assert_allclose(Q, np.trace(f.trans))
         # 0,1 | 2 split: Q = T(01->01) + T(2->2), close to 0.995 + 0.99
         self.assertAlmostEqual(Q, 1.985, delta=0.01)
+
+
+class TestReversibleMLE(unittest.TestCase):
+    """ Conditional reversible MLE (Prinz et al., JCP 2011, Eq. C6)
+    recovers unbiased stationary populations under non-equilibrium
+    starting-state oversampling while preserving raw counts. """
+
+    def test_adaptive_oversampling_unbiased_peq(self):
+        # Exact 3-state reversible chain: pi = [0.75, 0.20, 0.05]
+        pi_true = np.array([0.75, 0.20, 0.05])
+        # Column-stochastic T with T[j, i] * pi[i] == T[i, j] * pi[j]
+        T = np.array([
+            [0.96, 0.15, 0.00],
+            [0.04, 0.80, 0.20],
+            [0.00, 0.05, 0.80],
+        ])
+        np.testing.assert_allclose(T.sum(axis=0), 1.)
+        np.testing.assert_allclose(T * pi_true[None, :],
+                                   (T * pi_true[None, :]).T)
+
+        rng = np.random.default_rng(42)
+        trajs = []
+        # Adaptive seeding: heavy oversampling of rare high-energy state 2
+        starts = [0] * 30 + [1] * 40 + [2] * 500
+        for s0 in starts:
+            seq = [s0]
+            s = s0
+            for _ in range(15):
+                s = int(rng.choice(3, p=T[:, s]))
+                seq.append(s)
+            trajs.append(traj.TimeSeries(distraj=seq, dt=1.))
+
+        m_nonsym = msm.MSM(trajs, keys=[0, 1, 2], lagt=1, sym=False)
+        m_nonsym.calc_count()
+        m_nonsym.do_trans()
+
+        m_rev = msm.MSM(trajs, keys=[0, 1, 2], lagt=1, sym=True)
+        m_rev.calc_count()
+        m_rev.do_trans()
+
+        # Raw transition counts are preserved (not doubled by C + C.T)
+        np.testing.assert_array_equal(m_rev.count, m_nonsym.count)
+        self.assertEqual(np.sum(m_rev.count), len(starts) * 15)
+
+        # Column stochasticity, detailed balance, and purely real spectrum
+        np.testing.assert_allclose(m_rev.trans.sum(axis=0), 1.)
+        flux = m_rev.trans * m_rev.peqT[None, :]
+        np.testing.assert_allclose(flux, flux.T, atol=1e-11)
+        self.assertFalse(np.iscomplexobj(m_rev.lvecsT))
+        self.assertFalse(np.iscomplexobj(m_rev.rvecsT))
+
+        # Free-energy difference -ln(pi_2 / pi_0) is unbiased (vs C + C.T)
+        dg_true = -np.log(pi_true[2] / pi_true[0])
+        dg_rev = -np.log(m_rev.peqT[2] / m_rev.peqT[0])
+        c_naive = m_rev.count + m_rev.count.T
+        pi_naive = c_naive.sum(axis=0) / float(c_naive.sum())
+        dg_naive = -np.log(pi_naive[2] / pi_naive[0])
+
+        self.assertLess(abs(dg_rev - dg_true), 0.15)
+        self.assertGreater(abs(dg_naive - dg_true), 2.0)
