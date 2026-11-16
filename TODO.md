@@ -24,7 +24,9 @@
 - [x] Build the documentation for the updated version, preparing for a release
 - [x] Release 2.0.0 (2026-11-15): tag v2.0.0, GitHub release, CHANGELOG.md
 - [ ] ReadTheDocs: project clones the stale fork github.com/daviddesancho/MasterMSM (no .readthedocs.yaml), so every build fails; point it to BioKT/MasterMSM in the RTD admin settings, then check that 2.0.0 docs build
-- [ ] Merge feature/packaging (MANIFEST.in, download_data.py) for the next release
+- [x] Merge feature/packaging; release 2.0.1 on PyPI (2026-11-15)
+- [ ] conda-forge: staged-recipes PR #35684 (approved); once the feedstock exists, add `conda install -c conda-forge mastermsm` to README.md and docs/source/installation.rst
+- [ ] 2.0.2: opt-out switch for test data downloads (e.g. MASTERMSM_NO_DOWNLOAD=1 makes data tests skip at once); then set it in the feedstock recipe so conda-forge CI runs only offline tests (reviewer request on PR #35684)
 
 ## Examples
 - [ ] Restore Mueller potential examples: distribute the data (OSF) and port mueller_potential_openmm to OpenMM >= 8 (`import openmm`)
