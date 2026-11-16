@@ -24,7 +24,13 @@ class SuperMSM(object):
         trajs : list
             A list of TimeSeries objects from the trajectory module
         sym : bool
-            Whether to enforze detailed balance
+            Whether to enforce detailed balance. If True, the transition
+            matrix is the reversible maximum-likelihood estimate (Prinz
+            et al., 2011) from the raw counts; ``count`` itself is not
+            symmetrized. The connected set is still the largest strongly
+            connected component of the raw counts. Only the transition
+            matrix and quantities derived from it are affected; the MLPB
+            rate matrix (``do_rate``) is not constrained.
         sliding : bool
             Whether a sliding window is used in counts
 
@@ -272,7 +278,13 @@ class MSM(object):
         lag : float
             Lag time for building the MSM
         sym : bool
-            Whether we want to enforce symmetrization
+            Whether to enforce detailed balance. If True, the transition
+            matrix is the reversible maximum-likelihood estimate (Prinz
+            et al., 2011) from the raw counts; ``count`` itself is not
+            symmetrized. The connected set is still the largest strongly
+            connected component of the raw counts. Only the transition
+            matrix and quantities derived from it are affected; the MLPB
+            rate matrix (``do_rate``) is not constrained.
         sliding : bool
             Whether a sliding window is used in counts
 
@@ -383,6 +395,12 @@ class MSM(object):
         if method == 'Taylor':
             self.rate = msm_lib.calc_rate(nkeep, self.trans, self.lagt)
         elif method == 'MLPB':
+            if self.sym:
+                warnings.warn("MLPB rate matrix is fitted to the raw "
+                              "counts and does not enforce detailed "
+                              "balance; sym=True only constrains the "
+                              "transition matrix.", UserWarning,
+                              stacklevel=2)
             if isinstance(init, np.ndarray):
                 rate_init = init
             elif init == 'random':
@@ -444,8 +462,9 @@ class MSM(object):
 
         The trajectories are cut into fragments, which are resampled
         with replacement until the count matrix has as many
-        transitions as the original. The resampled counts are
-        symmetrized if the model is (``sym``), so that the errors
+        transitions as the original. If the model enforces detailed
+        balance (``sym``), each resample is estimated with the same
+        reversible maximum-likelihood estimator, so that the errors
         correspond to the same estimator.
 
         Fragments must be long compared to the slowest relaxation

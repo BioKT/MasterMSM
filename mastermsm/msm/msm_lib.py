@@ -6,6 +6,7 @@ import copy
 import numpy as np
 import networkx as nx
 import os #, math
+import warnings
 import tempfile
 from functools import reduce, cmp_to_key
 #import operator
@@ -612,13 +613,22 @@ def do_boots_worker(x):
     trans = calc_trans(nkeep, keep_states, count, sym=sym)
     return trans, keep_keys
 
-def calc_trans_rev(nkeep, keep_states, count, tol=1e-12, max_iter=20000):
+def calc_trans_rev(nkeep, keep_states, count, tol=1e-10, max_iter=1000000):
     """ Conditional maximum-likelihood reversible transition matrix.
 
     Solves the fixed-point iteration of Prinz et al. [#]_ (Eq. C6) on the
     strongly connected subset ``keep_states`` without symmetrizing the
     transition counts ``count``. In MasterMSM convention ``count[j, i]``
     stores transitions ``i -> j`` and ``trans`` is column-stochastic.
+
+    The iteration converges slowly when the data are metastable (the
+    contraction rate approaches one as the slowest relaxation time
+    grows), so a small step does not mean the solution is close. The
+    distance to the fixed point is estimated from the step size and
+    the observed contraction rate, ``step / (1 - rate)``, and the
+    iteration stops when this estimate is below ``tol``. If that does
+    not happen within ``max_iter`` iterations a ``RuntimeWarning`` is
+    issued and the last iterate is returned.
 
     Parameters
     ----------
@@ -629,7 +639,9 @@ def calc_trans_rev(nkeep, keep_states, count, tol=1e-12, max_iter=20000):
     count : array_like
         Raw transition count matrix (columns are initial states).
     tol : float, optional
-        Convergence tolerance on the symmetric flux matrix ``X``.
+        Tolerance on the estimated distance to the fixed point, measured
+        as the largest change in ``ln(pi_i)`` of the stationary
+        distribution.
     max_iter : int, optional
         Maximum number of fixed-point iterations.
 
@@ -654,30 +666,48 @@ def calc_trans_rev(nkeep, keep_states, count, tol=1e-12, max_iter=20000):
     n_row = c_col.T
     n_sym = n_row + n_row.T
     row_sums = n_row.sum(axis=1)
+    # work on the observed pairs only (count matrices are sparse)
+    rows, cols = np.nonzero(n_sym)
+    vals = n_sym[rows, cols]
 
-    p_init = n_row / np.maximum(row_sums[:, None], 1.)
-    x_mat = 0.5 * (p_init + p_init.T) / float(nkeep)
-    x_mat = np.where(n_sym > 0., np.maximum(x_mat, 1e-15), 0.)
+    def update(pi):
+        # X_ij = (c_ij + c_ji) / (c_i / pi_i + c_j / pi_j) on observed
+        # pairs, normalized to unit sum; returns X and its row sums
+        inv_ratio = row_sums / pi
+        x_vals = vals / (inv_ratio[rows] + inv_ratio[cols])
+        x_vals /= x_vals.sum()
+        return x_vals, np.bincount(rows, weights=x_vals, minlength=nkeep)
 
-    for _ in range(max_iter):
-        x_row = np.maximum(x_mat.sum(axis=1), 1e-300)
-        inv_ratio = row_sums / x_row
-        denom = inv_ratio[:, None] + inv_ratio[None, :]
-        x_new = np.where(n_sym > 0., n_sym / np.maximum(denom, 1e-300), 0.)
-        total = x_new.sum()
-        if total > 0.:
-            x_new /= total
-        if np.max(np.abs(x_new - x_mat)) <= tol:
-            x_mat = x_new
+    # start from the symmetrized counts
+    pi = n_sym.sum(axis=1)
+    pi = pi / pi.sum()
+    step_old = None
+    converged = False
+    for it in range(max_iter):
+        _, pi_new = update(pi)
+        step = np.max(np.abs(np.log(pi_new) - np.log(pi)))
+        pi = pi_new
+        if step == 0.:
+            converged = True
             break
-        x_mat = x_new
+        if step_old is not None and step_old > 0.:
+            rate = step / step_old
+            if rate < 1. and step / (1. - rate) <= tol:
+                converged = True
+                break
+        step_old = step
 
-    x_row = np.maximum(x_mat.sum(axis=1), 1e-300)
-    p_row = x_mat / x_row[:, None]
-    trans = p_row.T
-    col_sums = trans.sum(axis=0)
-    trans = np.divide(trans, col_sums[None, :], out=np.zeros_like(trans),
-                      where=col_sums[None, :] > 0.)
+    if not converged:
+        warnings.warn("reversible MLE did not converge in %i iterations "
+                      "(last change in ln(pi) %.2e); the transition matrix "
+                      "and populations may be inaccurate. Increase "
+                      "max_iter, or use sym=False." % (max_iter, step),
+                      RuntimeWarning, stacklevel=2)
+
+    x_vals, x_row = update(pi)
+    trans = np.zeros((nkeep, nkeep), dtype=float)
+    # column-stochastic: T[j, i] = X_ij / X_i
+    trans[cols, rows] = x_vals / x_row[rows]
     return trans
 
 def calc_trans(nkeep=None, keep_states=None, count=None, sym=False):

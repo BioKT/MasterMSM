@@ -1097,3 +1097,52 @@ class TestReversibleMLE(unittest.TestCase):
 
         self.assertLess(abs(dg_rev - dg_true), 0.15)
         self.assertGreater(abs(dg_naive - dg_true), 2.0)
+
+    @staticmethod
+    def _chain_counts(n=30, barrier=10., tilt=1.1):
+        # birth-death counts with a barrier in the middle; any
+        # birth-death chain is reversible, so the reversible MLE must
+        # equal the unconstrained MLE
+        C = np.zeros((n, n))
+        for i in range(n - 1):
+            w = barrier if i == n//2 - 1 else 1000.
+            C[i + 1, i] = w
+            C[i, i + 1] = w*(tilt if i < n//2 - 1 else 1.)
+        np.fill_diagonal(C, 5000.)
+        return C
+
+    def test_birth_death_matches_mle(self):
+        n = 30
+        ks = list(range(n))
+        for barrier in (1000., 10.):
+            C = self._chain_counts(n=n, barrier=barrier)
+            with warnings.catch_warnings():
+                warnings.simplefilter("error", RuntimeWarning)
+                T = msm_lib.calc_trans_rev(n, ks, C)
+            Tn = msm_lib.calc_trans(n, ks, C)
+            np.testing.assert_allclose(T.sum(axis=0), 1.)
+            ev, _, rv = msm_lib.calc_eigsT(T, sym=True)
+            evn, _, rvn = msm_lib.calc_eigsT(Tn)
+            p = rv[:, 0]/np.sum(rv[:, 0])
+            pn = np.real(rvn[:, 0]/np.sum(rvn[:, 0]))
+            np.testing.assert_allclose(p, pn, rtol=1e-6)
+            tau = msm_lib.calc_tauT(ev, 1.)[:3]
+            taun = msm_lib.calc_tauT(np.real(evn), 1.)[:3]
+            np.testing.assert_allclose(tau, taun, rtol=1e-6)
+
+    def test_nonconvergence_warns(self):
+        n = 30
+        C = self._chain_counts(n=n, barrier=1.)
+        with self.assertWarns(RuntimeWarning):
+            msm_lib.calc_trans_rev(n, list(range(n)), C, max_iter=10)
+
+    def test_mlpb_warns_with_sym(self):
+        np.random.seed(0)
+        trajs = [traj.TimeSeries(distraj=[0, 1], dt=1.)]
+        m = msm.MSM(trajs, keys=[0, 1], lagt=1, sym=True)
+        m.count = np.array([[9000, 1000], [500, 9500]])
+        m.calc_trans()
+        with self.assertWarns(UserWarning):
+            with contextlib.redirect_stdout(io.StringIO()):
+                m.do_rate(method='MLPB')
+        self.assertEqual(m.rate.shape, (2, 2))
