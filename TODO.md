@@ -18,6 +18,7 @@
 - [x] MLPB: fix divide-by-zero in calc_mlrate annealing schedule (msm_lib.py:737, denominator exp(k*nstep) - exp(k*nsteps) is 0 when nstep == nsteps); add MLPB coverage for do_rate
 - [x] MLPB: decide rate step size in mc_move (msm_lib.py, `scale = np.mean(np.abs(rate>0.))*0.1` is the fraction of positive entries x 0.1, independent of rate units)
 - [ ] do_pfold: ComplexWarning casting complex peq to real (msm_lib.py, `pss[i] = (1-pfold[i])*peq[i]`), seen in ala_pentapeptide notebook; same pattern as the likelihood eig fix
+- [ ] MLPB slow with few counts: calc_mlrate needs many MC cycles to converge on small count matrices (2 states, ~200 counts: >10 min; 20 000 counts: 0.4 s). Check the convergence criterion / step size (found reviewing PR #32, 2026-11-16)
 - [x] fewsm: fix 3 bugs, then drop expectedFailure in TestFEWSM: (1) eigen_group calls nonexistent parent.calc_eigsT when lvecsT missing; (2) metastability uses self.trans, never set; (3) map_trajectory does not reset mt_states per trajectory
 
 ## Release
@@ -33,6 +34,8 @@
 - [ ] Rewrite discretization/featurization examples removed in 2.0.0 (ala_dipeptide_discretize, ala_pentapeptide_featurize), if still needed
 
 ## Features
+- [x] PR #32 (reversible MLE, sym=True): merged into develop 2026-11-17 (cd59649); needs minor version bump at next release
+- [ ] Faster reversible MLE solver for very metastable data (fixed point of Prinz et al. 2011 converges slowly; e.g. Newton/interior point, Trendelkamp-Schroer et al. 2015); currently warns if not converged in 1e6 iterations
 - [ ] Pseudocounts in calc_trans (idea from closed PR #23, Ion Mitxelena); normalise columns correctly
 - [ ] Consider sklearn.cluster.HDBSCAN instead of hdbscan (no approximate_predict; different clusters for PCA on ala5, ARI 0.59): needs validation
 
