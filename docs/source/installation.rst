@@ -1,7 +1,13 @@
 Installation
 ============
 MasterMSM requires Python >= 3.10. Install it from
-`PyPI <https://pypi.org/project/MasterMSM/>`_ with ``pip``:
+`conda-forge <https://anaconda.org/conda-forge/mastermsm>`_ with conda:
+
+.. code-block:: bash
+
+   conda install -c conda-forge mastermsm
+
+or from `PyPI <https://pypi.org/project/MasterMSM/>`_ with ``pip``:
 
 .. code-block:: bash
 
@@ -18,24 +24,18 @@ To work on the code, install it from the
 
 Dependencies
 ------------
-``pip`` installs the required dependencies automatically: numpy, scipy,
-matplotlib, networkx, `MDTraj <https://mdtraj.org>`_ and scikit-learn.
-With conda, you may prefer to install them from conda-forge first:
-
-.. code-block:: bash
-
-   conda install -c conda-forge numpy scipy matplotlib \
-       networkx mdtraj scikit-learn
+Both conda and ``pip`` install the required dependencies
+automatically: numpy, scipy, matplotlib, networkx,
+`MDTraj <https://mdtraj.org>`_ and scikit-learn.
 
 Clustering with HDBSCAN additionally requires the optional
-`hdbscan <https://github.com/scikit-learn-contrib/hdbscan>`_ package,
-which can be installed as an extra:
+`hdbscan <https://github.com/scikit-learn-contrib/hdbscan>`_ package:
 
 .. code-block:: bash
 
-   pip install "MasterMSM[hdbscan]"
+   conda install -c conda-forge hdbscan
 
-or on its own with ``pip install hdbscan``.
+or, with ``pip``, as an extra: ``pip install "MasterMSM[hdbscan]"``.
 
 Testing the installation
 ------------------------
@@ -46,6 +46,10 @@ on its first run:
 
    pip install pytest
    pytest --pyargs mastermsm
+
+The data are stored in ``$MASTERMSM_TEST_DATA`` if that variable is
+set. To run the tests offline, set ``MASTERMSM_NO_DOWNLOAD=1``: tests
+whose data are missing are then skipped instead of downloaded.
 
 Parallel processing in Python and MasterMSM
 -------------------------------------------
