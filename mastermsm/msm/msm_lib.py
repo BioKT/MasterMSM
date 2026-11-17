@@ -6,6 +6,7 @@ import copy
 import numpy as np
 import networkx as nx
 import os #, math
+import warnings
 import tempfile
 from functools import reduce, cmp_to_key
 #import operator
@@ -24,7 +25,7 @@ beta = 1./(8.314e-3*300)
 #            diff+=1
 #    return diff
 
-def calc_eigsT(trans):
+def calc_eigsT(trans, sym=False):
     """
     Calculate eigenvalues and eigenvectors of transition matrix T.
 
@@ -32,17 +33,43 @@ def calc_eigsT(trans):
     ----------
     trans : np.array
         The transition matrix
+    sym : bool, optional
+        If True, ``trans`` satisfies detailed balance and is diagonalized
+        via its symmetric similarity transform so eigenvalues and
+        eigenvectors are strictly real.
 
     Returns
     -------
     evals: np.array
-        Eigenvalues, sorted by decreasing modulus (complex in general).
+        Eigenvalues, sorted by decreasing modulus (real when ``sym=True``,
+        complex in general).
     lvecs : numpy array
         Left eigenvectors of T, in the same order.
     rvecs : numpy array
         Right eigenvectors of T, in the same order.
 
     """
+    nstates = len(trans)
+    if sym and nstates > 0:
+        trans_sym = np.sqrt(np.maximum(0., np.multiply(trans, trans.T)))
+        trans_sym = 0.5 * (trans_sym + trans_sym.T)
+        evals, uvecs = spla.eigh(trans_sym)
+        ievals = np.lexsort((-evals, -np.abs(evals)))
+        evals = evals[ievals]
+        uvecs = uvecs[:, ievals]
+        if np.sum(uvecs[:, 0]) < 0.:
+            uvecs[:, 0] = -uvecs[:, 0]
+        u0 = np.maximum(np.abs(uvecs[:, 0]), 1e-300)
+        rvecs = uvecs * u0[:, None]
+        lvecs = uvecs / u0[:, None]
+        rnorms = np.linalg.norm(rvecs, axis=0)
+        lnorms = np.linalg.norm(lvecs, axis=0)
+        rvecs = np.divide(rvecs, rnorms[None, :], out=np.zeros_like(rvecs),
+                          where=rnorms[None, :] > 0.)
+        lvecs = np.divide(lvecs, lnorms[None, :], out=np.zeros_like(lvecs),
+                          where=lnorms[None, :] > 0.)
+        return evals, lvecs, rvecs
+
     evals, lvecs, rvecs = spla.eig(trans, left=True)
 
     # sort by decreasing modulus; ties (conjugate pairs) by real part
@@ -556,8 +583,7 @@ def do_boots_worker(x):
         the total number of transitions, the sliding window option, the
         number of eigenvalues, the seed for the random number generator
         (an int, a numpy SeedSequence, or None for fresh entropy) and
-        whether the count matrix is symmetrized, as in MSM.calc_count.
-        The number of transitions is that before symmetrizing.
+        whether detailed balance is enforced (``sym``), as in ``MSM``.
 
     """
     filetmp, keys, lagt, ncount, slider, neigs, seed, sym = x
@@ -577,8 +603,6 @@ def do_boots_worker(x):
         c = calc_count_worker(count_inp)
         count += c
         ncount_boots += np.sum(c)
-    if sym:
-        count += count.transpose()
     D = nx.DiGraph(count)
     keep_states = list(sorted(list(nx.strongly_connected_components(D)),
                               key=len, reverse=True)[0])
@@ -586,18 +610,123 @@ def do_boots_worker(x):
     keep_keys = [keys[x] for x in keep_states]
     nkeep = len(keep_keys)
 
-    trans = calc_trans(nkeep, keep_states, count)
+    trans = calc_trans(nkeep, keep_states, count, sym=sym)
     return trans, keep_keys
 
-def calc_trans(nkeep=None, keep_states=None, count=None):
-    """ Calculates transition matrix.
+def calc_trans_rev(nkeep, keep_states, count, tol=1e-10, max_iter=1000000):
+    """ Conditional maximum-likelihood reversible transition matrix.
 
-    Uses the maximum likelihood expression by Prinz et al. [#]_
+    Solves the fixed-point iteration of Prinz et al. [#]_ (Eq. C6) on the
+    strongly connected subset ``keep_states`` without symmetrizing the
+    transition counts ``count``. In MasterMSM convention ``count[j, i]``
+    stores transitions ``i -> j`` and ``trans`` is column-stochastic.
+
+    The iteration converges slowly when the data are metastable (the
+    contraction rate approaches one as the slowest relaxation time
+    grows), so a small step does not mean the solution is close. The
+    distance to the fixed point is estimated from the step size and
+    the observed contraction rate, ``step / (1 - rate)``, and the
+    iteration stops when this estimate is below ``tol``. If that does
+    not happen within ``max_iter`` iterations a ``RuntimeWarning`` is
+    issued and the last iterate is returned.
 
     Parameters
     ----------
-    lagt : float
-        Lag time for construction of MSM.
+    nkeep : int
+        Number of states in the strongly connected component.
+    keep_states : list of int
+        Indices of connected states in ``count``.
+    count : array_like
+        Raw transition count matrix (columns are initial states).
+    tol : float, optional
+        Tolerance on the estimated distance to the fixed point, measured
+        as the largest change in ``ln(pi_i)`` of the stationary
+        distribution.
+    max_iter : int, optional
+        Maximum number of fixed-point iterations.
+
+    Returns
+    -------
+    trans : ndarray, shape (nkeep, nkeep)
+        Column-stochastic transition matrix satisfying detailed balance.
+
+    References
+    ----------
+    .. [#] J.-H. Prinz, H. Wu, M. Sarich, B. Keller, M. Senne, M. Held,
+       J. D. Chodera, C. Schutte and F. Noe, "Markov models of molecular
+       kinetics: Generation and validation", J. Chem. Phys. 134, 174105 (2011).
+
+    """
+    if nkeep <= 0:
+        return np.zeros((0, 0), dtype=float)
+    if nkeep == 1:
+        return np.ones((1, 1), dtype=float)
+
+    c_col = np.asarray(count, dtype=float)[np.ix_(keep_states, keep_states)]
+    n_row = c_col.T
+    n_sym = n_row + n_row.T
+    row_sums = n_row.sum(axis=1)
+    # work on the observed pairs only (count matrices are sparse)
+    rows, cols = np.nonzero(n_sym)
+    vals = n_sym[rows, cols]
+
+    def update(pi):
+        # X_ij = (c_ij + c_ji) / (c_i / pi_i + c_j / pi_j) on observed
+        # pairs, normalized to unit sum; returns X and its row sums
+        inv_ratio = row_sums / pi
+        x_vals = vals / (inv_ratio[rows] + inv_ratio[cols])
+        x_vals /= x_vals.sum()
+        return x_vals, np.bincount(rows, weights=x_vals, minlength=nkeep)
+
+    # start from the symmetrized counts
+    pi = n_sym.sum(axis=1)
+    pi = pi / pi.sum()
+    step_old = None
+    converged = False
+    for it in range(max_iter):
+        _, pi_new = update(pi)
+        step = np.max(np.abs(np.log(pi_new) - np.log(pi)))
+        pi = pi_new
+        if step == 0.:
+            converged = True
+            break
+        if step_old is not None and step_old > 0.:
+            rate = step / step_old
+            if rate < 1. and step / (1. - rate) <= tol:
+                converged = True
+                break
+        step_old = step
+
+    if not converged:
+        warnings.warn("reversible MLE did not converge in %i iterations "
+                      "(last change in ln(pi) %.2e); the transition matrix "
+                      "and populations may be inaccurate. Increase "
+                      "max_iter, or use sym=False." % (max_iter, step),
+                      RuntimeWarning, stacklevel=2)
+
+    x_vals, x_row = update(pi)
+    trans = np.zeros((nkeep, nkeep), dtype=float)
+    # column-stochastic: T[j, i] = X_ij / X_i
+    trans[cols, rows] = x_vals / x_row[rows]
+    return trans
+
+def calc_trans(nkeep=None, keep_states=None, count=None, sym=False):
+    """ Calculates transition matrix.
+
+    Uses the conditional maximum likelihood estimator (non-reversible when
+    ``sym=False``, or the reversible fixed-point estimator of Prinz et al. [#]_
+    when ``sym=True``).
+
+    Parameters
+    ----------
+    nkeep : int
+        Number of connected states.
+    keep_states : list of int
+        Indices of connected states in ``count``.
+    count : array_like
+        Raw transition count matrix.
+    sym : bool, optional
+        Whether to enforce detailed balance via reversible MLE.
 
     Returns
     -------
@@ -610,6 +739,8 @@ def calc_trans(nkeep=None, keep_states=None, count=None):
        J. D. Chodera, C. Schutte and F. Noe, "Markov state models:
        Generation and validation", J. Chem. Phys. (2011).
     """
+    if sym:
+        return calc_trans_rev(nkeep, keep_states, count)
     trans = np.zeros([nkeep, nkeep], float)
     for i in range(nkeep):
         ni = reduce(lambda x, y: x + y, map(lambda x:
