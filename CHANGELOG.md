@@ -18,6 +18,13 @@
   - `do_rate(method='MLPB')` fits the raw counts and does not enforce
     detailed balance; a warning is issued when `sym=True`.
 
+### Packaging
+- MasterMSM is available on conda-forge
+  (`conda install -c conda-forge mastermsm`).
+- Setting `MASTERMSM_NO_DOWNLOAD=1` disables test data downloads:
+  tests whose data are missing are skipped at once (offline builds,
+  e.g. conda-forge CI).
+
 ## [2.0.1] - 2026-11-15
 
 First release distributed on PyPI (`pip install MasterMSM`).

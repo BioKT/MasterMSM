@@ -49,14 +49,30 @@ def _download(url, dest, max_redirects=10):
             os.remove(part)
 
 
+def _downloads_disabled():
+    """True if $MASTERMSM_NO_DOWNLOAD is set to a non-empty value other
+    than 0/false/no (e.g. for offline builds such as conda-forge CI)."""
+    value = os.environ.get("MASTERMSM_NO_DOWNLOAD", "").strip().lower()
+    return value not in ("", "0", "false", "no")
+
+
 def _fetch(downloads):
-    """Download missing files; skip the calling test if that fails."""
+    """Download missing files; skip the calling test if that fails.
+
+    With $MASTERMSM_NO_DOWNLOAD set, missing files are not downloaded
+    and the calling test is skipped at once; files already present in
+    the data directory are still used.
+    """
+    missing = [k for k in downloads
+               if not os.path.isfile(os.path.join(_DATA_DIR, k))]
+    if missing and _downloads_disabled():
+        raise unittest.SkipTest(
+            "test data missing from %s and downloads disabled by "
+            "MASTERMSM_NO_DOWNLOAD" % _DATA_DIR)
     try:
         os.makedirs(_DATA_DIR, exist_ok=True)
-        for k, v in downloads.items():
-            dest = os.path.join(_DATA_DIR, k)
-            if not os.path.isfile(dest):
-                _download(v, dest)
+        for k in missing:
+            _download(downloads[k], os.path.join(_DATA_DIR, k))
     except (urllib.error.URLError, OSError) as e:
         raise unittest.SkipTest(
             "test data could not be downloaded to %s (%s)" % (_DATA_DIR, e))
