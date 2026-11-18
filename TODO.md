@@ -33,7 +33,7 @@
 
 ## Examples
 - [ ] Restore Mueller potential examples: `muller` BD data now distributed on Zenodo (`10.5281/zenodo.24253207`) via `mddatabiokt`; restore notebook and port `mueller_potential_openmm` to OpenMM >= 8 (`import openmm`)
-- [ ] Migrate `bistable` and `schutte` example loaders from OSF to `mddatabiokt` once Wave-2 Zenodo `v2` is published
+- [ ] Migrate `bistable` and `schutte` example loaders from OSF to `mddatabiokt` (and add `chignolin` / OpenMM `ala5`) once Wave-2 Zenodo `v2` is published
 - [ ] Rewrite discretization/featurization examples removed in 2.0.0 (ala_dipeptide_discretize, ala_pentapeptide_featurize), if still needed
 
 ## Features

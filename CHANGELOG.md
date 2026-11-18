@@ -1,5 +1,14 @@
 # Changelog
 
+## [Unreleased]
+
+### Infrastructure
+- External simulation datasets in the test suite (`alaTB`, `ala5`,
+  `muller`), peptide example notebooks, and `examples/download_data.py`
+  now fetch SHA-256-verified Zenodo bundles (`10.5281/zenodo.24253206`)
+  via `mddatabiokt` (`BioKT/MDdata`), skipping gracefully when
+  `mddatabiokt` is not installed.
+
 ## [2.1.0] - 2026-11-18
 
 ### Fixes that change results
@@ -24,11 +33,6 @@
 - Setting `MASTERMSM_NO_DOWNLOAD=1` disables test data downloads:
   tests whose data are missing are skipped at once (offline builds,
   e.g. conda-forge CI).
-- External simulation datasets in the test suite (`alaTB`, `ala5`,
-  `muller`), peptide example notebooks, and `examples/download_data.py`
-  now fetch SHA-256-verified Zenodo bundles (`10.5281/zenodo.24253206`)
-  via `mddatabiokt` (`BioKT/MDdata`), skipping gracefully when
-  `mddatabiokt` is not installed.
 
 ## [2.0.1] - 2026-11-15
 
