@@ -39,17 +39,16 @@ or, with ``pip``, as an extra: ``pip install "MasterMSM[hdbscan]"``.
 
 Testing the installation
 ------------------------
-The test suite uses ``pytest`` and downloads a small amount of MD data
-on its first run:
+The test suite uses ``pytest``:
 
 .. code-block:: bash
 
    pip install pytest
    pytest --pyargs mastermsm
 
-The data are stored in ``$MASTERMSM_TEST_DATA`` if that variable is
-set. To run the tests offline, set ``MASTERMSM_NO_DOWNLOAD=1``: tests
-whose data are missing are then skipped instead of downloaded.
+Tests that depend on external reference trajectories are skipped
+automatically in standard user installations (or when
+``MASTERMSM_NO_DOWNLOAD=1`` is set without cached data).
 
 Parallel processing in Python and MasterMSM
 -------------------------------------------

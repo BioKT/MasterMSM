@@ -1,7 +1,8 @@
-"""Download example data files from OSF (https://osf.io/a2vc7/)."""
+"""Download external example datasets from Zenodo (via mddatabiokt) and OSF."""
+
 import os
-import urllib.request
 import urllib.error
+import urllib.request
 
 _EXAMPLES_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -19,8 +20,31 @@ def _download(url, dest, max_redirects=10):
                 raise
 
 
+def download_zenodo():
+    """Fetch Zenodo v1 datasets (alaTB, ala5, muller) into the mddatabiokt cache."""
+    try:
+        import mddatabiokt as mdd
+    except ImportError:
+        print(
+            "mddatabiokt not installed; skipping Zenodo datasets "
+            "(install with: pip install git+https://github.com/BioKT/MDdata.git)."
+        )
+        return
+
+    datasets = [
+        ("alaTB", "gromacs_ff99sbildn", ("trajs", "smoke")),
+        ("alaTB", "gromacs_ff03star", ("trajs",)),
+        ("ala5", "gromacs_eq", ("trajs",)),
+        ("muller", "bd", ("trajs",)),
+    ]
+    for system, variant, subsets in datasets:
+        print(f"Fetching {system} ({variant}) via mddatabiokt ...")
+        ds = mdd.fetch(system, variant=variant, subsets=subsets)
+        print(f"  cached in {ds.cache_dir}")
+
+
 def download_bistable():
-    """Download Brownian dynamics data for bistable potential examples."""
+    """Download Brownian dynamics data for bistable potential examples (OSF)."""
     dest_dir = os.path.join(_EXAMPLES_DIR, "datafiles", "brownian_dynamics")
     os.makedirs(dest_dir, exist_ok=True)
     files = {
@@ -37,7 +61,7 @@ def download_bistable():
 
 
 def download_schutte():
-    """Download Brownian dynamics data for Schutte potential example."""
+    """Download Brownian dynamics data for Schutte potential example (OSF)."""
     dest_dir = os.path.join(_EXAMPLES_DIR, "schutte_potential", "data")
     os.makedirs(dest_dir, exist_ok=True)
     files = {
@@ -53,8 +77,10 @@ def download_schutte():
 
 
 if __name__ == "__main__":
-    print("=== Bistable potential ===")
+    print("=== Zenodo datasets (mddatabiokt) ===")
+    download_zenodo()
+    print("=== Bistable potential (OSF) ===")
     download_bistable()
-    print("=== Schutte potential ===")
+    print("=== Schutte potential (OSF) ===")
     download_schutte()
     print("Done.")

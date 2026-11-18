@@ -16,12 +16,25 @@ Contents
 | | `discretization_comparison.ipynb` | Comparison of discretization protocols (Ramachandran, k-means, HDBSCAN on PCA and TICA) |
 | `bistable_potential` | `1D_smFS_MSM.ipynb`, `2D_smFS_MSM.ipynb` | Brownian dynamics on one and two dimensional two-state surfaces |
 | `schutte_potential` | `schute_mastermsm.ipynb` | Brownian dynamics on the one dimensional Schütte potential |
+| `mueller_potential` | `mueller_potential.ipynb` | Multi-trajectory Brownian dynamics, discretization comparison, and coarse-graining on the 2D Müller-Brown potential |
 
 Data
 ----
-The MD data for the peptides are hosted at [OSF](https://osf.io/a2vc7)
-and are downloaded by the notebooks themselves. The Brownian dynamics
-data for the bistable and Schütte potentials are fetched with
+The MD trajectories for the peptides (`alaTB`, `ala5`) and the 2D
+Müller-Brown Brownian dynamics trajectories (`muller`) are archived on
+[Zenodo](https://doi.org/10.5281/zenodo.24253206) and fetched
+automatically (with SHA-256 verification) via the separate
+[`mddatabiokt`](https://github.com/BioKT/MDdata) package:
+
+    pip install git+https://github.com/BioKT/MDdata.git
+
+(`mddatabiokt` is only needed to download these tutorial/benchmark
+datasets; in your own research project, pass local topology and
+trajectory files directly to `traj.TimeSeries`.)
+
+The Brownian dynamics data for the bistable and Schütte potentials
+(still hosted on [OSF](https://osf.io/a2vc7)), or all external example
+datasets at once, can be fetched with
 
     python download_data.py
 

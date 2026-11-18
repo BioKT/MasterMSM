@@ -62,21 +62,17 @@ HDBSCAN clustering additionally needs the optional
 
 Quick start
 -----------
-The script below builds an MSM for the alanine dipeptide from a short
-MD trajectory (downloaded from [OSF](https://osf.io/a2vc7) on first
-use).
+The script below builds an MSM for a small peptide from a topology and
+MD trajectory file:
 
 ```python
 from mastermsm.trajectory import traj
 from mastermsm.msm import msm
 from mastermsm.fewsm import fewsm
-from mastermsm.test import download_data as dd
 
 if __name__ == "__main__":
     # 1. Load the trajectory and assign frames to Ramachandran states
-    dd.download_osf_alaTB()
-    tr = traj.TimeSeries(top=dd._DATA_DIR + "/alaTB.gro",
-                         xtc=dd._DATA_DIR + "/alaTB.xtc")
+    tr = traj.TimeSeries(top="alaTB.gro", xtc="traj.xtc")
     tr.discretize(states=["A", "E", "L"])
     tr.find_keys()
 
@@ -88,7 +84,7 @@ if __name__ == "__main__":
     model.do_trans()          # transition matrix and its eigenvalues
     model.boots()             # bootstrap errors
     print(model.keep_keys)    # states in the model: ['A', 'E', 'L']
-    print(model.tauT)         # relaxation times, ~794 and ~55 ps
+    print(model.tauT)         # relaxation times
     print(model.tau_std)
     print(model.peqT)         # equilibrium populations
 
@@ -122,23 +118,29 @@ The [examples](examples) folder contains Jupyter notebooks:
 | [alanine_pentapeptide](examples/alanine_pentapeptide) | Featurization, TICA and comparison of discretization protocols |
 | [bistable_potential](examples/bistable_potential) | Brownian dynamics on one and two dimensional two-state potentials |
 | [schutte_potential](examples/schutte_potential) | Brownian dynamics on the one dimensional Schütte potential |
+| [mueller_potential](examples/mueller_potential) | Multi-trajectory Brownian dynamics on the two dimensional Müller-Brown potential |
 
-Most of the data are hosted at [OSF](https://osf.io/a2vc7); each
-notebook says where its data come from. The Brownian dynamics data
-for the bistable and Schütte potentials can be fetched with
+The peptide (`alaTB`, `ala5`) and Müller-Brown (`muller`) trajectories
+are hosted on [Zenodo](https://doi.org/10.5281/zenodo.24253206) and
+fetched automatically by the notebooks via
+[`mddatabiokt`](https://github.com/BioKT/MDdata). The Brownian dynamics
+data for the bistable and Schütte potentials (on
+[OSF](https://osf.io/a2vc7)), or all external datasets at once, can be
+fetched with
 
     python examples/download_data.py
 
 Testing
 -------
-The tests use `pytest` and download a small amount of MD data on the
-first run:
+The tests use `pytest`:
 
     pip install pytest
     pytest --pyargs mastermsm
 
-The data go to `$MASTERMSM_TEST_DATA` if set. To run offline, set
-`MASTERMSM_NO_DOWNLOAD=1`: tests whose data are missing are skipped.
+Tests that use external reference trajectories are skipped unless the
+optional [`mddatabiokt`](https://github.com/BioKT/MDdata) test-data
+helper is installed (see [mastermsm/test/README.md](mastermsm/test/README.md));
+set `MASTERMSM_NO_DOWNLOAD=1` to force offline runs.
 
 Contributing
 ------------

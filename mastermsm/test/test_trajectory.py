@@ -4,14 +4,12 @@ import os
 import mdtraj as md
 import numpy as np
 from mastermsm.trajectory import traj_lib, traj
-from mastermsm.test.download_data import download_osf_alaTB, download_osf_ala5, _DATA_DIR
+from mastermsm.msm import msm
+from mastermsm.test.download_data import fetch_alaTB, fetch_ala5, fetch_muller
 
 class TestTimeSeries(unittest.TestCase):
     def setUp(self):
-        download_osf_alaTB()
-
-        top = os.path.join(_DATA_DIR, 'alaTB.gro')
-        xtc = os.path.join(_DATA_DIR, 'alaTB.xtc')
+        top, xtc = fetch_alaTB()
 
         self.ts = traj.TimeSeries(xtc=xtc, top=top)
         self.tss = [traj.TimeSeries(xtc=xtc, top=top) \
@@ -107,9 +105,7 @@ class TestTimeSeries(unittest.TestCase):
 
 class TestMDtraj(unittest.TestCase):
     def setUp(self):
-        download_osf_alaTB()
-        self.gro = os.path.join(_DATA_DIR, 'alaTB.gro')
-        self.xtc = os.path.join(_DATA_DIR, 'alaTB.xtc')
+        self.gro, self.xtc = fetch_alaTB()
         self.mdtraj = traj_lib.load_mdtraj(xtc=self.xtc, top=self.gro)
         self.mdtrajs = [traj_lib.load_mdtraj(xtc=self.xtc, \
                 top=self.gro) for i in range(2)]
@@ -117,15 +113,22 @@ class TestMDtraj(unittest.TestCase):
     def test_traj(self):
         self.assertIsNotNone(self.mdtraj)
         self.assertEqual(self.mdtraj.n_atoms, 19)
-        self.assertEqual(self.mdtraj.timestep, 5.)
+        self.assertEqual(self.mdtraj.timestep, 1.)
         self.assertEqual(self.mdtraj.n_residues, 3)
-        self.assertEqual(self.mdtraj.n_frames, 40001)
+        self.assertEqual(self.mdtraj.n_frames, 10003)
 
     def test_trajs(self):
         self.assertEqual(len(self.mdtrajs), 2)
         self.assertEqual(self.mdtrajs[0].n_atoms, 19)
-        self.assertEqual(self.mdtrajs[0].timestep, 5.)
+        self.assertEqual(self.mdtrajs[0].timestep, 1.)
         self.assertEqual(self.mdtrajs[0].n_residues, 3)
+
+    def test_alaTB_ff03star_variant(self):
+        top, xtc = fetch_alaTB(variant='gromacs_ff03star', subset='trajs')
+        mdt = traj_lib.load_mdtraj(xtc=xtc, top=top, stride=100)
+        self.assertEqual(mdt.n_atoms, 21)
+        self.assertEqual(mdt.n_frames, 1506)
+        self.assertEqual(mdt.timestep, 100.)
 
     def test_load_mdtraj(self):
         self.assertIsNotNone(self.mdtraj)
@@ -212,9 +215,7 @@ class TestMDtraj(unittest.TestCase):
 
 class UseMDtraj(unittest.TestCase):
     def setUp(self):
-        download_osf_alaTB()
-        top = os.path.join(_DATA_DIR, 'alaTB.gro')
-        xtc = os.path.join(_DATA_DIR, 'alaTB.xtc')
+        top, xtc = fetch_alaTB()
         self.traj = traj.TimeSeries(xtc=xtc, top=top)
         self.trajs = [traj.TimeSeries(xtc=xtc, top=top) \
                 for i in range(2)]
@@ -223,14 +224,12 @@ class UseMDtraj(unittest.TestCase):
         tr = self.traj
         self.assertIsNotNone(tr.mdt)
         self.assertEqual(tr.mdt.n_atoms, 19)
-        self.assertEqual(tr.mdt.n_frames, 40001)
+        self.assertEqual(tr.mdt.n_frames, 10003)
         self.assertEqual(tr.mdt.n_residues, 3)
 
 class TestFeaturizer_alaTB(unittest.TestCase):
     def setUp(self):
-        download_osf_alaTB()
-        top = os.path.join(_DATA_DIR, 'alaTB.gro')
-        xtc = os.path.join(_DATA_DIR, 'alaTB.xtc')
+        top, xtc = fetch_alaTB()
         self.ts = traj.TimeSeries(xtc=xtc, top=top)
         self.ts2 = [traj.TimeSeries(xtc=xtc, top=top) \
                 for i in range(2)]
@@ -245,13 +244,13 @@ class TestFeaturizer_alaTB(unittest.TestCase):
         feat = traj.Featurizer(self.ts)
         feat.add_torsions(shift=False)
         self.assertEqual(np.shape(self.ts.features),\
-                (40001, 2))
+                (10003, 2))
 
     def test_torsions_sincos(self):
         feat = traj.Featurizer(self.ts)
         feat.add_torsions(shift=False, sincos=True)
         self.assertEqual(np.shape(self.ts.features),\
-                (40001, 4))
+                (10003, 4))
 
     def test_torsions_shift(self):
         feat = traj.Featurizer(self.ts)
@@ -261,11 +260,9 @@ class TestFeaturizer_alaTB(unittest.TestCase):
 
 class TestFeaturizer_ala5(unittest.TestCase):
     def setUp(self):
-        download_osf_ala5()
-        top = os.path.join(_DATA_DIR, 'ala5.gro')
-        xtc = os.path.join(_DATA_DIR, 'ala5.xtc')
-        self.ts = traj.TimeSeries(xtc=xtc, top=top)
-        self.ts2 = [traj.TimeSeries(xtc=xtc, top=top) \
+        top, xtc = fetch_ala5()
+        self.ts = traj.TimeSeries(xtc=xtc, top=top, stride=5)
+        self.ts2 = [traj.TimeSeries(xtc=xtc, top=top, stride=5) \
                 for i in range(2)]
 
     def test_create_featurizer(self):
@@ -294,9 +291,7 @@ class TestFeaturizer_ala5(unittest.TestCase):
 
 class TestDimRed_alaTB(unittest.TestCase):
     def setUp(self):
-        download_osf_alaTB()
-        top = os.path.join(_DATA_DIR, 'alaTB.gro')
-        xtc = os.path.join(_DATA_DIR, 'alaTB.xtc')
+        top, xtc = fetch_alaTB()
         self.ts = traj.TimeSeries(xtc=xtc, top=top)
         feat = traj.Featurizer(self.ts)
         feat.add_torsions(shift=False)
@@ -446,9 +441,7 @@ class TestProtocol(unittest.TestCase):
             traj.discretize_protocol(ts, {'cluster': 'kmeans'})
 
     def test_rama_matches_timeseries_discretize(self):
-        download_osf_alaTB()
-        top = os.path.join(_DATA_DIR, 'alaTB.gro')
-        xtc = os.path.join(_DATA_DIR, 'alaTB.xtc')
+        top, xtc = fetch_alaTB()
         ts = traj.TimeSeries(xtc=xtc, top=top)
         res = traj.discretize_protocol(ts, {'rama': ['A', 'E'],
                                             'check': False})
@@ -458,9 +451,7 @@ class TestProtocol(unittest.TestCase):
         self.assertLessEqual(res.n_states, 2)
 
     def test_featurized_protocol_leaves_input_clean(self):
-        download_osf_alaTB()
-        top = os.path.join(_DATA_DIR, 'alaTB.gro')
-        xtc = os.path.join(_DATA_DIR, 'alaTB.xtc')
+        top, xtc = fetch_alaTB()
         ts = traj.TimeSeries(xtc=xtc, top=top)
         spec = {'features': [('torsions', {'sincos': True})],
                 'reduce': ('pca', {'n': 2}),
@@ -577,9 +568,7 @@ class TestRamaBounds(unittest.TestCase):
                     plot=False)
 
     def test_discretizer_custom_bounds(self):
-        download_osf_alaTB()
-        top = os.path.join(_DATA_DIR, 'alaTB.gro')
-        xtc = os.path.join(_DATA_DIR, 'alaTB.xtc')
+        top, xtc = fetch_alaTB()
         trs = [traj.TimeSeries(xtc=xtc, top=top) for i in range(2)]
         bounds = {'A': [-180., 0., -100., 50.],
                   'E': [-180., 0., 100., 180.]}
@@ -618,9 +607,7 @@ def _quiet(f, *args, **kwargs):
 
 
 def _alaTB(n=1):
-    download_osf_alaTB()
-    top = os.path.join(_DATA_DIR, 'alaTB.gro')
-    xtc = os.path.join(_DATA_DIR, 'alaTB.xtc')
+    top, xtc = fetch_alaTB()
     trs = [traj.TimeSeries(xtc=xtc, top=top) for i in range(n)]
     return trs[0] if n == 1 else trs
 
@@ -1040,12 +1027,49 @@ class TestRamaCheckDefault(unittest.TestCase):
 
     def test_default_does_not_confirm(self):
         from unittest import mock
-        download_osf_alaTB()
-        top = os.path.join(_DATA_DIR, 'alaTB.gro')
-        xtc = os.path.join(_DATA_DIR, 'alaTB.xtc')
+        top, xtc = fetch_alaTB()
         with mock.patch.object(traj_lib, 'confirm_bounds') as cb:
             ts = traj.TimeSeries(xtc=xtc, top=top)
             ts.discretize(states=['A', 'E'])
             traj.Discretizer([ts]).rama(states=['A', 'E'])
             traj.discretize_protocol([ts], {'rama': ['A', 'E']})
         cb.assert_not_called()
+
+
+class TestMullerBD(unittest.TestCase):
+    """End-to-end multi-trajectory discretization and MSM on Zenodo muller BD."""
+
+    def test_muller_multi_trajectory_msm(self):
+        data = fetch_muller()
+        coords = data['coords']
+        dt = float(data['dt_frame'])
+        self.assertEqual(coords.shape, (90, 501, 2))
+        self.assertAlmostEqual(dt, 0.001)
+
+        tss = []
+        for c in coords:
+            ts = traj.TimeSeries()
+            ts.features = c
+            ts.dt = dt
+            tss.append(ts)
+
+        spec = {
+            'whiten': False,
+            'cluster': ('kmeans', {'k': 20, 'dim': 2}),
+        }
+        res = traj.discretize_protocol(tss, spec, name='muller_km', seed=0)
+        self.assertEqual(len(res.timeseries), 90)
+        self.assertEqual(res.n_states, 20)
+        for tr in res.timeseries:
+            tr.find_keys()
+
+        smsm = msm.SuperMSM(res.timeseries, sym=True)
+        lagt = 5 * dt
+        smsm.do_msm(lagt)
+        model = smsm.msms[lagt]
+        model.do_trans(evecs=True)
+        self.assertEqual(len(model.keep_keys), 20)
+        self.assertGreaterEqual(len(model.tauT), 3)
+        self.assertAlmostEqual(float(np.sum(model.peqT)), 1.0, places=6)
+        self.assertTrue(np.all(np.isfinite(model.tauT[:3])))
+        self.assertTrue(np.all(model.tauT[:3] > 0.0))
