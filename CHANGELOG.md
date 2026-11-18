@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [2.1.0] - 2026-11-18
 
 ### Fixes that change results
 - `MSM` / `SuperMSM` with `sym=True`: detailed balance is now enforced
