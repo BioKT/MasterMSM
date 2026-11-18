@@ -62,23 +62,17 @@ HDBSCAN clustering additionally needs the optional
 
 Quick start
 -----------
-The script below builds an MSM for the alanine dipeptide from a
-reference MD trajectory archived on
-[Zenodo](https://doi.org/10.5281/zenodo.24253206) and fetched on first
-use via [`mddatabiokt`](https://github.com/BioKT/MDdata)
-(`pip install git+https://github.com/BioKT/MDdata.git`).
+The script below builds an MSM for a small peptide from a topology and
+MD trajectory file:
 
 ```python
-import mddatabiokt as mdd
 from mastermsm.trajectory import traj
 from mastermsm.msm import msm
 from mastermsm.fewsm import fewsm
 
 if __name__ == "__main__":
-    # 1. Fetch the trajectory and assign frames to Ramachandran states
-    ds = mdd.fetch("alaTB")
-    tr = traj.TimeSeries(top=ds.topology, xtc=ds.trajectories[0],
-                         stride=5)
+    # 1. Load the trajectory and assign frames to Ramachandran states
+    tr = traj.TimeSeries(top="alaTB.gro", xtc="traj.xtc")
     tr.discretize(states=["A", "E", "L"])
     tr.find_keys()
 
@@ -90,7 +84,7 @@ if __name__ == "__main__":
     model.do_trans()          # transition matrix and its eigenvalues
     model.boots()             # bootstrap errors
     print(model.keep_keys)    # states in the model: ['A', 'E', 'L']
-    print(model.tauT)         # relaxation times, ~794 and ~55 ps
+    print(model.tauT)         # relaxation times
     print(model.tau_std)
     print(model.peqT)         # equilibrium populations
 
@@ -142,12 +136,10 @@ The tests use `pytest`:
     pip install pytest
     pytest --pyargs mastermsm
 
-Trajectory integration tests fetch verified reference datasets from
-Zenodo via [`mddatabiokt`](https://github.com/BioKT/MDdata) when
-installed (cached in `$MASTERMSM_TEST_DATA`, `$MDDATABIOKT_DIR`, or
-`~/.cache/mddatabiokt`), and are skipped if `mddatabiokt` is absent. To
-run offline, set `MASTERMSM_NO_DOWNLOAD=1`: tests whose data are
-missing from the cache are skipped.
+Tests that use external reference trajectories are skipped unless the
+optional [`mddatabiokt`](https://github.com/BioKT/MDdata) test-data
+helper is installed (see [mastermsm/test/README.md](mastermsm/test/README.md));
+set `MASTERMSM_NO_DOWNLOAD=1` to force offline runs.
 
 Contributing
 ------------

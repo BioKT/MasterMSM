@@ -39,23 +39,16 @@ or, with ``pip``, as an extra: ``pip install "MasterMSM[hdbscan]"``.
 
 Testing the installation
 ------------------------
-The test suite uses ``pytest``. Trajectory integration tests fetch
-verified benchmark datasets from
-`Zenodo <https://doi.org/10.5281/zenodo.24253206>`_ via
-`mddatabiokt <https://github.com/BioKT/MDdata>`_ when installed, and
-are skipped gracefully otherwise:
+The test suite uses ``pytest``:
 
 .. code-block:: bash
 
    pip install pytest
    pytest --pyargs mastermsm
 
-To also run the external-dataset tests, install ``mddatabiokt``
-(``pip install git+https://github.com/BioKT/MDdata.git``). Cached files
-are stored in ``$MASTERMSM_TEST_DATA`` if set (otherwise
-``$MDDATABIOKT_DIR`` or ``~/.cache/mddatabiokt``). To run offline, set
-``MASTERMSM_NO_DOWNLOAD=1``: tests whose data are missing are skipped
-instead of downloaded.
+Tests that depend on external reference trajectories are skipped
+automatically in standard user installations (or when
+``MASTERMSM_NO_DOWNLOAD=1`` is set without cached data).
 
 Parallel processing in Python and MasterMSM
 -------------------------------------------
