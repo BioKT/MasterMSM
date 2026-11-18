@@ -24,17 +24,19 @@
 ## Release
 - [x] Build the documentation for the updated version, preparing for a release
 - [x] Release 2.0.0 (2026-11-15): tag v2.0.0, GitHub release, CHANGELOG.md
-- [ ] ReadTheDocs: project clones the stale fork github.com/daviddesancho/MasterMSM (no .readthedocs.yaml), so every build fails; point it to BioKT/MasterMSM in the RTD admin settings, then check that 2.0.0 docs build
+- [x] ReadTheDocs: project now points to BioKT/MasterMSM; latest/master/develop builds succeed (checked 2026-11-18)
 - [x] Merge feature/packaging; release 2.0.1 on PyPI (2026-11-15)
-- [ ] conda-forge: staged-recipes PR #35684 (approved); once the feedstock exists, add `conda install -c conda-forge mastermsm` to README.md and docs/source/installation.rst
-- [ ] 2.0.2: opt-out switch for test data downloads (e.g. MASTERMSM_NO_DOWNLOAD=1 makes data tests skip at once); then set it in the feedstock recipe so conda-forge CI runs only offline tests (reviewer request on PR #35684)
+- [x] conda-forge: staged-recipes #35684 merged 2026-11-17, feedstock conda-forge/mastermsm-feedstock (2.0.1); conda install documented (PR #33)
+- [x] Release 2.1.0 (2026-11-18): reversible MLE (#32), offline test switch (#33); on PyPI
+- [x] Opt-out switch MASTERMSM_NO_DOWNLOAD=1 for test data downloads (PR #33, in 2.1.0)
+- [ ] Feedstock: merge the bot's 2.1.0 bump PR, setting MASTERMSM_NO_DOWNLOAD=1 in the recipe tests (branch on own fork; needs conda-forge org invitation accepted)
 
 ## Examples
 - [ ] Restore Mueller potential examples: distribute the data (OSF) and port mueller_potential_openmm to OpenMM >= 8 (`import openmm`)
 - [ ] Rewrite discretization/featurization examples removed in 2.0.0 (ala_dipeptide_discretize, ala_pentapeptide_featurize), if still needed
 
 ## Features
-- [x] PR #32 (reversible MLE, sym=True): merged into develop 2026-11-17 (cd59649); needs minor version bump at next release
+- [x] PR #32 (reversible MLE, sym=True): merged into develop 2026-11-17 (cd59649); released in 2.1.0
 - [ ] Faster reversible MLE solver for very metastable data (fixed point of Prinz et al. 2011 converges slowly; e.g. Newton/interior point, Trendelkamp-Schroer et al. 2015); currently warns if not converged in 1e6 iterations
 - [ ] Pseudocounts in calc_trans (idea from closed PR #23, Ion Mitxelena); normalise columns correctly
 - [ ] Consider sklearn.cluster.HDBSCAN instead of hdbscan (no approximate_predict; different clusters for PCA on ala5, ARI 0.59): needs validation
