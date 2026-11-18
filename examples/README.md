@@ -22,10 +22,14 @@ Data
 The MD trajectories for the peptides (`alaTB`, `ala5`) and the 2D
 Müller-Brown Brownian dynamics trajectories (`muller`) are archived on
 [Zenodo](https://doi.org/10.5281/zenodo.24253206) and fetched
-automatically (with SHA-256 verification) via
-[`mddatabiokt`](https://github.com/BioKT/MDdata):
+automatically (with SHA-256 verification) via the separate
+[`mddatabiokt`](https://github.com/BioKT/MDdata) package:
 
     pip install git+https://github.com/BioKT/MDdata.git
+
+(`mddatabiokt` is only needed to download these tutorial/benchmark
+datasets; in your own research project, pass local topology and
+trajectory files directly to `traj.TimeSeries`.)
 
 The Brownian dynamics data for the bistable and Schütte potentials
 (still hosted on [OSF](https://osf.io/a2vc7)), or all external example
