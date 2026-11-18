@@ -1,6 +1,29 @@
 # Changelog
 
-## [Unreleased]
+## [2.1.0] - 2026-11-18
+
+### Fixes that change results
+- `MSM` / `SuperMSM` with `sym=True`: detailed balance is now enforced
+  with the reversible maximum-likelihood estimator of Prinz et al.
+  (J. Chem. Phys. 134, 174105, 2011) instead of symmetrizing the counts
+  (`C + C.T`), which biased the populations towards the states where
+  trajectories start. Consequences:
+  - `count` holds the raw transition counts (no longer doubled).
+  - The connected set is the largest strongly connected component of
+    the raw counts, so states joined only in one direction are now
+    dropped.
+  - Eigenvalues and eigenvectors of the transition matrix are real.
+  - If the estimator does not converge (very metastable data) a
+    `RuntimeWarning` is issued.
+  - `do_rate(method='MLPB')` fits the raw counts and does not enforce
+    detailed balance; a warning is issued when `sym=True`.
+
+### Packaging
+- MasterMSM is available on conda-forge
+  (`conda install -c conda-forge mastermsm`).
+- Setting `MASTERMSM_NO_DOWNLOAD=1` disables test data downloads:
+  tests whose data are missing are skipped at once (offline builds,
+  e.g. conda-forge CI).
 
 ## [2.0.1] - 2026-11-15
 

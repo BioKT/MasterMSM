@@ -466,6 +466,10 @@ class Discretizer(object):
         See documentation on how to set parameters: 
         https://hdbscan.readthedocs.io/en/latest/parameter_selection.html
 
+        The method is described in: I. Mitxelena, X. Lopez and
+        D. De Sancho, J. Chem. Phys. 155, 054102 (2021),
+        https://doi.org/10.1063/5.0056748
+
         Parameters
         ----------
         mcs : int

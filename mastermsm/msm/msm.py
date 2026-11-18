@@ -24,7 +24,13 @@ class SuperMSM(object):
         trajs : list
             A list of TimeSeries objects from the trajectory module
         sym : bool
-            Whether to enforze detailed balance
+            Whether to enforce detailed balance. If True, the transition
+            matrix is the reversible maximum-likelihood estimate (Prinz
+            et al., 2011) from the raw counts; ``count`` itself is not
+            symmetrized. The connected set is still the largest strongly
+            connected component of the raw counts. Only the transition
+            matrix and quantities derived from it are affected; the MLPB
+            rate matrix (``do_rate``) is not constrained.
         sliding : bool
             Whether a sliding window is used in counts
 
@@ -272,7 +278,13 @@ class MSM(object):
         lag : float
             Lag time for building the MSM
         sym : bool
-            Whether we want to enforce symmetrization
+            Whether to enforce detailed balance. If True, the transition
+            matrix is the reversible maximum-likelihood estimate (Prinz
+            et al., 2011) from the raw counts; ``count`` itself is not
+            symmetrized. The connected set is still the largest strongly
+            connected component of the raw counts. Only the transition
+            matrix and quantities derived from it are affected; the MLPB
+            rate matrix (``do_rate``) is not constrained.
         sliding : bool
             Whether a sliding window is used in counts
 
@@ -325,14 +337,9 @@ class MSM(object):
         pool.close()
         pool.join()
 
-        # add up all independent counts
-        count = np.sum(result, 0)
-
-        # symmetrize if needed
-        if self.sym:
-            print(" symmetrizing")
-            count += count.transpose()
-        self.count = count
+        # add up all independent counts (kept unsymmetrized; detailed
+        # balance is enforced in calc_trans when self.sym is True)
+        self.count = np.sum(result, 0)
 
     def calc_trans(self):
         """ Calculates transition matrix
@@ -343,7 +350,8 @@ class MSM(object):
         self.keep_states, self.keep_keys = keep_states, keep_keys
 
         nkeep = len(self.keep_states)
-        self.trans = msm_lib.calc_trans(nkeep, keep_states, self.count)
+        self.trans = msm_lib.calc_trans(nkeep, keep_states, self.count,
+                                        sym=self.sym)
 
     def do_trans(self, evecs=True):
         """ Calculate transition matrix and eigendecomposition.
@@ -387,6 +395,12 @@ class MSM(object):
         if method == 'Taylor':
             self.rate = msm_lib.calc_rate(nkeep, self.trans, self.lagt)
         elif method == 'MLPB':
+            if self.sym:
+                warnings.warn("MLPB rate matrix is fitted to the raw "
+                              "counts and does not enforce detailed "
+                              "balance; sym=True only constrains the "
+                              "transition matrix.", UserWarning,
+                              stacklevel=2)
             if isinstance(init, np.ndarray):
                 rate_init = init
             elif init == 'random':
@@ -426,7 +440,7 @@ class MSM(object):
             Whether we want bootstrap errors
 
         """
-        evals, lvecs, rvecs = msm_lib.calc_eigsT(self.trans)
+        evals, lvecs, rvecs = msm_lib.calc_eigsT(self.trans, sym=self.sym)
 
         # relaxation times
         if not neigs:
@@ -448,8 +462,9 @@ class MSM(object):
 
         The trajectories are cut into fragments, which are resampled
         with replacement until the count matrix has as many
-        transitions as the original. The resampled counts are
-        symmetrized if the model is (``sym``), so that the errors
+        transitions as the original. If the model enforces detailed
+        balance (``sym``), each resample is estimated with the same
+        reversible maximum-likelihood estimator, so that the errors
         correspond to the same estimator.
 
         Fragments must be long compared to the slowest relaxation
@@ -505,11 +520,8 @@ class MSM(object):
             seed = int(np.random.randint(2**31 - 1))
         seeds = np.random.SeedSequence(seed).spawn(nboots)
 
-        # number of transitions in the data; a symmetrized count
-        # matrix holds every transition twice
+        # number of observed transitions in the data
         ncount = np.sum(self.count)
-        if self.sym:
-            ncount = ncount/2.
         multi_boots_input = [[filetmp, self.keys, self.lagt, ncount, \
                 self.sliding, neigs, seeds[x], self.sym] \
                 for x in range(nboots)]
@@ -529,7 +541,7 @@ class MSM(object):
         keep_keys_boots = []
         for r in result:
             trans_boots, keep_keys  = r[0], r[1]
-            evals, lvecs, rvecs = msm_lib.calc_eigsT(trans_boots)
+            evals, lvecs, rvecs = msm_lib.calc_eigsT(trans_boots, sym=self.sym)
             tauT_boots.append(
                 msm_lib.calc_tauT(evals, self.lagt)[:neigs])
             peqT_boots.append(rvecs[:,0]/np.sum(rvecs[:,0]))

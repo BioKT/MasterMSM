@@ -37,10 +37,17 @@ Features
 
 Installation
 ------------
-MasterMSM requires Python >= 3.10 and is installed from
-[PyPI](https://pypi.org/project/MasterMSM/) with `pip`:
+MasterMSM requires Python >= 3.10. Install it from
+[conda-forge](https://anaconda.org/conda-forge/mastermsm) with conda:
+
+    conda install -c conda-forge mastermsm
+
+or from [PyPI](https://pypi.org/project/MasterMSM/) with `pip`:
 
     pip install MasterMSM
+
+Either installs the dependencies: numpy, scipy, matplotlib, networkx,
+[mdtraj](https://mdtraj.org) and scikit-learn.
 
 To work on the code, install it from source instead:
 
@@ -48,17 +55,10 @@ To work on the code, install it from source instead:
     cd MasterMSM
     pip install -e .
 
-The dependencies are installed automatically by `pip`: numpy, scipy,
-matplotlib, networkx, [mdtraj](https://mdtraj.org) and scikit-learn.
-If you use conda, you may prefer to install them from conda-forge
-first:
-
-    conda install -c conda-forge numpy scipy matplotlib \
-        networkx mdtraj scikit-learn
-
 HDBSCAN clustering additionally needs the optional
 [hdbscan](https://github.com/scikit-learn-contrib/hdbscan) package
-(`pip install "MasterMSM[hdbscan]"`, or `pip install hdbscan`).
+(`conda install -c conda-forge hdbscan`, or
+`pip install "MasterMSM[hdbscan]"`).
 
 Quick start
 -----------
@@ -137,6 +137,9 @@ first run:
     pip install pytest
     pytest --pyargs mastermsm
 
+The data go to `$MASTERMSM_TEST_DATA` if set. To run offline, set
+`MASTERMSM_NO_DOWNLOAD=1`: tests whose data are missing are skipped.
+
 Contributing
 ------------
 Development takes place on the `develop` branch; `master` holds the
@@ -155,6 +158,21 @@ If you use MasterMSM in your work, please cite:
     journal = "J. Chem. Inf. Model.",
     url = "https://doi.org/10.1021/acs.jcim.9b00468",
     doi = "10.1021/acs.jcim.9b00468"
+    }
+
+If you use HDBSCAN discretization (`Discretizer.hdbscan`), please
+also cite:
+
+    @article{mitxelena2021markov,
+    author = "Ion Mitxelena and Xabier L{\'o}pez and David De Sancho",
+    title = "{Markov state models from hierarchical density-based assignment}",
+    year = "2021",
+    journal = "J. Chem. Phys.",
+    volume = "155",
+    number = "5",
+    pages = "054102",
+    url = "https://doi.org/10.1063/5.0056748",
+    doi = "10.1063/5.0056748"
     }
 
 Contributors
