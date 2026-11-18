@@ -16,6 +16,7 @@ Contents
 | | `discretization_comparison.ipynb` | Comparison of discretization protocols (Ramachandran, k-means, HDBSCAN on PCA and TICA) |
 | `bistable_potential` | `1D_smFS_MSM.ipynb`, `2D_smFS_MSM.ipynb` | Brownian dynamics on one and two dimensional two-state surfaces |
 | `schutte_potential` | `schute_mastermsm.ipynb` | Brownian dynamics on the one dimensional Schütte potential |
+| `mueller_potential` | `mueller_potential.ipynb` | Multi-trajectory Brownian dynamics, discretization comparison, and coarse-graining on the 2D Müller-Brown potential |
 
 Data
 ----

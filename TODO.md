@@ -19,6 +19,7 @@
 - [x] MLPB: decide rate step size in mc_move (msm_lib.py, `scale = np.mean(np.abs(rate>0.))*0.1` is the fraction of positive entries x 0.1, independent of rate units)
 - [ ] do_pfold: ComplexWarning casting complex peq to real (msm_lib.py, `pss[i] = (1-pfold[i])*peq[i]`), seen in ala_pentapeptide notebook; same pattern as the likelihood eig fix
 - [ ] MLPB slow with few counts: calc_mlrate needs many MC cycles to converge on small count matrices (2 states, ~200 counts: >10 min; 20 000 counts: 0.4 s). Check the convergence criterion / step size (found reviewing PR #32, 2026-11-16)
+- [ ] calc_trans_rev (msm_lib.py): add absolute machine-precision floor (e.g. `step < 1e-15`) before checking `step / (1 - rate) < tol`, so 2-state matrices already converged to roundoff (~1e-16, where `rate ~ 1`) do not run all `max_iter=1e6` iterations and emit a false RuntimeWarning (found on 2-state HDBSCAN bootstrap of `muller` BD, 2026-11-18)
 - [x] fewsm: fix 3 bugs, then drop expectedFailure in TestFEWSM: (1) eigen_group calls nonexistent parent.calc_eigsT when lvecsT missing; (2) metastability uses self.trans, never set; (3) map_trajectory does not reset mt_states per trajectory
 
 ## Release
@@ -32,7 +33,8 @@
 - [ ] Feedstock: merge the bot's 2.1.0 bump PR, setting MASTERMSM_NO_DOWNLOAD=1 in the recipe tests (branch on own fork; needs conda-forge org invitation accepted)
 
 ## Examples
-- [ ] Restore Mueller potential examples: `muller` BD data now distributed on Zenodo (`10.5281/zenodo.24253207`) via `mddatabiokt`; restore notebook and port `mueller_potential_openmm` to OpenMM >= 8 (`import openmm`)
+- [x] Restore Mueller potential BD example (`examples/mueller_potential/mueller_potential.ipynb`) using Zenodo `muller` dataset via `mddatabiokt`
+- [ ] Optional: port `mueller_potential_openmm` to OpenMM >= 8 (`import openmm`) if an on-the-fly simulation notebook is still wanted
 - [ ] Migrate `bistable` and `schutte` example loaders from OSF to `mddatabiokt` (and add `chignolin` / OpenMM `ala5`) once Wave-2 Zenodo `v2` is published
 - [ ] Rewrite discretization/featurization examples removed in 2.0.0 (ala_dipeptide_discretize, ala_pentapeptide_featurize), if still needed
 

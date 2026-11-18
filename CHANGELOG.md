@@ -2,12 +2,17 @@
 
 ## [Unreleased]
 
+### New features
+- Restored `examples/mueller_potential/mueller_potential.ipynb` for
+  multi-trajectory Brownian dynamics on the 2D Müller-Brown potential
+  using the Zenodo `muller` dataset.
+
 ### Infrastructure
 - External simulation datasets in the test suite (`alaTB`, `ala5`,
-  `muller`), peptide example notebooks, and `examples/download_data.py`
-  now fetch SHA-256-verified Zenodo bundles (`10.5281/zenodo.24253206`)
-  via `mddatabiokt` (`BioKT/MDdata`), skipping gracefully when
-  `mddatabiokt` is not installed.
+  `muller`), peptide and Müller-Brown example notebooks, and
+  `examples/download_data.py` now fetch SHA-256-verified Zenodo bundles
+  (`10.5281/zenodo.24253206`) via `mddatabiokt` (`BioKT/MDdata`),
+  skipping gracefully when `mddatabiokt` is not installed.
 
 ## [2.1.0] - 2026-11-18
 

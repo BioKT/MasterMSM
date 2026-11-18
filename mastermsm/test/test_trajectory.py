@@ -1064,9 +1064,12 @@ class TestMullerBD(unittest.TestCase):
             tr.find_keys()
 
         smsm = msm.SuperMSM(res.timeseries, sym=True)
-        smsm.do_msm(5)
-        model = smsm.msms[5]
+        lagt = 5 * dt
+        smsm.do_msm(lagt)
+        model = smsm.msms[lagt]
         model.do_trans(evecs=True)
+        self.assertEqual(len(model.keep_keys), 20)
+        self.assertGreaterEqual(len(model.tauT), 3)
         self.assertAlmostEqual(float(np.sum(model.peqT)), 1.0, places=6)
         self.assertTrue(np.all(np.isfinite(model.tauT[:3])))
         self.assertTrue(np.all(model.tauT[:3] > 0.0))

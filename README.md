@@ -118,10 +118,11 @@ The [examples](examples) folder contains Jupyter notebooks:
 | [alanine_pentapeptide](examples/alanine_pentapeptide) | Featurization, TICA and comparison of discretization protocols |
 | [bistable_potential](examples/bistable_potential) | Brownian dynamics on one and two dimensional two-state potentials |
 | [schutte_potential](examples/schutte_potential) | Brownian dynamics on the one dimensional Schütte potential |
+| [mueller_potential](examples/mueller_potential) | Multi-trajectory Brownian dynamics on the two dimensional Müller-Brown potential |
 
-The peptide trajectories (`alaTB`, `ala5`) are hosted on
-[Zenodo](https://doi.org/10.5281/zenodo.24253206) and fetched
-automatically by the notebooks via
+The peptide (`alaTB`, `ala5`) and Müller-Brown (`muller`) trajectories
+are hosted on [Zenodo](https://doi.org/10.5281/zenodo.24253206) and
+fetched automatically by the notebooks via
 [`mddatabiokt`](https://github.com/BioKT/MDdata). The Brownian dynamics
 data for the bistable and Schütte potentials (on
 [OSF](https://osf.io/a2vc7)), or all external datasets at once, can be
