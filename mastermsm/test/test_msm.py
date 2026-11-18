@@ -3,7 +3,6 @@ import mdtraj as md
 import numpy as np
 from mastermsm.trajectory import traj_lib, traj
 from mastermsm.msm import msm, msm_lib
-from mastermsm.test.download_data import download_osf_alaTB
 import os, pickle, io, contextlib, warnings, copy
 from scipy.linalg import expm, logm
 

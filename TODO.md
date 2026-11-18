@@ -32,7 +32,8 @@
 - [ ] Feedstock: merge the bot's 2.1.0 bump PR, setting MASTERMSM_NO_DOWNLOAD=1 in the recipe tests (branch on own fork; needs conda-forge org invitation accepted)
 
 ## Examples
-- [ ] Restore Mueller potential examples: distribute the data (OSF) and port mueller_potential_openmm to OpenMM >= 8 (`import openmm`)
+- [ ] Restore Mueller potential examples: `muller` BD data now distributed on Zenodo (`10.5281/zenodo.24253207`) via `mddatabiokt`; restore notebook and port `mueller_potential_openmm` to OpenMM >= 8 (`import openmm`)
+- [ ] Migrate `bistable` and `schutte` example loaders from OSF to `mddatabiokt` once Wave-2 Zenodo `v2` is published
 - [ ] Rewrite discretization/featurization examples removed in 2.0.0 (ala_dipeptide_discretize, ala_pentapeptide_featurize), if still needed
 
 ## Features

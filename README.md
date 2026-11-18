@@ -62,21 +62,23 @@ HDBSCAN clustering additionally needs the optional
 
 Quick start
 -----------
-The script below builds an MSM for the alanine dipeptide from a short
-MD trajectory (downloaded from [OSF](https://osf.io/a2vc7) on first
-use).
+The script below builds an MSM for the alanine dipeptide from a
+reference MD trajectory archived on
+[Zenodo](https://doi.org/10.5281/zenodo.24253206) and fetched on first
+use via [`mddatabiokt`](https://github.com/BioKT/MDdata)
+(`pip install git+https://github.com/BioKT/MDdata.git`).
 
 ```python
+import mddatabiokt as mdd
 from mastermsm.trajectory import traj
 from mastermsm.msm import msm
 from mastermsm.fewsm import fewsm
-from mastermsm.test import download_data as dd
 
 if __name__ == "__main__":
-    # 1. Load the trajectory and assign frames to Ramachandran states
-    dd.download_osf_alaTB()
-    tr = traj.TimeSeries(top=dd._DATA_DIR + "/alaTB.gro",
-                         xtc=dd._DATA_DIR + "/alaTB.xtc")
+    # 1. Fetch the trajectory and assign frames to Ramachandran states
+    ds = mdd.fetch("alaTB")
+    tr = traj.TimeSeries(top=ds.topology, xtc=ds.trajectories[0],
+                         stride=5)
     tr.discretize(states=["A", "E", "L"])
     tr.find_keys()
 
@@ -123,22 +125,29 @@ The [examples](examples) folder contains Jupyter notebooks:
 | [bistable_potential](examples/bistable_potential) | Brownian dynamics on one and two dimensional two-state potentials |
 | [schutte_potential](examples/schutte_potential) | Brownian dynamics on the one dimensional Schütte potential |
 
-Most of the data are hosted at [OSF](https://osf.io/a2vc7); each
-notebook says where its data come from. The Brownian dynamics data
-for the bistable and Schütte potentials can be fetched with
+The peptide trajectories (`alaTB`, `ala5`) are hosted on
+[Zenodo](https://doi.org/10.5281/zenodo.24253206) and fetched
+automatically by the notebooks via
+[`mddatabiokt`](https://github.com/BioKT/MDdata). The Brownian dynamics
+data for the bistable and Schütte potentials (on
+[OSF](https://osf.io/a2vc7)), or all external datasets at once, can be
+fetched with
 
     python examples/download_data.py
 
 Testing
 -------
-The tests use `pytest` and download a small amount of MD data on the
-first run:
+The tests use `pytest`:
 
     pip install pytest
     pytest --pyargs mastermsm
 
-The data go to `$MASTERMSM_TEST_DATA` if set. To run offline, set
-`MASTERMSM_NO_DOWNLOAD=1`: tests whose data are missing are skipped.
+Trajectory integration tests fetch verified reference datasets from
+Zenodo via [`mddatabiokt`](https://github.com/BioKT/MDdata) when
+installed (cached in `$MASTERMSM_TEST_DATA`, `$MDDATABIOKT_DIR`, or
+`~/.cache/mddatabiokt`), and are skipped if `mddatabiokt` is absent. To
+run offline, set `MASTERMSM_NO_DOWNLOAD=1`: tests whose data are
+missing from the cache are skipped.
 
 Contributing
 ------------

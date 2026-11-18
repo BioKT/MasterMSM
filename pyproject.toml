@@ -37,6 +37,8 @@ classifiers = [
 # Discretizer.hdbscan uses hdbscan.approximate_predict,
 # which sklearn.cluster.HDBSCAN does not provide
 hdbscan = ["hdbscan"]
+# External Zenodo test datasets use mddatabiokt (https://github.com/BioKT/MDdata);
+# kept optional at runtime until mddatabiokt is published on PyPI/conda-forge
 test = ["pytest", "ipython"]
 
 [project.urls]
